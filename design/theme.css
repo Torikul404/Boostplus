@@ -1,0 +1,107 @@
+/* ==========================================================
+   design/theme.css — প্রফেশনাল ডিজাইন লেয়ার (ধাপ ২)
+   টোকেন ব্যবহার করে বলে premium ও light দুই থিমেই কাজ করে
+   ========================================================== */
+:root { --font: 'Inter','Hind Siliguri',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; }
+* { font-family: var(--font); }
+html { -webkit-text-size-adjust: 100%; }
+body, body.gateway-body, body.is-home { background: var(--bg); color: var(--text); background-image: var(--hero-bg); background-repeat: no-repeat; background-size: 100% 520px; line-height: 1.55; letter-spacing: -.005em; }
+h1,h2,h3 { letter-spacing: -.02em; }
+::selection { background: rgb(var(--primary-rgb) / .35); }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* ---------- উপরের নোটিশ ---------- */
+.delivery-marquee { background: var(--grad); color: #fff; font-size: 12.5px; font-weight: 600; letter-spacing: .01em; border: 0; padding: 7px 0; }
+.delivery-marquee span { color: #fff; }
+
+/* ---------- নেভিগেশন ---------- */
+.site-nav { background: rgb(var(--bg-rgb) / .78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.site-nav-brand, .site-nav-brand span { color: var(--text); font-weight: 800; letter-spacing: -.02em; }
+.site-nav-menu a { color: var(--muted); font-weight: 600; }
+.site-nav-menu a:hover { color: var(--text); }
+.pb-menu-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: none; }
+.pb-menu-btn span { background: var(--text); }
+.site-nav-tabs { gap: 6px; }
+.site-nav-tab { background: var(--surface); border: 1px solid var(--border); color: var(--text-2); border-radius: 12px; font-weight: 700; font-size: 13px; padding: 9px 13px; box-shadow: none; transition: transform .15s, background .15s, border-color .15s; }
+.site-nav-tab:hover { border-color: rgb(var(--primary-rgb) / .6); }
+.site-nav-tab.active { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 6px 16px rgb(var(--primary-rgb) / .35); }
+.pb-theme-toggle { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); cursor: pointer; }
+.pb-theme-toggle[hidden] { display: none; }
+.pb-theme-toggle .ic-sun { display: none; }
+[data-theme="premium"] .pb-theme-toggle .ic-moon { display: none; }
+[data-theme="premium"] .pb-theme-toggle .ic-sun { display: block; }
+
+/* ---------- হিরো (ব্র্যান্ড + প্ল্যাটফর্ম) ---------- */
+.brand { color: var(--text) !important; background: none !important; -webkit-text-fill-color: initial !important; font-weight: 800; letter-spacing: -.03em; }
+.tagline { color: var(--muted) !important; font-weight: 500; }
+.platform-ticker { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; box-shadow: var(--shadow-sm); }
+.pt-name { font-weight: 700; }
+.pt-dot, .pt-note { color: var(--muted-2); }
+.stat-item, .stats-bar .stat-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+.stat-number { color: var(--accent); font-weight: 800; }
+.stat-label { color: var(--muted); }
+
+/* প্ল্যাটফর্ম টাইল */
+.platform-btn { background: var(--surface) !important; border: 1px solid var(--border) !important; border-radius: 16px !important; box-shadow: var(--shadow-sm); color: var(--text-2); transition: transform .15s, border-color .15s, box-shadow .15s; }
+.platform-btn:hover { transform: translateY(-2px); border-color: rgb(var(--primary-rgb) / .6) !important; }
+.platform-btn.active { background: var(--grad-soft) !important; border-color: var(--primary) !important; box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / .18); }
+.platform-btn.active svg { color: var(--primary); }
+
+/* ---------- কার্ড / ফর্ম / বাটন ---------- */
+.user-dash-card, .pb-card, .feature-card, .step-card, .pay-card, .service-card, .faq-item, .we-accept-chip, .topup-promo, .pb-order-info, .pb-ticket, .dd-trigger {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); color: var(--text); }
+.user-dash-card { background: var(--grad-soft), var(--surface); }
+label, .pb-label, .form-group label { color: var(--text-2); font-weight: 600; font-size: 13.5px; }
+input, select, textarea, .pb-input, .pb-search input {
+  background: var(--surface) !important; color: var(--text) !important; border: 1px solid var(--border) !important; border-radius: var(--radius-sm) !important; padding: 13px 14px; font-size: 15px; transition: border-color .15s, box-shadow .15s; }
+input::placeholder, textarea::placeholder { color: var(--muted-2); }
+input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--primary) !important; box-shadow: 0 0 0 4px rgb(var(--primary-rgb) / .16); }
+.dd-trigger { border-color: var(--border); }
+.dd-trigger:hover, .dd-trigger.open { border-color: var(--primary); }
+.dd-option { color: var(--text); border-bottom: 1px solid var(--border); }
+.dd-option:hover, .dd-option.active { background: rgb(var(--primary-rgb) / .12); }
+
+button.pb-btn, .pb-btn, .btn-primary, .pb-acct-login, .rf-btn {
+  background: var(--grad); color: #fff !important; border: 0; border-radius: var(--radius-sm); font-weight: 700; box-shadow: 0 8px 20px rgb(var(--primary-rgb) / .32); transition: transform .12s, filter .15s; }
+.pb-btn:hover, .btn-primary:hover { filter: brightness(1.07); transform: translateY(-1px); }
+.pb-btn:active, .btn-primary:active { transform: translateY(0); }
+
+/* ---------- মোডাল / সাইডবার / টোস্ট ---------- */
+.pb-sidebar { background: var(--bg); border-right: 1px solid var(--border); box-shadow: var(--shadow); }
+.pb-side-item { color: var(--text-2); border-radius: 12px; font-weight: 600; }
+.pb-side-item:hover, .pb-side-item.active { background: rgb(var(--primary-rgb) / .12); color: var(--text); }
+.pb-side-item svg { stroke: currentColor; }
+.pb-modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); color: var(--text); }
+.pb-toast, .recent-toast { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 14px; box-shadow: var(--shadow); }
+
+/* ---------- ফুটার / FAQ ---------- */
+.site-footer { background: var(--bg-2); border-top: 1px solid var(--border); color: var(--muted); }
+.faq-item summary, .faq-item button { color: var(--text); font-weight: 600; }
+.faq-answer { color: var(--muted); }
+.section-title { color: var(--text); font-weight: 800; letter-spacing: -.02em; }
+
+/* ---------- লাইট থিম সংশোধন (হার্ডকোড সাদা টেক্সট ইত্যাদি) ---------- */
+[data-theme="light"] .pb-menu-btn span { background: var(--text); }
+[data-theme="light"] .site-nav { background: rgb(255 255 255 / .82); }
+[data-theme="light"] .platform-btn svg { filter: none; }
+[data-theme="light"] .pb-modal-overlay { background: rgb(15 23 42 / .45); }
+
+@media (max-width: 480px) {
+  .site-nav-tab { padding: 8px 10px; font-size: 12.5px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation-duration: .01ms !important; } }
+
+/* ---------- হিরো/হেডার/ওয়েলকাম কার্ড — পুরনো গাঢ় ব্যাকগ্রাউন্ড বাদ ---------- */
+header, .gateway-header { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+.logo-img-gateway, .logo-img-header { background: transparent !important; border: 0 !important; box-shadow: 0 8px 24px rgb(var(--primary-rgb) / .35); border-radius: 18px; }
+.ud-guest-card, .user-dash-grid, button.user-dash-card { background: var(--grad-soft), var(--surface) !important; border: 1px solid var(--border) !important; color: var(--text) !important; }
+.ud-guest-card * { color: inherit; }
+.ud-guest-card p, .ud-guest-card small { color: var(--muted) !important; }
+.platform-link { background: var(--surface) !important; border: 1px solid var(--border) !important; color: var(--text) !important; }
+/* টিকারের নিওন রং → শান্ত */
+.pt-name, .pt-ig, .pt-fb, .pt-tt, .pt-yt { color: var(--text) !important; font-weight: 700; opacity: .9; }
+/* লগইন/CTA হলুদ বাটন → ব্র্যান্ড গ্রেডিয়েন্ট */
+.ud-guest-card button, .ud-guest-card .pb-btn, #userDashGuest button { background: var(--grad) !important; color: #fff !important; border: 0 !important; box-shadow: 0 8px 20px rgb(var(--primary-rgb) / .32) !important; border-radius: 12px; font-weight: 700; }
+
+/* ---- লোগো v5: "boost" + গ্রেডিয়েন্ট "plus" (দুই থিমেই পড়া যায়) ---- */
+.bp-plus { background: linear-gradient(90deg,#6366F1 0%,#7C3AED 55%,#D946EF 100%) !important; -webkit-background-clip: text !important; background-clip: text !important; -webkit-text-fill-color: transparent !important; color: #7C3AED !important; font-weight: 800; }

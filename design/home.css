@@ -1,0 +1,74 @@
+/* design/home.css — ধাপ ৬: গেস্ট ভিউ, লগইন পেজ, How it works (টোকেন-ভিত্তিক: premium ও light দুই থিমেই চলে) */
+
+/* ধাপ ১৪: ওপরের কোণের Login/Track Order সরানো হয়েছে (লগইন যায় গেট কার্ড/সাইডবার থেকে) */
+/* গেস্টের জন্য ওয়ালেট আইকন লুকানো (ট্যাপ করলে লগইনেই যেত); লগইনের পর ব্যালেন্সসহ ফিরে আসে */
+body.pb-guest #navWalletBtn{display:none !important}
+
+/* ---- গেস্ট: অর্ডার ফর্ম লুকানো, তার জায়গায় লগইন কার্ড ---- */
+body.pb-guest #abOrderFields{display:none !important}
+.pb-gate{margin:14px 0;padding:18px 16px;text-align:center;border:1px solid var(--border);border-radius:var(--radius);background:var(--grad-soft);box-shadow:var(--shadow-sm)}
+.pb-gate[hidden]{display:none}
+.pb-gate-ico{font-size:26px;line-height:1}
+.pb-gate-t{margin:8px 0 4px;font-size:18px;color:var(--text)}
+.pb-gate-p{margin:0 0 6px;font-weight:700;color:var(--accent);font-size:14px;word-break:break-word}
+.pb-gate-p:empty{display:none}
+.pb-gate-s{margin:0 0 14px;color:var(--text-2);font-size:14px;line-height:1.6}
+.pb-gate-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.pb-gate-btn{flex:1 1 140px;max-width:220px;padding:12px 16px;border-radius:var(--radius-sm);background:var(--grad);color:var(--on-primary);font-weight:800;font-size:15px;text-decoration:none;text-align:center;border:1px solid transparent}
+.pb-gate-btn.ghost{background:transparent;color:var(--text);border-color:var(--border)}
+
+/* ---- How it works ---- */
+.hiw-section{max-width:980px;margin:28px auto 8px;padding:0 14px}
+.hiw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
+.hiw-step{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 14px;box-shadow:var(--shadow-sm)}
+.hiw-num{width:32px;height:32px;border-radius:50%;background:var(--grad);color:var(--on-primary);font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.hiw-step h3{margin:0 0 4px;font-size:15.5px;color:var(--text)}
+.hiw-step p{margin:0;font-size:13.5px;line-height:1.6;color:var(--text-2)}
+
+/* ---- লগইন পেজ (login.html) ---- */
+.lg-wrap{max-width:440px;margin:0 auto;padding:26px 16px 48px}
+.lg-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px 18px}
+.lg-card h1{margin:0 0 4px;font-size:24px;line-height:1.3}
+.lg-sub{margin:0 0 14px;color:var(--text-2);font-size:14.5px}
+.lg-svc{margin:0 0 14px;padding:10px 12px;border-radius:var(--radius-sm);background:var(--grad-soft);border:1px solid var(--border);color:var(--text-2);font-size:14px}
+.lg-tabs{display:flex;gap:6px;padding:4px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);margin:0 0 16px}
+.lg-tab{flex:1;padding:10px 0;border:0;border-radius:9px;background:transparent;color:var(--muted);font:inherit;font-weight:700;cursor:pointer}
+.lg-tab[aria-selected="true"]{background:var(--primary);color:var(--on-primary)}
+.lg-panel{display:grid;gap:12px}
+.lg-panel[hidden]{display:none}
+.lg-field{display:grid;gap:6px}
+.lg-field label{font-size:13.5px;color:var(--text-2);font-weight:600}
+.lg-in-wrap{position:relative}
+.lg-in{width:100%;padding:13px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-2);color:var(--text);font:inherit;font-size:16px}
+.lg-in:focus{outline:2px solid rgb(var(--primary-rgb) / .55);outline-offset:1px}
+.lg-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--muted);font-size:16px;padding:6px;cursor:pointer}
+.lg-btn{width:100%;padding:13px 16px;border:0;border-radius:var(--radius-sm);background:var(--grad);color:var(--on-primary);font:inherit;font-weight:800;font-size:16px;cursor:pointer}
+.lg-btn[disabled]{opacity:.6;cursor:wait}
+.lg-link{background:none;border:0;padding:0;color:var(--accent);font:inherit;font-size:14px;cursor:pointer;text-align:left;text-decoration:underline}
+.lg-msg{min-height:20px;margin:12px 0 0;font-size:14px;font-weight:600;color:var(--muted)}
+.lg-msg[data-kind="error"]{color:var(--danger)}
+.lg-msg[data-kind="success"]{color:var(--success)}
+.lg-msg[data-kind="info"]{color:var(--warn)}
+.lg-note{margin:14px 4px 0;color:var(--muted);font-size:13.5px;text-align:center}
+/* ধাপ ১৩: গেস্টের জন্য লগইন প্রম্পট দুই জায়গায় (ওপরের কোণ + ফর্মের নিচের কার্ড); মাঝের Welcome কার্ড লুকানো */
+#userDashGuest{display:none !important}
+.pb-gate-alt{margin:12px 0 0;font-size:13.5px;color:var(--text-2)}
+.pb-gate-alt a{color:var(--primary);font-weight:700;text-decoration:none}
+.pb-gate-alt a:hover{text-decoration:underline}
+.pb-gate-row .pb-gate-btn{max-width:320px}
+
+/* ---- ধাপ ১৫: "কীভাবে অর্ডার করবেন" কম জায়গায় — একটাই কার্ড, ৪ ধাপ পাশাপাশি (শুধু শিরোনাম; বর্ণনা মোবাইলে লুকানো) ---- */
+.hiw-section{margin:18px auto 4px}
+.hiw-section .section-title{font-size:16px;margin:0 0 8px}
+.hiw-grid{grid-template-columns:repeat(4,1fr);gap:6px;margin-top:0;padding:10px 6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+.hiw-step{background:none;border:0;box-shadow:none;border-radius:0;padding:0 2px;text-align:center;position:relative}
+.hiw-step:not(:last-child)::after{content:"›";position:absolute;right:-5px;top:6px;color:var(--muted-2);font-size:16px;line-height:1}
+.hiw-num{width:26px;height:26px;margin:0 auto 6px;font-size:13px}
+.hiw-step h3{margin:0;font-size:12px;line-height:1.35;font-weight:700}
+.hiw-step p{display:none}
+@media (min-width:640px){
+  .hiw-grid{padding:14px 10px}
+  .hiw-step h3{font-size:14px;margin-bottom:3px}
+  .hiw-step p{display:block;font-size:12.5px;line-height:1.5}
+}
+

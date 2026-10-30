@@ -1,0 +1,90 @@
+/* ==========================================================
+   design/tokens.css — থিম টোকেন (ধাপ ২, হালনাগাদ ধাপ ১৫)
+   থিম: premium (ডার্ক প্রিমিয়াম) | light (লাইট ক্লিন)
+   সাইটের মোড (অ্যাডমিন থেকে): premium | light | toggle
+   কনট্রাস্ট: লেখা (--muted, --muted-2 সহ) ≥ 4.5:1, বাটনের সীমা/আইকন/ইনপুট বর্ডার ≥ 3:1
+   --grad-এ সাদা লেখা বসে, তাই গ্রেডিয়েন্টের দুই প্রান্তই ≥ 4.5:1
+   (মান যাচাই করা হয়েছে --bg, --surface ও --surface-2-এর ওপর)
+   ========================================================== */
+:root, [data-theme="premium"] {
+  color-scheme: dark;
+  --bg:#0b1020; --bg-2:#080c18; --surface:#121933; --surface-2:#1a2347; --border:#28325c;
+  --text:#eef1ff; --text-2:#c5cbe8; --muted:#a3a8c3; --muted-2:#8790b8;
+  --accent:#a5b4fc; --link:#a5b4fc;
+  --primary:#4f46e5; --primary-2:#4338ca;
+  --bg-rgb:11 16 32; --surface-rgb:18 25 51; --accent-rgb:165 180 252; --primary-rgb:79 70 229; --ov-rgb:255 255 255;
+  --grad:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);   /* সাদা লেখা: দুই প্রান্তেই ≥5.7 */
+  --grad-soft:linear-gradient(135deg,rgb(79 70 229 / .22),rgb(139 92 246 / .12));
+  --hero-bg:radial-gradient(900px 380px at 15% -10%,rgb(79 70 229 / .35),transparent 60%),radial-gradient(700px 320px at 95% 0%,rgb(139 92 246 / .28),transparent 60%);
+  --shadow:0 10px 30px rgb(0 0 0 / .35); --shadow-sm:0 2px 10px rgb(0 0 0 / .25);
+  --on-primary:#fff; --success:#34d399; --warn:#fbbf24; --danger:#f87171;
+  --radius:16px; --radius-sm:12px;
+
+  /* ধাপ ১৫ — নতুন টোকেন */
+  --bd-input:#6a70a0;            /* ইনপুট ও ইন্টারঅ্যাকটিভ কার্ডের বর্ডার: surface-এ 3.66, surface-2-এ 3.23 */
+  --primary-border:#a5b4fc;      /* মূল বাটনের ১ px সীমা: bg-তে 9.50, surface-এ 8.69 */
+  --highlight:#22d3ee;           /* শুধু আইকন/হাইলাইট; surface-এ 9.58 */
+  --info:#38bdf8;                /* surface-এ 8.08 */
+  --status-pending:#fbbf24;      /* surface-এ 10.37 */
+  --status-processing:#38bdf8;   /* 8.08 */
+  --status-completed:#34d399;    /* 9.01 */
+  --status-partial:#c4b5fd;      /* 9.38 */
+  --status-canceled:#f87171;     /* 6.26 */
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg:#f4f6fb; --bg-2:#eaeff7; --surface:#ffffff; --surface-2:#f1f5f9; --border:#e2e8f0;
+  --text:#0f172a; --text-2:#334155; --muted:#4b5563; --muted-2:#5b6b82;
+  --accent:#4f46e5; --link:#4f46e5;
+  --primary:#4f46e5; --primary-2:#4338ca;
+  --bg-rgb:244 246 251; --surface-rgb:255 255 255; --accent-rgb:79 70 229; --primary-rgb:79 70 229; --ov-rgb:15 23 42;
+  --grad:linear-gradient(135deg,#4f46e5 0%,#6d28d9 100%);   /* সাদা লেখা: দুই প্রান্তেই ≥6.2 */
+  --grad-soft:linear-gradient(135deg,rgb(79 70 229 / .10),rgb(14 165 233 / .06));
+  --hero-bg:radial-gradient(900px 380px at 15% -10%,rgb(79 70 229 / .14),transparent 60%),radial-gradient(700px 320px at 95% 0%,rgb(14 165 233 / .12),transparent 60%);
+  --shadow:0 10px 30px rgb(15 23 42 / .08); --shadow-sm:0 2px 8px rgb(15 23 42 / .06);
+  --on-primary:#fff; --success:#059669; --warn:#d97706; --danger:#dc2626;
+
+  /* ধাপ ১৫ — নতুন টোকেন */
+  --bd-input:#7c849a;            /* সাদার ওপর 3.73, bg-তে 3.45, bg-2-তে 3.23 */
+  --primary-border:#4f46e5;      /* হালকায় বাটনের রঙেই (বাড়তি সীমা লাগে না) */
+  --highlight:#0891b2;           /* শুধু আইকনে (≥3:1: surface-এ 3.68); লেখায় নয় */
+  --info:#0369a1;                /* surface-এ 5.93 */
+  --status-pending:#a84a08;      /* surface-এ 5.76, bg-2-তে 4.99 */
+  --status-processing:#0369a1;   /* 5.93 */
+  --status-completed:#047857;    /* 5.48 */
+  --status-partial:#6d28d9;      /* 7.10 */
+  --status-canceled:#b91c1c;     /* 6.47 */
+}
+
+/* থিম-নিরপেক্ষ টোকেন (ধাপ ১৫) */
+:root {
+  /* স্পেসিং — ৪-px স্কেল */
+  --space-1:4px;  --space-2:8px;  --space-3:12px; --space-4:16px; --space-5:20px;
+  --space-6:24px; --space-8:32px; --space-10:40px; --space-12:48px; --space-16:64px;
+
+  /* z-index স্তর */
+  --z-content:0; --z-sticky:100; --z-bottombar:900; --z-overlay:1000;
+  --z-sidebar:1010; --z-modal:1100; --z-toast:1200;
+
+  /* লেআউট */
+  --sidebar-w:272px;        /* ডেস্কটপের স্থায়ী সাইডবার */
+  --sidebar-float-w:330px;  /* ট্যাবলেটে (৭৬৮ px) ভাসমান সাইডবার */
+  --header-h:64px;          /* ডেস্কটপ হেডার */
+  --header-h-sm:56px;       /* মোবাইল হেডার (ক্যানভাসে ৫৬) */
+  --text-min:12px;          /* ন্যূনতম লেখার মাপ (বাংলায় ১১ px ছোট) */
+}
+
+/* পুরনো ভ্যারিয়েবলের নাম — যেন আগের CSS ভাঙে না */
+:root {
+  --dark-bg:var(--bg); --dark-surface:var(--surface); --dark-border:var(--border);
+}
+
+/* ধাপ ১৬ — প্রবেশযোগ্যতা টোকেন */
+:root {
+  --focus-ring:#a5b4fc;          /* ডার্কে: bg-তে 9.5, surface-2-তে 7.2 (≥3:1 লাগে) */
+  --tap-min:44px;                /* টাচ-টার্গেটের ন্যূনতম মাপ */
+  --input-fs:16px;               /* ইনপুটের লেখা — iOS জুম রোধ */
+  /* ব্রেকপয়েন্ট (CSS media-তে var চলে না; এখানে শুধু তালিকা, মান a11y.css/styles.css-এ লেখা) */
+  --bp-sm:576px; --bp-md:768px; --bp-lg:992px; --bp-xl:1200px;
+}
+[data-theme="light"] { --focus-ring:#4f46e5; }   /* সাদার ওপর 6.3, bg-2-তে 5.4 */

@@ -1,1 +1,26 @@
-
+/* design/account.css — ধাপ ২২: অ্যাকাউন্ট পাতা। টোকেন-ভিত্তিক, দুই থিমে; tokens.css অপরিবর্তিত। */
+.pb-acc-page { max-width: 720px; }
+#accSections { display: flex; flex-direction: column; gap: 12px; }
+.pb-acc-sec { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+.pb-acc-sec h3 { margin: 0; font-size: 1rem; }
+.pb-acc-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 12px 16px;
+  background: none; border: 0; color: var(--text); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.pb-acc-head::after { content: ""; width: 9px; height: 9px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .2s; flex: 0 0 auto; margin-right: 4px; }
+.pb-acc-head[aria-expanded="true"]::after { transform: rotate(-135deg); }
+.pb-acc-body { display: flex; flex-direction: column; gap: 10px; padding: 4px 16px 16px; }
+.pb-acc-body[hidden] { display: none; }
+.pb-acc-body label { font-size: .9rem; font-weight: 600; color: var(--text-2); }
+.pb-acc-body input, .pb-acc-body select { width: 100%; min-height: 44px; box-sizing: border-box; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--surface-2, var(--bg)); color: var(--text); font: inherit; font-size: 16px; }
+.pb-acc-body .pb-btn { align-self: flex-start; min-height: 44px; padding: 10px 20px; cursor: pointer; }
+.pb-acc-body .pb-btn[disabled] { opacity: .6; cursor: not-allowed; }
+.pb-acc-note { margin: 0; font-size: 13px; color: var(--muted); }
+.pb-acc-dl { margin: 0; display: grid; gap: 10px; }
+.pb-acc-dl > div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.pb-acc-dl dt { color: var(--muted); }
+.pb-acc-dl dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; text-align: right; }
+.pb-acc-guest { text-align: center; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+@media (min-width: 768px) {
+  .pb-acc-head { cursor: default; pointer-events: none; }
+  .pb-acc-head::after { display: none; }
+}

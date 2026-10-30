@@ -1,0 +1,10 @@
+/* ধাপ ২১ — কারেন্সি ড্রপডাউন (টোকেন-ভিত্তিক) */
+.pb-cur { position: relative; display: inline-flex; }
+.pb-cur-btn { min-height: 44px; padding: 0 12px; font: inherit; font-size: 14px; font-weight: 700; color: var(--text); background: var(--surface); border: 1px solid var(--bd-input); border-radius: var(--radius-sm); cursor: pointer; }
+.pb-cur-btn:focus-visible, .pb-cur-opt:focus-visible { outline: 2px solid var(--primary-border); outline-offset: 2px; }
+.pb-cur-panel { position: absolute; top: calc(100% + 6px); right: 0; z-index: 1000; min-width: 220px; padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 10px 30px rgb(0 0 0 / .35); }
+.pb-cur-panel[hidden] { display: none; }
+.pb-cur-opt { display: flex; gap: 8px; align-items: baseline; width: 100%; min-height: 44px; padding: 8px 12px; text-align: left; font: inherit; color: var(--text); background: transparent; border: 0; border-radius: 8px; cursor: pointer; }
+.pb-cur-opt span { color: var(--muted); font-size: 13px; }
+.pb-cur-opt.on { background: rgb(var(--primary-rgb) / .16); }
+.pb-cur-load, .pb-cur-note { padding: 8px 12px; font-size: 12.5px; color: var(--muted); }

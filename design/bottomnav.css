@@ -1,0 +1,22 @@
+/* design/bottomnav.css — মোবাইলে নিচের স্থির নেভিগেশন বার (ধাপ ১১) — টোকেন-ভিত্তিক, দুই থিমেই */
+.pb-bnav { display: none; }
+@media (max-width: 767px) {
+  .pb-bnav { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--border);
+    box-shadow: 0 -8px 24px rgb(0 0 0 / .18); }
+  body.pb-kb .pb-bnav { display: none; }                 /* কীবোর্ড খোলা থাকলে ঢেকে দেয় না */
+  .pb-bnav-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 56px; padding: 4px 2px;
+    background: none; border: 0; border-radius: 12px; color: var(--muted); font: inherit; font-size: 12px; font-weight: 700; line-height: 1.25;
+    cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; }
+  .pb-bnav-btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .pb-bnav-btn:active { transform: scale(.95); }
+  .pb-bnav-btn.on { color: var(--on-primary); background: var(--primary); }
+  .pb-bnav-btn.on::after { content: ""; position: absolute; top: 3px; left: 50%; width: 16px; height: 3px; margin-left: -8px; border-radius: 3px; background: var(--highlight); }   /* সায়ান শুধু ছোট দাগে */
+  .pb-bnav-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+  body.pb-has-bnav { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  /* বাটনগুলো এখন নিচে: ওপরের বারে New Order/Wallet সরানো (Track Order ও Login থাকে) */
+  body.pb-has-bnav #navNewOrderBtn, body.pb-has-bnav #navWalletBtn { display: none !important; }
+}
+@media (max-width: 767px) {
+  body.pb-no-scroll .pb-bnav { display: none; }   /* সাইডবার খোলা থাকলে নিচের বার লুকানো */
+}

@@ -1,0 +1,53 @@
+/* ধাপ ১৮ — অর্ডার তালিকা: স্ট্যাটাস চিপ, কার্ড (মোবাইল), টেবিল (≥১০২৪ px), Speed up/সাহায্য বাটন।
+   শুধু tokens.css-এর টোকেন ব্যবহার; পুরনো নীল রং নয়। */
+.pb-oh-page { max-width: 760px; }
+.pb-oh-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.pb-oh-filters { flex-direction: row; flex-wrap: wrap; gap: 8px; border: 0; border-radius: 0; overflow: visible; margin-bottom: 14px; }
+.pb-oh-f { width: auto; min-height: 44px; padding: 8px 14px; gap: 8px; border: 1px solid var(--bd-input); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 15px; justify-content: center; }
+.pb-oh-f:last-child { border-bottom: 1px solid var(--bd-input); }
+.pb-oh-f:focus-visible { outline: 2px solid var(--primary-border); outline-offset: 2px; }
+.pb-oh-f.active { background: var(--primary); border-color: var(--primary-border); color: var(--on-primary); font-weight: 700; }
+.pb-oh-c { font-size: 12px; background: rgb(var(--ov-rgb) / .12); }
+.pb-oh-f.active .pb-oh-c { background: rgb(255 255 255 / .22); }
+.pb-oh-search { border: 1px solid var(--bd-input); border-radius: var(--radius-sm); }
+.pb-oh-search .pb-input { font-size: 16px; min-height: 44px; }
+.pb-oh-search button { background: var(--primary); color: var(--on-primary); }
+.pb-oh-page .pb-oh-st, .pb-oh-page .pb-oh-st[class] { background: transparent; border: 1px solid currentColor; }
+.pb-oh-page .pb-oh-st.s-pending { color: var(--status-pending); }
+.pb-oh-page .pb-oh-st.s-in-progress { color: var(--status-processing); }
+.pb-oh-page .pb-oh-st.s-processing { color: var(--status-processing); }
+.pb-oh-page .pb-oh-st.s-completed { color: var(--status-completed); }
+.pb-oh-page .pb-oh-st.s-partial { color: var(--status-partial); }
+.pb-oh-page .pb-oh-st.s-rejected, .pb-oh-page .pb-oh-st.s-canceled, .pb-oh-page .pb-oh-st.s-cancelled { color: var(--status-canceled); }
+
+/* বাটন: কমপক্ষে ৪৪ px উচ্চতা */
+.pb-oh-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pb-oh-act { min-height: 44px; padding: 8px 16px; border-radius: var(--radius-sm); font-size: 14px; }
+.pb-oh-act:focus-visible { outline: 2px solid var(--primary-border); outline-offset: 2px; }
+.pb-oh-speed { background: var(--primary); color: var(--on-primary); border: 1px solid var(--primary-border); }
+.pb-oh-help { background: transparent; color: var(--text); border: 1px solid var(--bd-input); }
+.pb-oh-refill { background: transparent; color: var(--success); border: 1px solid var(--success); }
+.pb-oh-cancel { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+.pb-oh-note { color: var(--muted); }
+.pb-oh-msg.ok { background: transparent; color: var(--success); border: 1px solid var(--success); }
+.pb-oh-msg.err { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+.pb-oh-idbtn { min-height: 44px; color: var(--text); }
+
+/* টেবিল (ডেস্কটপ) */
+@media (min-width: 1024px) {
+  .pb-oh-page { max-width: 1160px; }
+  .pb-oh-tablewrap { overflow-x: auto; border-radius: var(--radius-sm); }
+  .pb-oh-table { width: 100%; min-width: 0; border-collapse: collapse; font-size: 14.5px; }
+  .pb-oh-table th { background: var(--surface-2); color: var(--text-2); font-size: 13px; font-weight: 700; text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); position: static; }
+  .pb-oh-table td, .pb-oh-table tr:nth-child(even) td { background: transparent; color: var(--text); padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .pb-oh-table tr:hover td { background: rgb(var(--ov-rgb) / .04); }
+  .pb-oh-table td.oh-id { width: 110px; font-weight: 700; }
+  .pb-oh-table td.oh-svc { min-width: 220px; }
+  .pb-oh-table td.oh-link { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pb-oh-table td.oh-link a { color: var(--accent); text-decoration: underline; }
+  .pb-oh-table td.oh-qty { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .pb-oh-table td.oh-act { white-space: normal; min-width: 230px; }
+  .oh-svcname { display: block; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+  .oh-sub { display: block; font-size: 12.5px; color: var(--muted); }
+  .pb-oh-table .pb-oh-live { display: flex; gap: 14px; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+}
