@@ -1,1 +1,1438 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#007bff" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="PB Admin" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="../icons/admin-192.png" />
+<link rel="icon" type="image/png" href="../icons/admin-192.png" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Admin Panel — boostplus</title>
+<style>
+  :root { --primary: #007bff; --dark-bg: #0b0f14; --dark-surface: #131a22; --dark-border: #2a3a4a; --text: #e2e8f0; --muted: #94a3b8; --green: #22c55e; --red: #ef4444; --amber: #f59e0b; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Segoe UI', Arial, sans-serif; background: var(--dark-bg); color: var(--text); }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 8px 0 16px; }
+  .login-box { max-width: 360px; margin: 80px auto; background: var(--dark-surface); border: 1px solid var(--dark-border); border-radius: 12px; padding: 24px; text-align: center; }
+  .login-box input { width: 100%; padding: 10px; margin: 12px 0; border-radius: 8px; border: 1px solid var(--dark-border); background: var(--dark-bg); color: var(--text); font-size: 14px; }
+  .login-box button, .toolbar button { background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; cursor: pointer; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .toolbar select { padding: 8px; border-radius: 8px; background: var(--dark-surface); color: var(--text); border: 1px solid var(--dark-border); }
+  .muted { color: var(--muted); font-size: 12px; }
+  .card { background: var(--dark-surface); border: 1px solid var(--dark-border); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+  .card-top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .oid { font-weight: bold; color: var(--primary); }
+  .row { font-size: 13px; margin: 3px 0; color: var(--text); }
+  .row b { color: var(--muted); font-weight: 600; }
+  .status-pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: bold; }
+  .st-pending { background: rgba(245,158,11,.15); color: var(--amber); }
+  .st-approved { background: rgba(34,197,94,.15); color: var(--green); }
+  .st-processing { background: rgba(0,123,255,.15); color: var(--primary); }
+  .st-rejected { background: rgba(239,68,68,.15); color: var(--red); }
+  .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .actions button { flex: 1; min-width: 100px; border: none; border-radius: 8px; padding: 9px; font-size: 13px; cursor: pointer; color: #fff; }
+  .btn-approve { background: var(--green); }
+  .btn-reject { background: var(--red); }
+  .btn-delete { background: #7f1d1d; }
+  .btn-note { background: #334155; }
+  .btn-retry { background: #f59e0b; color: #0b0f14; font-weight: 700; }
+  .btn-partial { background: #0d9488; color: #fff; font-weight: 700; }
+  .balance-panel { background: #111827; border: 1px solid #1f2a37; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
+  .balance-panel h3 { margin: 0 0 10px; font-size: 15px; color: #e5e7eb; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .balance-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .bal-card { background: #0b1220; border: 1px solid #243044; border-radius: 10px; padding: 8px 10px; font-size: 12px; }
+  .bal-card .bn { color: #94a3b8; word-break: break-all; }
+  .bal-card .bv { font-weight: 700; font-size: 14px; margin-top: 4px; }
+  .bal-card.ok .bv { color: #4ade80; }
+  .bal-card.bad .bv { color: #f87171; font-size: 11px; }
+  .bal-card.low .bv { color: #fbbf24; }
+  .bal-toggle { font-size: 12px; padding: 4px 10px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; cursor: pointer; }
+  .btn-refill { background: #0891b2; color: #fff; font-weight: 700; }
+  .refill-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .refill-modal { background: #1a2332; border: 1px solid #334155; border-radius: 16px; width: 100%; max-width: 400px; overflow: hidden; }
+  .refill-modal .rh { background: linear-gradient(135deg,#b45309,#92400e); padding: 14px 16px; font-weight: 700; font-size: 16px; }
+  .refill-modal .rb { padding: 16px; }
+  .refill-modal label { display: block; font-size: 12px; color: #94a3b8; margin: 10px 0 4px; }
+  .refill-modal input, .refill-modal select, .refill-modal textarea {
+    width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px; border: 1px solid #334155;
+    background: #0f172a; color: #e2e8f0; font: inherit;
+  }
+  .refill-modal textarea { min-height: 80px; resize: vertical; }
+  .refill-modal .rf-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .refill-modal .rf-actions button { flex: 1; padding: 12px; border: 0; border-radius: 10px; font-weight: 700; cursor: pointer; }
+  .refill-modal .rf-go { background: #0e7490; color: #fff; }
+  .refill-modal .rf-cancel { background: #334155; color: #e2e8f0; }
+  .refill-modal .hint { font-size: 11px; color: #64748b; margin-top: 6px; }
 
+
+  .status-pill.st-partial { background: #0f766e33; color: #5eead4; border: 1px solid #14b8a6; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 0; }
+  .err { color: var(--red); font-size: 13px; margin-top: 8px; }
+  a.link { color: var(--primary); word-break: break-all; }
+  .pub-badge { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .pub-yes { background: rgba(34,197,94,.15); color: var(--green); }
+  .pub-no { background: rgba(245,158,11,.15); color: var(--amber); }
+  /* Public Proof (redaction) editor */
+  #rdModal { position: fixed; inset: 0; z-index: 1000; background: #05080d; display: none; flex-direction: column; }
+  #rdModal.open { display: flex; }
+  .rd-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--dark-border); }
+  .rd-head b { flex: 1; font-size: 14px; }
+  .rd-x { background: #334155; color: #fff; border: 0; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+  .rd-stage { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 10px; }
+  #rdCanvas { max-width: 100%; max-height: 62vh; width: auto; height: auto; touch-action: none; cursor: crosshair; border: 1px solid var(--dark-border); border-radius: 6px; background: #000; }
+  .rd-msg { padding: 6px 12px; font-size: 12.5px; color: var(--muted); text-align: center; }
+  .rd-msg.warn { color: var(--amber); }
+  .rd-tools { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
+  .rd-tools button { flex: 1; min-width: 110px; border: 0; border-radius: 8px; padding: 9px 8px; font-size: 13px; color: #fff; background: #334155; cursor: pointer; }
+  .rd-tools .rd-pub { background: var(--green); }
+  .rd-tools .rd-pub:disabled { opacity: .4; cursor: not-allowed; }
+  .rd-tools .rd-unpub { background: #7f1d1d; }
+  .rd-tools .rd-tpl { background: #0f766e; }
+  .rd-confirm { display: flex; gap: 8px; align-items: flex-start; padding: 4px 12px 12px; font-size: 13px; }
+  .rd-confirm input { margin-top: 3px; width: 18px; height: 18px; }
+  /* Tickets tab */
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tabs button { flex: 1; background: var(--dark-surface); color: var(--muted); border: 1px solid var(--dark-border); border-radius: 8px; padding: 10px; font-size: 14px; cursor: pointer; }
+  .tabs button.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .tk-msg { white-space: pre-wrap; word-break: break-word; background: var(--dark-bg); border-radius: 8px; padding: 10px; margin: 8px 0; font-size: 13px; }
+  .tk-reply { width: 100%; min-height: 70px; padding: 9px; border-radius: 8px; border: 1px solid var(--dark-border); background: var(--dark-bg); color: var(--text); font: inherit; font-size: 13px; }
+  .tk-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .tk-row select { padding: 8px; border-radius: 8px; background: var(--dark-bg); color: var(--text); border: 1px solid var(--dark-border); }
+  .tk-row button { flex: 1; min-width: 120px; border: 0; border-radius: 8px; padding: 9px; background: var(--green); color: #fff; cursor: pointer; font-size: 13px; }
+
+  .dash { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .dash .d { background: #111827; border: 1px solid #1f2a37; border-radius: 10px; padding: 10px 8px; text-align: center; cursor: pointer; }
+  .dash .d:active { transform: scale(0.98); }
+  .dash .d .n { font-size: 20px; font-weight: 800; color: #e5e7eb; }
+  .dash .d .l { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  .dash .d.pending .n { color: #fbbf24; }
+  .dash .d.processing .n { color: #38bdf8; }
+  .dash .d.partial .n { color: #2dd4bf; }
+  .dash .d.completed .n { color: #4ade80; }
+  .dash .d.rejected .n { color: #f87171; }
+  .dash .d.today .n { color: #a78bfa; }
+  .search-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .search-row input { flex: 1; min-width: 160px; padding: 10px 12px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font: inherit; }
+  .search-row button { padding: 10px 14px; border-radius: 10px; border: 0; background: #1e40af; color: #fff; font-weight: 700; cursor: pointer; }
+  .svc-add-box { background:#111827; border:1px solid #1f2a37; border-radius:12px; padding:14px; margin:12px 0; }
+  .svc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .svc-grid input, .svc-grid select { padding:10px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; font:inherit; }
+  .svc-chip { display:inline-flex; align-items:center; gap:6px; background:#1e293b; border:1px solid #334155; border-radius:8px; padding:6px 10px; margin:4px; font-size:13px; }
+  .svc-chip button { border:0; background:#334155; color:#fff; border-radius:6px; padding:4px 8px; cursor:pointer; font-size:11px; }
+  .btn-go { background:#059669; color:#fff; border:0; border-radius:10px; padding:12px; font-weight:700; cursor:pointer; }
+  .svc-catalog { max-height: 62vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .svc-row { background:#111827; border:1px solid #1f2a37; border-radius:12px; padding:12px; margin-bottom:8px; }
+  .svc-row.hidden-svc { opacity:0.55; border-color:#7f1d1d; }
+  .svc-row-title { font-size:13px; font-weight:600; color:#e5e7eb; line-height:1.35; margin-bottom:6px; word-break:break-word; }
+  .svc-row-meta { font-size:11px; color:#94a3b8; margin-bottom:8px; }
+  .svc-row-actions { display:flex; flex-wrap:wrap; gap:6px; }
+  .svc-row-actions button { border:0; border-radius:8px; padding:8px 10px; font-size:12px; font-weight:700; cursor:pointer; }
+  .svc-btn-hide { background:#7f1d1d; color:#fecaca; }
+  .svc-btn-show { background:#14532d; color:#bbf7d0; }
+  .svc-btn-inst { background:#0e7490; color:#fff; }
+  .svc-btn-slow { background:#9a3412; color:#ffedd5; }
+  .svc-fbtn { background:#1e293b; color:#94a3b8; border:1px solid #334155; border-radius:8px; padding:8px 12px; cursor:pointer; font-size:12px; }
+  .svc-fbtn.on { background:#1e40af; color:#fff; border-color:#1e40af; }
+  .svc-badge { font-size:10px; padding:2px 6px; border-radius:4px; margin-left:4px; }
+  .svc-badge.hide { background:#7f1d1d; color:#fecaca; }
+  .svc-badge.inst { background:#0e7490; color:#fff; }
+  .svc-badge.slow { background:#9a3412; color:#ffedd5; }
+  .svc-badge.dq { background:#991b1b; color:#fff; }
+  .svc-badge.tm { background:#075985; color:#e0f2fe; }
+  .svc-badge.disc { background:#16a34a; color:#fff; font-weight:700; }
+  .svc-badge.ex { background:#166534; color:#dcfce7; }
+
+</style>
+</head>
+<body>
+
+<div id="loginView" class="login-box">
+  <img src="../icons/admin-logo.png?v=20261030" alt="Boost plus Admin Panel" width="180" height="180" style="display:block;width:180px;height:180px;max-width:70%;height:auto;margin:0 auto 6px;">
+  <h1>🔐 Admin Login</h1>
+  <input id="tokenInput" type="password" placeholder="Admin token দিন" autocomplete="off" />
+  <button onclick="doLogin()">প্রবেশ করুন</button>
+  <div id="loginErr" class="err"></div>
+</div>
+
+<!-- Public Proof editor: নম্বর / TrxID ঢেকে পাবলিক ভার্সন বানান -->
+<div id="rdModal" role="dialog" aria-modal="true">
+  <div class="rd-head">
+    <b id="rdTitle">Public Proof</b>
+    <button type="button" class="rd-x" onclick="closeRedact()">✕ বন্ধ</button>
+  </div>
+  <div class="rd-msg" id="rdMsg">লোড হচ্ছে…</div>
+  <div class="rd-stage"><canvas id="rdCanvas"></canvas></div>
+  <div class="rd-tools">
+    <button type="button" class="rd-tpl" id="rdApplyTpl" onclick="rdApplyTemplate()">📐 টেমপ্লেট প্রয়োগ</button>
+    <button type="button" onclick="rdUndo()">↩ Undo</button>
+    <button type="button" onclick="rdClear()">🗑 সব বক্স মুছুন</button>
+    <button type="button" class="rd-tpl" id="rdSaveTpl" onclick="rdSaveTemplate()">💾 টেমপ্লেট সেভ</button>
+  </div>
+  <label class="rd-confirm">
+    <input type="checkbox" id="rdOk" onchange="rdSyncPub()">
+    <span>আমি দেখে নিয়েছি — কাস্টমারের <b>ফোন নম্বর, TrxID ও নাম</b> (যা আছে) পুরোপুরি ঢাকা আছে।</span>
+  </label>
+  <div class="rd-tools">
+    <button type="button" class="rd-pub" id="rdPub" onclick="rdPublish()" disabled>✅ পাবলিক গ্যালারিতে পাবলিশ</button>
+    <button type="button" class="rd-unpub" id="rdUnpub" onclick="rdUnpublish()" style="display:none;">🚫 গ্যালারি থেকে সরান</button>
+  </div>
+</div>
+
+<div id="panelView" class="wrap" style="display:none;">
+  <div class="admin-brand" style="display:flex;align-items:center;gap:10px;margin:0 0 10px;"><img src="../icons/admin-192.png?v=20261030" alt="" width="34" height="34" style="width:34px;height:34px;border-radius:8px;"><b style="font-size:15px;">Boost plus <span style="color:var(--muted);font-weight:400;">Admin Panel</span></b></div>
+  <div class="tabs">
+    <button type="button" id="tabOrders" class="on" onclick="showTab('orders')">📋 অর্ডার</button>
+    <button type="button" id="tabTickets" onclick="showTab('tickets')">🎫 টিকিট</button>
+    <button type="button" id="tabServices" onclick="showTab('services')">🛠 সার্ভিস</button>
+  </div>
+  <div id="ordersPane">
+  <h1>📋 অর্ডার ম্যানেজমেন্ট</h1>
+  <p class="muted" style="font-size:12px;margin:0 0 8px;">📱 নতুন অর্ডারের নোটিফ: Telegram (Apps Script → setupTelegram_)</p>
+
+  <div class="dash" id="dashStats">
+    <div class="d pending" onclick="filterBy('Pending')"><div class="n" id="stPending">—</div><div class="l">Pending</div></div>
+    <div class="d processing" onclick="filterBy('Processing')"><div class="n" id="stProcessing">—</div><div class="l">Processing</div></div>
+    <div class="d partial" onclick="filterBy('Partial')"><div class="n" id="stPartial">—</div><div class="l">Partial</div></div>
+    <div class="d completed" onclick="filterBy('Completed')"><div class="n" id="stCompleted">—</div><div class="l">Completed</div></div>
+    <div class="d rejected" onclick="filterBy('Rejected')"><div class="n" id="stRejected">—</div><div class="l">Rejected</div></div>
+    <div class="d today"><div class="n" id="stToday">—</div><div class="l">আজকের অর্ডার</div></div>
+    <div class="d today"><div class="n" id="stTodayTk">—</div><div class="l">আজকের ৳</div></div>
+  </div>
+  <div class="search-row">
+    <input id="orderSearch" type="search" placeholder="🔍 Order ID, মোবাইল, TrxID, সার্ভিস কোড..." onkeydown="if(event.key==='Enter')loadOrders()" />
+    <button type="button" onclick="loadOrders()">খুঁজুন</button>
+  </div>
+  <div class="toolbar">
+    <select id="statusFilter" onchange="loadOrders()">
+      <option value="Pending">Pending</option>
+      <option value="Processing">Processing</option>
+      <option value="Partial">Partial</option>
+      <option value="Completed">Completed</option>
+      <option value="Rejected">Rejected</option>
+      <option value="All">All</option>
+    </select>
+    <button onclick="loadOrders()">🔄 রিফ্রেশ</button>
+    <button type="button" onclick="loadOrders(true)" title="Provider লাইভ স্ট্যাটাস (ধীর)">📡 লাইভ</button>
+    <span class="muted" id="autoRefreshNote">প্রতি ৬০ সেকেন্ডে অটো-রিফ্রেশ</span>
+    <span class="muted" id="countNote" style="margin-left:auto;"></span>
+  </div>
+  <div class="balance-panel" id="balancePanel">
+    <h3>💰 Provider Balance
+      <button type="button" class="bal-toggle" onclick="loadBalances(true)">🔄</button>
+      <button type="button" class="bal-toggle" onclick="toggleBalancePanel()">দেখান/লুকান</button>
+    </h3>
+    <div class="balance-grid" id="balanceGrid"><div class="muted">🔄 চাপলে ব্যালেন্স লোড হবে</div></div>
+  </div>
+  <div id="ordersList"></div>
+  </div>
+
+  
+  <div id="servicesPane" style="display:none;">
+    <h1>🛠 সার্ভিস ম্যানেজমেন্ট</h1>
+    <p class="muted" style="font-size:12px;">নাম দিয়ে সার্চ করুন → বাটনে ক্লিক করে হাইড / Instant / Slow। কোড মুখস্থ লাগবে না।</p>
+    <div class="search-row">
+      <input id="svcSearch" placeholder="নাম, কোড বা প্ল্যাটফর্ম লিখুন…" />
+      <select id="svcPlatformFilter" style="min-width:120px;">
+        <option value="">সব প্ল্যাটফর্ম</option>
+        <option value="facebook">Facebook</option>
+        <option value="instagram">Instagram</option>
+        <option value="tiktok">TikTok</option>
+        <option value="youtube">YouTube</option>
+        <option value="telegram">Telegram</option>
+        <option value="twitter">Twitter/X</option>
+      </select>
+      <button type="button" onclick="loadServiceCatalog()">রিফ্রেশ</button>
+    </div>
+    <div class="svc-filters" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+      <button type="button" class="svc-fbtn on" data-f="all" onclick="setSvcFilter('all',this)">সব</button>
+      <button type="button" class="svc-fbtn" data-f="visible" onclick="setSvcFilter('visible',this)">👁 ভিজিবল</button>
+      <button type="button" class="svc-fbtn" data-f="hidden" onclick="setSvcFilter('hidden',this)">🚫 হাইড</button>
+      <button type="button" class="svc-fbtn" data-f="instant" onclick="setSvcFilter('instant',this)">⚡ Instant</button>
+      <button type="button" class="svc-fbtn" data-f="slow" onclick="setSvcFilter('slow',this)">🐢 Slow</button>
+      <button type="button" class="svc-fbtn" data-f="disq" onclick="setSvcFilter('disq',this)">⛔ রেকর্ড খারাপ</button>
+      <button type="button" class="svc-fbtn" data-f="tracked" onclick="setSvcFilter('tracked',this)">⏱ ট্র্যাকড</button>
+      <button type="button" class="svc-fbtn" data-f="discount" onclick="setSvcFilter('discount',this)">🏷 ডিসকাউন্ট চলছে</button>
+      <button type="button" class="svc-fbtn" onclick="svcBulkDiscount()">🏷 একসাথে ডিসকাউন্ট (ফিল্টার করা সব)</button>
+      <button type="button" class="svc-fbtn" onclick="svcSpeedConfig()">⚙ ডিসকোয়ালিফাই নিয়ম</button>
+    </div>
+    <p class="muted" id="svcListCount" style="font-size:12px;margin:0 0 8px;"></p>
+    <div id="svcCatalogList" class="svc-catalog">লোড হচ্ছে…</div>
+
+    <details class="svc-add-box" style="margin-top:16px;">
+      <summary style="cursor:pointer;font-weight:700;">➕ নতুন সার্ভিস যোগ (ঐচ্ছিক)</summary>
+      <div class="svc-grid" style="margin-top:10px;">
+        <input id="saCode" placeholder="Service code *" />
+        <input id="saName" placeholder="Name *" />
+        <select id="saPlatform">
+          <option value="facebook">Facebook</option>
+          <option value="instagram">Instagram</option>
+          <option value="tiktok">TikTok</option>
+          <option value="youtube">YouTube</option>
+          <option value="telegram">Telegram</option>
+          <option value="twitter">X / Twitter</option>
+          <option value="other">Other</option>
+        </select>
+        <input id="saCategory" placeholder="Category" value="Custom" />
+        <input id="saPrice" placeholder="USD/1K e.g. 0.05" />
+        <input id="saMin" placeholder="Min" value="10" />
+        <input id="saMax" placeholder="Max" value="10000" />
+        <input id="saProvider" placeholder="Provider e.g. provider.com" />
+        <select id="saSpeed">
+          <option value="instant">⚡ Instant</option>
+          <option value="normal">Normal</option>
+          <option value="slow">🐢 Slow</option>
+        </select>
+      </div>
+      <button type="button" class="btn-go" style="margin-top:10px;width:100%;" onclick="addCustomService()">সেভ / যোগ করুন</button>
+    </details>
+    <div id="svcHiddenList" style="display:none;"></div>
+    <div id="svcSpeedList" style="display:none;"></div>
+    <div id="svcCustomList" style="display:none;"></div>
+  </div>
+
+  <div id="ticketsPane" style="display:none;">
+    <h1>🎫 সাপোর্ট টিকিট</h1>
+    <div class="toolbar">
+      <select id="ticketFilter" onchange="loadTickets()">
+        <option value="Open">Open</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Resolved">Resolved</option>
+        <option value="Closed">Closed</option>
+        <option value="All">All</option>
+      </select>
+      <button onclick="loadTickets()">🔄 রিফ্রেশ</button>
+      <span class="muted" id="ticketCount" style="margin-left:auto;"></span>
+    </div>
+    <div id="ticketsList"></div>
+  </div>
+</div>
+
+<script>
+  // Same Apps Script deployment URL used by the main site (window.BOOSTPLUS_SHEET_API in app-core.js).
+  // Keep this in sync if you ever redeploy the script and get a new /exec URL.
+  const API = "https://script.google.com/macros/s/AKfycbxacUqhDDc_2kRsedBF_x8zTrqUhNloQryVEkKuJzDC7SAyh_po6BbxX2F0ZLrrPmhV/exec";
+  let ADMIN_TOKEN = localStorage.getItem("pb_admin_token") || "";
+  let refreshTimer = null;
+
+  // ---- লগইন টোকেন মনে রাখা: localStorage + IndexedDB (একটা মুছলেও অন্যটা থেকে ফিরে আসে) ----
+  const TK_KEY = "pb_admin_token";
+  function tkIdb(op, val) {
+    return new Promise(function (res) {
+      try {
+        const r = indexedDB.open("pb_admin", 1);
+        r.onupgradeneeded = function () { r.result.createObjectStore("kv"); };
+        r.onerror = function () { res(""); };
+        r.onsuccess = function () {
+          const db = r.result;
+          try {
+            const tx = db.transaction("kv", op === "get" ? "readonly" : "readwrite"), st = tx.objectStore("kv");
+            if (op === "get") { const q = st.get("t"); q.onsuccess = function () { res(q.result || ""); db.close(); }; q.onerror = function () { res(""); db.close(); }; }
+            else { if (op === "set") st.put(val, "t"); else st.delete("t"); tx.oncomplete = function () { res(true); db.close(); }; tx.onerror = function () { res(false); db.close(); }; }
+          } catch (e) { res(""); }
+        };
+      } catch (e) { res(""); }
+    });
+  }
+  function tkSave(t) {
+    try { localStorage.setItem(TK_KEY, t); } catch (e) {}
+    tkIdb("set", t);
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {}); } catch (e) {}   // ব্রাউজার যেন জায়গা কমলে এই ডেটা না মোছে
+  }
+  // টোকেন ভুল বললে সেভ করা কপি মুছি না (সাময়িক সমস্যায় আবার লগইন করতে না হয়); শুধু লগইন স্ক্রিন দেখাই
+  function tkRejected() {
+    ADMIN_TOKEN = "";
+    clearInterval(refreshTimer);
+    document.getElementById("panelView").style.display = "none";
+    document.getElementById("loginView").style.display = "block";
+    const e = document.getElementById("loginErr"); if (e) e.textContent = "সেভ করা টোকেনটি কাজ করছে না — সঠিক টোকেন দিন।";
+  }
+  async function tkAutoLogin() {
+    if (!ADMIN_TOKEN) { const t = await tkIdb("get"); if (t) { ADMIN_TOKEN = t; try { localStorage.setItem(TK_KEY, t); } catch (e) {} } }
+    else tkIdb("set", ADMIN_TOKEN);   // localStorage-এ থাকলে IndexedDB-তেও কপি রাখি
+    if (ADMIN_TOKEN) enterPanel();
+  }
+
+  function doLogin() {
+    const t = document.getElementById("tokenInput").value.trim();
+    if (!t) return;
+    ADMIN_TOKEN = t;
+    tkSave(t);
+    enterPanel();
+  }
+
+  function enterPanel() {
+    document.getElementById("loginView").style.display = "none";
+    document.getElementById("panelView").style.display = "block";
+    loadOrders();
+    clearInterval(refreshTimer);
+    refreshTimer = setInterval(loadOrders, 30000);
+  }
+
+  // ---------- Support tickets tab ----------
+  function showTab(name) {
+    const isT = name === "tickets";
+    const isS = name === "services";
+    document.getElementById("tabOrders").classList.toggle("on", name === "orders");
+    document.getElementById("tabTickets").classList.toggle("on", isT);
+    const tabS = document.getElementById("tabServices");
+    if (tabS) tabS.classList.toggle("on", isS);
+    document.getElementById("ordersPane").style.display = name === "orders" ? "block" : "none";
+    document.getElementById("ticketsPane").style.display = isT ? "block" : "none";
+    const sp = document.getElementById("servicesPane");
+    if (sp) sp.style.display = isS ? "block" : "none";
+    if (isT) loadTickets();
+    if (isS) loadServiceMeta();
+  }
+
+  async function loadTickets() {
+    const list = document.getElementById("ticketsList");
+    const status = document.getElementById("ticketFilter").value;
+    try {
+      const data = await adminApi({ action: "admin_ticket_list", status: status });
+      const tickets = (data && data.tickets) || [];
+      document.getElementById("ticketCount").innerText = tickets.length + "টি টিকিট";
+      if (!tickets.length) { list.innerHTML = '<div class="empty">এই স্ট্যাটাসে কোনো টিকিট নেই।</div>'; return; }
+      list.innerHTML = tickets.map(renderTicket).join("");
+    } catch (err) {
+      list.innerHTML = '<div class="err">' + esc(err && err.message || "লোড করতে সমস্যা হয়েছে।") + '</div>';
+    }
+  }
+
+  function renderTicket(t) {
+    const files = (t.attachments || []).filter(Boolean).map((u, i) =>
+      /^https:\/\//.test(u) ? `<a class="link" href="${esc(u)}" target="_blank" rel="noopener">📎 ফাইল ${i + 1}</a>` : "").join(" ");
+    const wa = t.mobile ? "https://wa.me/88" + esc(t.mobile) : "";
+    const sts = ["Open", "In Progress", "Resolved", "Closed"].map(s =>
+      `<option value="${s}"${s === t.status ? " selected" : ""}>${s}</option>`).join("");
+    return `
+    <div class="card" data-tid="${esc(t.ticket_id)}">
+      <div class="card-top"><span class="oid">${esc(t.ticket_id)}</span><span class="muted">${esc(t.created_at)}</span></div>
+      <div class="row"><b>Category:</b> ${esc(t.category)}${t.subcategory ? " / " + esc(t.subcategory) : ""}</div>
+      <div class="row"><b>Order ID:</b> ${esc(t.order_id || "-")}</div>
+      <div class="row"><b>Mobile:</b> ${esc(t.mobile)} ${wa ? `<a class="link" href="${wa}" target="_blank" rel="noopener">WhatsApp</a>` : ""}</div>
+      <div class="tk-msg">${esc(t.message)}</div>
+      ${files ? `<div class="row">${files}</div>` : ""}
+      <textarea class="tk-reply" placeholder="কাস্টমারের জন্য রিপ্লাই…">${esc(t.admin_reply || "")}</textarea>
+      <div class="tk-row">
+        <select class="tk-status">${sts}</select>
+        ${String(t.subcategory || "").toLowerCase().includes("refill") || String(t.category || "").toLowerCase() === "orders"
+          ? `<button type="button" class="btn-refill" onclick="openRefillModal('${esc(t.order_id || "")}')">🔄 Refill (Provider)</button><span class="muted" style="font-size:11px;"> (সার্ভিসে রিফিল অন থাকলেই যাবে)</span>`
+          : ""}
+        <button type="button" onclick="saveTicket(this)">💾 সেভ / রিপ্লাই পাঠান</button>
+      </div>
+    </div>`;
+  }
+
+  async function saveTicket(btn) {
+    const card = btn.closest(".card");
+    btn.disabled = true;
+    try {
+      const data = await adminApi({
+        action: "admin_ticket_reply",
+        ticket_id: card.dataset.tid,
+        reply: card.querySelector(".tk-reply").value,
+        status: card.querySelector(".tk-status").value
+      });
+      if (!data || !data.ok) throw new Error((data && data.error) || "সেভ হয়নি");
+      btn.textContent = "✅ সেভ হয়েছে";
+      setTimeout(loadTickets, 700);
+    } catch (err) {
+      alert(err.message || "সেভ করা যায়নি।");
+      btn.disabled = false;
+    }
+  }
+
+  function statusClass(s) {
+    const x = String(s || "").toLowerCase();
+    if (x === "pending") return "st-pending";
+    if (x === "processing") return "st-processing";
+    if (x === "partial") return "st-partial";
+    if (x === "completed") return "st-completed";
+    if (x === "rejected") return "st-rejected";
+    return "";
+  }
+
+  function esc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  }
+
+  // Only http(s) links may become clickable. Blocks "javascript:" / "data:" URLs that a customer could
+  // type into the order Link field (an admin clicking such a link would run it inside the admin panel).
+  function safeUrl(u) { const t = String(u == null ? "" : u).trim(); return /^https?:\/\//i.test(t) ? t : ""; }
+  function linkHtml(u) {
+    const ok = safeUrl(u);
+    return ok ? `<a class="link" href="${esc(ok)}" target="_blank" rel="noopener noreferrer">${esc(u)}</a>` : esc(u);
+  }
+
+
+  let balanceCache = {}; // provider -> {balance, currency, ok}
+
+  async function loadBalances(force) {
+    const grid = document.getElementById("balanceGrid");
+    if (!grid) return;
+    if (!force && Object.keys(balanceCache).length) {
+      renderBalances();
+      return;
+    }
+    grid.innerHTML = '<div class="muted">ব্যালেন্স লোড হচ্ছে…</div>';
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "admin_balances", token: ADMIN_TOKEN })
+      });
+      const data = await res.json();
+      if (!data || !data.ok) {
+        grid.innerHTML = '<div class="err">ব্যালেন্স লোড ব্যর্থ' + (data && data.error ? (": " + esc(data.error)) : "") + "</div>";
+        return;
+      }
+      balanceCache = {};
+      (data.balances || []).forEach(b => { balanceCache[b.provider] = b; });
+      renderBalances();
+    } catch (err) {
+      grid.innerHTML = '<div class="err">নেটওয়ার্ক সমস্যা</div>';
+    }
+  }
+
+  function renderBalances() {
+    const grid = document.getElementById("balanceGrid");
+    if (!grid) return;
+    const list = Object.keys(balanceCache).map(k => balanceCache[k]);
+    if (!list.length) {
+      grid.innerHTML = '<div class="muted">কোনো provider কনফিগ নেই</div>';
+      return;
+    }
+    grid.innerHTML = list.map(b => {
+      let cls = "bad";
+      let val = b.error || "—";
+      if (b.ok) {
+        const n = Number(b.balance);
+        cls = n < 1 ? "low" : "ok";
+        val = "$" + n.toFixed(4) + (b.currency && b.currency !== "USD" ? (" " + b.currency) : "");
+      }
+      return `<div class="bal-card ${cls}"><div class="bn">${esc(b.provider)}</div><div class="bv">${esc(val)}</div></div>`;
+    }).join("");
+  }
+
+  function toggleBalancePanel() {
+    const grid = document.getElementById("balanceGrid");
+    if (!grid) return;
+    grid.style.display = grid.style.display === "none" ? "" : "none";
+  }
+
+
+  function filterBy(st) {
+    document.getElementById("statusFilter").value = st;
+    loadOrders();
+  }
+
+  async function loadStats() {
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "admin_stats", token: ADMIN_TOKEN })
+      });
+      const data = await res.json();
+      if (!data || !data.ok) return;
+      const c = data.counts || {};
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      set("stPending", c.Pending || 0);
+      set("stProcessing", c.Processing || 0);
+      set("stPartial", c.Partial || 0);
+      set("stCompleted", c.Completed || 0);
+      set("stRejected", c.Rejected || 0);
+      const t = data.today || {};
+      set("stToday", t.orders || 0);
+      set("stTodayTk", "৳" + (t.amount || 0));
+    } catch (e) {}
+  }
+
+  async function loadOrders(wantLive) {
+    const status = document.getElementById("statusFilter").value;
+    const list = document.getElementById("ordersList");
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "admin_list", token: ADMIN_TOKEN, status: status, live: !!wantLive, q: (document.getElementById("orderSearch") && document.getElementById("orderSearch").value || "").trim() })
+      });
+      const data = await res.json();
+      if (data && data.error === "locked_out") {
+        alert("বারবার ভুল token দেওয়ার কারণে admin panel সাময়িকভাবে লক করা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।");
+        return;
+      }
+      if (data && data.error === "unauthorized") {
+        alert("ভুল admin token — আবার লগইন করুন।");
+        tkRejected();
+        return;
+      }
+      const orders = (data && data.orders) || [];
+      try {
+        const pmap = await ensureProviderMap();
+        orders.forEach(o => {
+          if (!o.provider && o.service_code && pmap[String(o.service_code)]) {
+            o.provider = pmap[String(o.service_code)];
+          }
+        });
+      } catch (eMap) {}
+      document.getElementById("countNote").innerText = orders.length + "টি অর্ডার";
+      if (orders.length === 0) {
+        list.innerHTML = `<div class="empty">এই স্ট্যাটাসে কোনো অর্ডার নেই।</div>`;
+        return;
+      }
+      list.innerHTML = orders.map(renderCard).join("");
+      loadStats();
+    } catch (err) {
+      list.innerHTML = `<div class="err">লোড করতে সমস্যা হয়েছে। কানেকশন চেক করুন।<br><small style="opacity:.7">${esc((err && err.message) || "")}</small><br><button class="btn-approve" style="margin-top:10px" onclick="loadOrders()">🔄 আবার চেষ্টা</button></div>`;
+    }
+  }
+
+  let providerMapCache = null;
+  // ধাপ ৯: ম্যাপ আর পাবলিক ফাইল নয় — টোকেন-সুরক্ষিত API থেকে আসে
+  async function ensureProviderMap() {
+    if (providerMapCache) return providerMapCache;
+    try {
+      const d = await adminApi({ action: "admin_service_meta", sub: "provider_map" });
+      if (d && d.ok && d.map) providerMapCache = d.map;
+    } catch (e) {}
+    return providerMapCache || {};
+  }
+
+  function renderCard(o) {
+    const st = (o.status || "Pending");
+    const stLower = st.toLowerCase();
+    // "Approve" moves Pending -> Processing (the customer tracking page has a
+    // real message for Processing; it has none for "Approved", so we never
+    // set that value from here). Processing -> Completed is a separate,
+    // explicit step for once the order is actually delivered.
+    let actionsHtml = "";
+    if (stLower === "pending") {
+      actionsHtml = `
+        <div class="actions">
+          <button class="btn-approve" onclick="updateOrder('${esc(o.order_id)}','Processing','${esc(o.paid_from)}')">✅ Approve (Processing)</button>
+          <button class="btn-reject" onclick="updateOrder('${esc(o.order_id)}','Rejected')">❌ Reject</button>
+        </div>`;
+    } else if (stLower === "processing") {
+      const noteStr = String(o.note || "");
+      const failed = /FAILED|not enough funds|Auto-forward error|place manually/i.test(noteStr);
+      const hasProv = !!(o.provider_order_id || o.live_provider_status || (o.live_start_count !== undefined && o.live_start_count !== "" && o.live_start_count != null));
+      const showRetry = failed || !hasProv;
+      const provSt = String(o.live_provider_status || "").trim().toLowerCase();
+      const isCanceled = provSt === "canceled" || provSt === "cancelled";
+      const cRemains = (o.live_remains !== undefined && o.live_remains !== "" && o.live_remains != null) ? o.live_remains : "";
+      actionsHtml = `
+        <div class="actions">
+          ${showRetry && !isCanceled ? `<button class="btn-retry" onclick="retryForward('${esc(o.order_id)}')">🔄 Retry API Forward</button>` : ""}
+          ${hasProv && o.refill_allowed ? `<button class="btn-refill" onclick="openRefillModal('${esc(o.order_id)}')">🔄 Refill</button>` : ""}
+          <button class="btn-retry" onclick="retryCanceled('${esc(o.order_id)}', '${esc(String(cRemains))}')">🔁 Retry Order${cRemains !== "" ? " (" + esc(String(cRemains)) + ")" : ""}</button>
+          <button class="btn-approve" onclick="updateOrder('${esc(o.order_id)}','Completed')">🏁 Mark Completed</button>
+          <button class="btn-reject" onclick="updateOrder('${esc(o.order_id)}','Rejected')">❌ Reject</button>
+        </div>`;
+    } else if (stLower === "partial") {
+      const remains = (o.live_remains !== undefined && o.live_remains !== "" && o.live_remains != null) ? o.live_remains : "";
+      actionsHtml = `
+        <div class="actions">
+          <button class="btn-retry" onclick="reorderPartial('${esc(o.order_id)}', '${esc(String(remains))}')">🔄 বাকি অর্ডার আবার পাঠাও</button>
+          <button class="btn-refill" onclick="openRefillModal('${esc(o.order_id)}')">🔄 Refill</button>
+          <button class="btn-approve" onclick="updateOrder('${esc(o.order_id)}','Completed')">🏁 Mark Completed</button>
+          <button class="btn-reject" onclick="updateOrder('${esc(o.order_id)}','Rejected')">❌ Reject</button>
+        </div>`;
+    } else if (stLower === "rejected") {
+      // Delete only ever appears here — an order has to be Rejected first,
+      // as a deliberate speed bump before an irreversible delete. The
+      // server enforces this too (handleAdminDelete_), not just this UI.
+      actionsHtml = `
+        <div class="actions">
+          <button class="btn-delete" onclick="deleteOrder('${esc(o.order_id)}')">🗑️ Delete</button>
+        </div>`;
+    }
+    return `
+      <div class="card">
+        <div class="card-top">
+          <span class="oid">#${esc(o.order_id)}</span>
+          <span class="status-pill ${statusClass(st)}">${esc(st)}</span>
+        </div>
+        <div class="row"><b>Service:</b> ${esc(o.service_name)} (${esc(o.platform)})</div>
+        <div class="row"><b>Service Code:</b> ${esc(o.service_code)}${o.provider ? ` &nbsp; <b>Provider:</b> <span style="color:#fbbf24;font-weight:600;">${esc(o.provider)}</span>${balanceCache[o.provider] && balanceCache[o.provider].ok ? ` <span style="color:#4ade80;">($${Number(balanceCache[o.provider].balance).toFixed(2)})</span>` : ""}` : ""}</div>
+        <div class="row"><b>Link:</b> ${linkHtml(o.link)}</div>
+        <div class="row"><b>Quantity:</b> ${esc(o.quantity)} &nbsp; <b>Amount:</b> ৳${esc(o.amount)}</div>
+        ${(o.live_start_count !== undefined || o.live_remains !== undefined) ? `<div class="row" style="color:#6ee7b7;"><b>🔴 Live Start Count:</b> ${esc(o.live_start_count)} &nbsp; <b>Remains:</b> ${esc(o.live_remains)} ${o.live_provider_status ? `&nbsp; <b>Provider Status:</b> ${esc(o.live_provider_status)}` : ""}</div>` : ""}
+        ${o.comments ? `<div class="row"><b>Comments:</b><pre style="white-space:pre-wrap;word-break:break-word;margin:6px 0 0;padding:8px 10px;background:#0b0f14;border:1px solid #2a3a4a;border-radius:8px;max-height:220px;overflow:auto;font:inherit;">${esc(o.comments)}</pre></div>` : ""}
+        <div class="row"><b>Method:</b> ${esc(o.paid_from)} &nbsp; <b>TrxID:</b> ${esc(o.txn_id)}</div>
+        <div class="row"><b>Number:</b> ${esc(o.whatsapp)} &nbsp; <b>Time:</b> ${esc(o.created_at)}</div>
+        ${o.note ? `<div class="row"><b>Note:</b> ${esc(o.note)}</div>` : ""}
+        ${safeUrl(o.proof_url) ? `<div class="row proof-row"><b>Payment Proof:</b><br><a href="${esc(o.proof_url)}" target="_blank" rel="noopener"><img src="${esc(o.proof_url)}" alt="Proof" style="max-width:220px;max-height:280px;border-radius:8px;margin-top:6px;border:1px solid #2a3a4a;" loading="lazy" /></a></div>` : `<div class="row muted">Payment Proof: নেই</div>`}
+        ${o.proof_url && (stLower === "processing" || stLower === "completed") ? `
+        <div class="actions">
+          <button class="btn-note" data-oid="${esc(o.order_id)}" data-m="${esc(o.paid_from)}" onclick="openRedact(this.dataset.oid, this.dataset.m)">🖼️ Public Proof (নম্বর ঢাকুন)
+            <span class="pub-badge ${o.proof_public_url ? "pub-yes" : "pub-no"}">${o.proof_public_url ? "Published" : "Not published"}</span></button>
+        </div>` : ""}
+        ${actionsHtml}
+      </div>`;
+  }
+
+  /* =====================================================================
+     Public Proof editor — পাবলিক গ্যালারির জন্য স্ক্রিনশটে নম্বর/TrxID ঢাকা
+     - ক্যানভাসে আঙুল/মাউস টেনে বক্স আঁকুন; বক্সে ট্যাপ করলে সেটা মুছে যায়
+     - bKash/Nagad/Rocket-এর জন্য "টেমপ্লেট সেভ" করলে পরের স্ক্রিনশটে বক্স আগে থেকেই বসে
+     - শুধু ঢাকা কপিটাই পাবলিশ হয়; আসল স্ক্রিনশট প্রাইভেট থাকে
+     ===================================================================== */
+  const RD = { orderId: "", method: "", key: "", img: null, ratio: 1, boxes: [], drag: null, hasPublic: false };
+  let TEMPLATES = null;
+  const RD_MAX = 1400; // এক্সপোর্ট ছবির সর্বোচ্চ সাইড (px)
+
+  function normMethod(m) {
+    m = String(m || "").toLowerCase();
+    if (m.includes("bkash")) return "bkash";
+    if (m.includes("nagad")) return "nagad";
+    if (m.includes("rocket")) return "rocket";
+    if (m.includes("binance")) return "binance";
+    return m.replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "other";
+  }
+
+  async function adminApi(body) {
+    const res = await fetch(API, {
+      method: "POST", mode: "cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(Object.assign({ token: ADMIN_TOKEN }, body))
+    });
+    const data = await res.json();
+    if (data && data.error === "locked_out") throw new Error("Admin panel সাময়িকভাবে লক — কিছুক্ষণ পর চেষ্টা করুন।");
+    if (data && data.error === "unauthorized") throw new Error("ভুল admin token — আবার লগইন করুন।");
+    return data;
+  }
+
+  function rdMsg(t, warn) {
+    const el = document.getElementById("rdMsg");
+    el.textContent = t;
+    el.className = "rd-msg" + (warn ? " warn" : "");
+  }
+
+  function rdSyncPub() {
+    document.getElementById("rdPub").disabled = !(RD.img && document.getElementById("rdOk").checked);
+  }
+
+  async function openRedact(orderId, method) {
+    RD.orderId = orderId; RD.method = method; RD.key = normMethod(method);
+    RD.img = null; RD.boxes = []; RD.drag = null;
+    document.getElementById("rdTitle").textContent = "Public Proof — #" + orderId + " (" + (method || "?") + ")";
+    document.getElementById("rdOk").checked = false;
+    document.getElementById("rdSaveTpl").textContent = "💾 টেমপ্লেট সেভ (" + (method || RD.key) + ")";
+    document.getElementById("rdUnpub").style.display = "none";
+    rdSyncPub();
+    const cv = document.getElementById("rdCanvas");
+    cv.width = 10; cv.height = 10;
+    document.getElementById("rdModal").classList.add("open");
+    rdMsg("স্ক্রিনশট লোড হচ্ছে…");
+    try {
+      if (TEMPLATES === null) {
+        const t = await adminApi({ action: "admin_get_templates" });
+        TEMPLATES = (t && t.templates) || {};
+      }
+      const d = await adminApi({ action: "admin_get_proof", order_id: orderId });
+      if (!d || !d.ok) { rdMsg("স্ক্রিনশট লোড করা যায়নি: " + ((d && (d.message || d.error)) || "unknown"), true); return; }
+      const img = new Image();
+      img.onload = () => {
+        let w = img.naturalWidth, h = img.naturalHeight;
+        const s = Math.min(1, RD_MAX / Math.max(w, h));
+        cv.width = Math.round(w * s); cv.height = Math.round(h * s);
+        RD.img = img; RD.ratio = cv.width / cv.height;
+        RD.hasPublic = !!d.public_url;
+        document.getElementById("rdUnpub").style.display = RD.hasPublic ? "" : "none";
+        rdApplyTemplate(true);
+        rdSyncPub();
+      };
+      img.onerror = () => rdMsg("ছবি খোলা যায়নি।", true);
+      img.src = "data:" + (d.mime || "image/jpeg") + ";base64," + d.base64;
+    } catch (err) {
+      rdMsg(err.message || "সমস্যা হয়েছে।", true);
+    }
+  }
+
+  function closeRedact() {
+    document.getElementById("rdModal").classList.remove("open");
+    RD.img = null;
+  }
+
+  function pickTemplateFor(key, ratio) {
+    const list = (TEMPLATES && TEMPLATES[key]) || [];
+    if (!list.length) return null;
+    let best = list[0], bd = Math.abs(list[0].r - ratio);
+    for (const t of list) { const d = Math.abs(t.r - ratio); if (d < bd) { best = t; bd = d; } }
+    return { t: best, diff: bd };
+  }
+
+  function rdPickTemplate() {
+    return pickTemplateFor(RD.key, RD.ratio);
+  }
+
+  /* ---------- Auto-redact on Approve (নিরাপত্তার স্বার্থে) ----------
+     Approve করলে যদি সেই পেমেন্ট মেথডের টেমপ্লেট আগে থেকে সেভ করা থাকে
+     (bKash/Nagad/Rocket/Binance — একবার ম্যানুয়ালি বক্স এঁকে "টেমপ্লেট সেভ"
+     করলেই যথেষ্ট), তাহলে অ্যাডমিন প্যানেল না খুলেই ব্যাকগ্রাউন্ডে নাম্বার/TrxID
+     ঢেকে পাবলিক ভার্সন অটোমেটিক পাবলিশ করে দেয়। টেমপ্লেট না থাকলে চুপচাপ স্কিপ
+     করে — কারণ প্রথমবার বক্সের জায়গা অনুমান করার উপায় নেই, ম্যানুয়ালি একবার
+     করে দিতে হবে। */
+  async function autoRedactAndPublish(orderId, method) {
+    try {
+      const key = normMethod(method);
+      if (TEMPLATES === null) {
+        const t = await adminApi({ action: "admin_get_templates" });
+        TEMPLATES = (t && t.templates) || {};
+      }
+      const d = await adminApi({ action: "admin_get_proof", order_id: orderId });
+      if (!d || !d.ok || !d.base64) return; // প্রুফ নেই — কিছু করার নেই
+
+      const img = await new Promise((resolve, reject) => {
+        const im = new Image();
+        im.onload = () => resolve(im);
+        im.onerror = reject;
+        im.src = "data:" + (d.mime || "image/jpeg") + ";base64," + d.base64;
+      });
+
+      const ratio = img.naturalWidth / img.naturalHeight;
+      const pick = pickTemplateFor(key, ratio);
+      if (!pick) return; // এই মেথডের টেমপ্লেট এখনো সেভ করা হয়নি
+
+      const s = Math.min(1, RD_MAX / Math.max(img.naturalWidth, img.naturalHeight));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(img.naturalWidth * s);
+      cv.height = Math.round(img.naturalHeight * s);
+      const ctx = cv.getContext("2d");
+      ctx.drawImage(img, 0, 0, cv.width, cv.height);
+      ctx.fillStyle = "#000";
+      for (const b of pick.t.boxes) {
+        ctx.fillRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height);
+      }
+      const dataUrl = cv.toDataURL("image/jpeg", 0.85);
+      await adminApi({ action: "admin_save_public", order_id: orderId, image_base64: dataUrl });
+      loadOrders();
+    } catch (err) {
+      // Best-effort only — কখনো Approve ফ্লো আটকে দেবে না
+      console.warn("autoRedactAndPublish failed:", err);
+    }
+  }
+
+  function rdApplyTemplate(silent) {
+    if (!RD.img) return;
+    const p = rdPickTemplate();
+    if (!p) {
+      RD.boxes = [];
+      rdMsg("এই মেথডের টেমপ্লেট নেই — নম্বর ও TrxID এর ওপর আঙুল টেনে বক্স আঁকুন, তারপর “টেমপ্লেট সেভ” দিন।", true);
+    } else {
+      RD.boxes = p.t.boxes.map(b => Object.assign({}, b));
+      if (p.diff > 0.06) rdMsg("টেমপ্লেট বসেছে, কিন্তু স্ক্রিনশটের মাপ আলাদা — বক্সগুলো ঠিক জায়গায় আছে কিনা মিলিয়ে নিন। (বক্সে ট্যাপ = মুছে ফেলা)", true);
+      else rdMsg("টেমপ্লেট বসেছে। বক্সগুলো নম্বর ও TrxID ঢেকেছে কিনা দেখুন; দরকারে নতুন বক্স আঁকুন বা বক্সে ট্যাপ করে মুছুন।");
+    }
+    rdDraw();
+  }
+
+  function rdDraw(forExport) {
+    const cv = document.getElementById("rdCanvas");
+    const ctx = cv.getContext("2d");
+    if (!RD.img) return;
+    ctx.drawImage(RD.img, 0, 0, cv.width, cv.height);
+    ctx.fillStyle = "#000";
+    const all = RD.boxes.slice();
+    if (RD.drag && !forExport) all.push(rdDragBox());
+    for (const b of all) {
+      ctx.fillRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height);
+    }
+    if (!forExport) {
+      ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = Math.max(2, cv.width / 300);
+      for (const b of all) ctx.strokeRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height);
+    }
+  }
+
+  function rdDragBox() {
+    const d = RD.drag;
+    return { x: Math.min(d.x0, d.x1), y: Math.min(d.y0, d.y1), w: Math.abs(d.x1 - d.x0), h: Math.abs(d.y1 - d.y0) };
+  }
+
+  function rdPt(e) {
+    const r = document.getElementById("rdCanvas").getBoundingClientRect();
+    return { x: Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), y: Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)) };
+  }
+
+  (function bindCanvas() {
+    const cv = document.getElementById("rdCanvas");
+    cv.addEventListener("pointerdown", (e) => {
+      if (!RD.img) return;
+      cv.setPointerCapture(e.pointerId);
+      const p = rdPt(e);
+      RD.drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+    });
+    cv.addEventListener("pointermove", (e) => {
+      if (!RD.drag) return;
+      const p = rdPt(e);
+      RD.drag.x1 = p.x; RD.drag.y1 = p.y;
+      rdDraw();
+    });
+    const end = () => {
+      if (!RD.drag) return;
+      const b = rdDragBox();
+      const p = { x: RD.drag.x1, y: RD.drag.y1 };
+      RD.drag = null;
+      if (b.w < 0.012 && b.h < 0.012) {
+        // ট্যাপ → সেই জায়গার বক্স মুছুন
+        for (let i = RD.boxes.length - 1; i >= 0; i--) {
+          const q = RD.boxes[i];
+          if (p.x >= q.x && p.x <= q.x + q.w && p.y >= q.y && p.y <= q.y + q.h) { RD.boxes.splice(i, 1); break; }
+        }
+      } else if (b.w >= 0.012 && b.h >= 0.006) {
+        RD.boxes.push({ x: +b.x.toFixed(4), y: +b.y.toFixed(4), w: +b.w.toFixed(4), h: +b.h.toFixed(4) });
+      }
+      rdDraw();
+    };
+    cv.addEventListener("pointerup", end);
+    cv.addEventListener("pointercancel", () => { RD.drag = null; rdDraw(); });
+  })();
+
+  function rdUndo() { RD.boxes.pop(); rdDraw(); }
+  function rdClear() { RD.boxes = []; rdDraw(); }
+
+  async function rdSaveTemplate() {
+    if (!RD.img || !RD.boxes.length) { alert("আগে নম্বর/TrxID এর ওপর কমপক্ষে একটা বক্স আঁকুন।"); return; }
+    if (!confirm(`এই বক্সগুলো “${RD.method || RD.key}” এর টেমপ্লেট হিসেবে সেভ হবে। পরের স্ক্রিনশটে অটো বসবে। সেভ করবেন?`)) return;
+    try {
+      const d = await adminApi({ action: "admin_save_template", method: RD.key, ratio: RD.ratio, boxes: RD.boxes });
+      if (d && d.ok) { TEMPLATES = d.templates || TEMPLATES; rdMsg("✅ টেমপ্লেট সেভ হয়েছে।"); }
+      else alert("সেভ হয়নি: " + ((d && (d.message || d.error)) || "unknown"));
+    } catch (err) { alert(err.message || "নেটওয়ার্ক সমস্যা"); }
+  }
+
+  async function rdPublish() {
+    if (!RD.img) return;
+    if (!RD.boxes.length && !confirm("⚠️ কোনো বক্স নেই — নম্বর/TrxID খোলা অবস্থায় পাবলিশ হয়ে যাবে। তবুও পাবলিশ করবেন?")) return;
+    const btn = document.getElementById("rdPub");
+    btn.disabled = true; btn.textContent = "পাবলিশ হচ্ছে…";
+    try {
+      rdDraw(true); // বক্স সহ (আউটলাইন ছাড়া)
+      const dataUrl = document.getElementById("rdCanvas").toDataURL("image/jpeg", 0.85);
+      rdDraw();
+      const d = await adminApi({ action: "admin_save_public", order_id: RD.orderId, image_base64: dataUrl });
+      if (d && d.ok) { alert("✅ পাবলিক গ্যালারির জন্য পাবলিশ হয়েছে।"); closeRedact(); loadOrders(); }
+      else alert("পাবলিশ হয়নি: " + ((d && (d.message || d.error)) || "unknown"));
+    } catch (err) { alert(err.message || "নেটওয়ার্ক সমস্যা"); }
+    btn.textContent = "✅ পাবলিক গ্যালারিতে পাবলিশ";
+    rdSyncPub();
+  }
+
+  async function rdUnpublish() {
+    if (!confirm("এই অর্ডারের পাবলিক ছবি গ্যালারি থেকে সরাবেন?")) return;
+    try {
+      const d = await adminApi({ action: "admin_save_public", order_id: RD.orderId, image_base64: "" });
+      if (d && d.ok) { alert("গ্যালারি থেকে সরানো হয়েছে।"); closeRedact(); loadOrders(); }
+      else alert("সমস্যা: " + ((d && (d.message || d.error)) || "unknown"));
+    } catch (err) { alert(err.message || "নেটওয়ার্ক সমস্যা"); }
+  }
+
+  function closeRefillModal() {
+    document.getElementById("refillModal").style.display = "none";
+  }
+
+  async function openRefillModal(orderId) {
+    orderId = String(orderId || "").trim();
+    if (!orderId) {
+      alert("Order ID নেই — টিকিটে Order ID দিন।");
+      return;
+    }
+    document.getElementById("rfCategory").value = "Orders";
+    document.getElementById("rfSub").innerHTML = "<option>Refill</option>";
+    document.getElementById("rfOrderId").value = orderId;
+    document.getElementById("rfProvOrderId").value = "লোড হচ্ছে…";
+    document.getElementById("rfProvider").value = "লোড হচ্ছে…";
+    document.getElementById("rfMessage").value = "রিফিল করেন";
+    document.getElementById("refillModal").style.display = "flex";
+
+    // Pull order details from current orders list cache if possible — else leave provider fields for submit to resolve
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "admin_list", token: ADMIN_TOKEN, status: "All" })
+      });
+      const data = await res.json();
+      const orders = (data && data.orders) || [];
+      const o = orders.find(x => String(x.order_id) === orderId);
+      if (o) {
+        document.getElementById("rfProvOrderId").value = o.provider_order_id || "(নেই — forward হয়নি)";
+        document.getElementById("rfProvider").value = o.provider || "(ম্যাপ থেকে)";
+        if (o.refill_allowed === false) {
+          alert("এই সার্ভিসে রিফিল অপশন অফ আছে — রিফিল করা যাবে না।");
+          closeRefillModal();
+          return;
+        }
+      } else {
+        document.getElementById("rfProvOrderId").value = "(সাবমিটে চেক হবে)";
+        document.getElementById("rfProvider").value = "(সাবমিটে চেক হবে)";
+      }
+    } catch (e) {
+      document.getElementById("rfProvOrderId").value = "(সাবমিটে চেক হবে)";
+      document.getElementById("rfProvider").value = "(সাবমিটে চেক হবে)";
+    }
+  }
+
+  async function submitRefill() {
+    const orderId = document.getElementById("rfOrderId").value.trim();
+    if (!orderId) return alert("Order ID নেই");
+    const btn = document.getElementById("rfSubmitBtn");
+    btn.disabled = true;
+    btn.textContent = "পাঠানো হচ্ছে…";
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "admin_refill", token: ADMIN_TOKEN, order_id: orderId })
+      });
+      const data = await res.json();
+      if (data && data.ok) {
+        alert("✅ Refill পাঠানো হয়েছে\nProvider: " + (data.provider || "") + "\nProvider Order: " + (data.provider_order_id || ""));
+        closeRefillModal();
+        loadOrders();
+      } else {
+        alert("❌ Refill ব্যর্থ: " + ((data && (data.message || data.error)) || "unknown"));
+      }
+    } catch (err) {
+      alert("নেটওয়ার্ক সমস্যা");
+    }
+    btn.disabled = false;
+    btn.textContent = "Submit refill";
+  }
+
+  async function reorderPartial(orderId, remainsStr) {
+    let qtyMsg = remainsStr && remainsStr !== "" && remainsStr !== "undefined"
+      ? ("বাকি qty ≈ " + remainsStr + " দিয়ে নতুন API অর্ডার?")
+      : "Partial অর্ডারের বাকি অংশ নতুন করে provider-এ পাঠাবেন?";
+    if (!confirm(qtyMsg)) return;
+    try {
+      const body = {
+        action: "admin_retry_forward",
+        token: ADMIN_TOKEN,
+        order_id: orderId,
+        force: true
+      };
+      if (remainsStr && remainsStr !== "" && remainsStr !== "undefined") {
+        const n = Number(remainsStr);
+        if (n > 0) body.quantity = n;
+      }
+      const res = await fetch(API, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data && data.ok) {
+        alert("✅ নতুন provider order: " + (data.provider_order_id || "OK") + "\nStatus Processing-এ যাবে।");
+        // move to Processing after successful reorder
+        try {
+          await fetch(API, {
+            method: "POST",
+            mode: "cors",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ action: "admin_update", token: ADMIN_TOKEN, order_id: orderId, status: "Processing", note: "Re-ordered remaining after Partial", skip_forward: true })
+          });
+        } catch (e2) {}
+        loadOrders();
+      } else {
+        alert("❌ ব্যর্থ: " + ((data && (data.error || data.message)) || "unknown"));
+        loadOrders();
+      }
+    } catch (err) {
+      alert("নেটওয়ার্ক সমস্যা — আবার চেষ্টা করুন।");
+    }
+  }
+
+  const retryingNow = {};
+  async function retryCanceled(orderId, remainsStr, force) {
+    if (retryingNow[orderId]) return;
+    if (!force) {
+      const q = remainsStr && remainsStr !== "undefined" ? ("\nবাকি Quantity ≈ " + remainsStr) : "";
+      if (!confirm("Order #" + orderId + " — নতুন API অর্ডার তৈরি করবেন?" + q)) return;
+    }
+    retryingNow[orderId] = true;
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "admin_retry_canceled", token: ADMIN_TOKEN, order_id: orderId, force: !!force })
+      });
+      const data = await res.json();
+      if (data && data.ok) {
+        alert("✅ নতুন অর্ডার হয়েছে\nQty: " + (data.qty || "") + "\nNew Provider Order: " + (data.provider_order_id || ""));
+      } else if (data && data.needs_confirm) {
+        retryingNow[orderId] = false;
+        if (confirm("Provider status: " + data.provider_status + " (Remains " + data.remains + ")\nCanceled নয়। তবুও নতুন অর্ডার দেবেন? (ডুপ্লিকেট হতে পারে)")) {
+          return retryCanceled(orderId, remainsStr, true);
+        }
+        return;
+      } else if (data && data.error === "locked_out") {
+        alert("Admin panel সাময়িকভাবে লক — কিছুক্ষণ পর চেষ্টা করুন।");
+        return;
+      } else if (data && data.error === "busy") {
+        alert("সার্ভার ব্যস্ত — কয়েক সেকেন্ড পর আবার চাপুন।");
+        return;
+      } else {
+        alert("❌ " + ((data && (data.message || data.error)) || "unknown"));
+      }
+      loadOrders();
+    } catch (err) {
+      alert("নেটওয়ার্ক সমস্যা — আবার চেষ্টা করুন।");
+    } finally {
+      retryingNow[orderId] = false;
+    }
+  }
+
+  async function retryForward(orderId) {
+    if (!confirm("ব্যালেন্স টপ-আপ করেছেন? Order #" + orderId + " আবার প্রোভাইডার API-তে পাঠাবে।")) return;
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "admin_retry_forward", token: ADMIN_TOKEN, order_id: orderId })
+      });
+      const data = await res.json();
+      if (data && data.ok) {
+        alert("✅ সফল! Provider order: " + (data.provider_order_id || "OK"));
+        loadOrders();
+      } else if (data && data.error === "already_forwarded") {
+        alert("আগেই forward হয়েছে: " + (data.provider_order_id || "") + "\n" + (data.message || ""));
+        loadOrders();
+      } else if (data && data.error === "locked_out") {
+        alert("Admin panel সাময়িকভাবে লক — কিছুক্ষণ পর চেষ্টা করুন।");
+      } else {
+        alert("❌ আবার ফেল: " + ((data && (data.error || data.message)) || "unknown") + "\nব্যালেন্স/API চেক করুন।");
+        loadOrders();
+      }
+    } catch (err) {
+      alert("নেটওয়ার্ক সমস্যা — আবার চেষ্টা করুন।");
+    }
+  }
+
+  async function updateOrder(orderId, status, method) {
+    if (!confirm(`Order #${orderId} কে "${status}" করতে চান?`)) return;
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "admin_update", token: ADMIN_TOKEN, order_id: orderId, status: status })
+      });
+      const data = await res.json();
+      if (data && data.ok) {
+        loadOrders();
+        // Approve হওয়ার সাথে সাথে (নিরাপত্তার স্বার্থে) সেভ করা টেমপ্লেট থাকলে
+        // নাম্বার/TrxID ঢেকে পাবলিক ভার্সন ব্যাকগ্রাউন্ডে অটো-পাবলিশ করে দেয়।
+        if (status === "Processing" && method) autoRedactAndPublish(orderId, method);
+      } else if (data && data.error === "locked_out") {
+        alert("বারবার ভুল token দেওয়ার কারণে admin panel সাময়িকভাবে লক করা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।");
+      } else {
+        alert("সমস্যা হয়েছে: " + (data && (data.message || data.error)));
+      }
+    } catch (err) {
+      alert("নেটওয়ার্ক সমস্যা — আবার চেষ্টা করুন।");
+    }
+  }
+
+  async function deleteOrder(orderId) {
+    if (!confirm(`⚠️ Order #${orderId} শীট থেকে স্থায়ীভাবে মুছে ফেলতে চান? এটা ফেরত আনা যাবে না।`)) return;
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "admin_delete", token: ADMIN_TOKEN, order_id: orderId })
+      });
+      const data = await res.json();
+      if (data && data.ok) {
+        loadOrders();
+      } else if (data && data.error === "locked_out") {
+        alert("বারবার ভুল token দেওয়ার কারণে admin panel সাময়িকভাবে লক করা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।");
+      } else {
+        alert("ডিলেট করা যায়নি: " + (data && (data.message || data.error)));
+      }
+    } catch (err) {
+      alert("নেটওয়ার্ক সমস্যা — আবার চেষ্টা করুন।");
+    }
+  }
+
+
+
+  let _svcMeta = { hidden: [], speed: {}, custom: [], disqualified: {}, exempt: [], limits: {}, speed_stats: {}, discounts: {} };
+  let _svcCatalog = [];
+  let _svcFilter = "all";
+  const SVC_PACKAGES_URL = "../packages-full.json";
+
+  async function loadServiceCatalog() {
+    const listEl = document.getElementById("svcCatalogList");
+    if (listEl) listEl.innerHTML = "লোড হচ্ছে…";
+    try {
+      const [metaRes, pkgRes] = await Promise.all([
+        fetch(API, {
+          method: "POST", mode: "cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ action: "admin_service_meta", sub: "list", token: ADMIN_TOKEN })
+        }).then(r => r.json()),
+        fetch(SVC_PACKAGES_URL).then(r => r.ok ? r.json() : [])
+      ]);
+      if (metaRes && metaRes.ok) _svcMeta = metaRes;
+      let pkgs = Array.isArray(pkgRes) ? pkgRes : [];
+      // ধাপ ৯: পাবলিক ফাইলে provider নেই — অ্যাডমিন API থেকে নাম বসানো
+      try {
+        const pm = (await ensureProviderMap()) || {};
+        pkgs.forEach(p => { if (p && !p.provider && pm[String(p.code)]) p.provider = pm[String(p.code)]; });
+      } catch (e) {}
+      const customs = Array.isArray(_svcMeta.custom) ? _svcMeta.custom : [];
+      const byCode = {};
+      pkgs.forEach(p => { byCode[String(p.code)] = p; });
+      customs.forEach(c => {
+        if (!c || !c.code) return;
+        byCode[String(c.code)] = Object.assign({}, byCode[String(c.code)] || {}, c, { _custom: true });
+      });
+      _svcCatalog = Object.keys(byCode).map(k => byCode[k]);
+      renderServiceCatalog();
+    } catch (e) {
+      if (listEl) listEl.textContent = "লোড ব্যর্থ — packages-full.json ও API চেক করুন";
+    }
+  }
+  function loadServiceMeta() { return loadServiceCatalog(); }
+
+  function setSvcFilter(f, btn) {
+    _svcFilter = f;
+    document.querySelectorAll(".svc-fbtn").forEach(b => b.classList.remove("on"));
+    if (btn) btn.classList.add("on");
+    renderServiceCatalog();
+  }
+
+  function renderServiceCatalog() {
+    const q = ((document.getElementById("svcSearch") && document.getElementById("svcSearch").value) || "").toLowerCase().trim();
+    const pf = ((document.getElementById("svcPlatformFilter") && document.getElementById("svcPlatformFilter").value) || "").toLowerCase();
+    const hidden = new Set((_svcMeta.hidden || []).map(String));
+    const speed = _svcMeta.speed || {};
+    let rows = _svcCatalog.slice();
+    if (pf) rows = rows.filter(p => String(p.platform || "").toLowerCase() === pf);
+    if (q) {
+      rows = rows.filter(p => {
+        const blob = (String(p.code) + " " + (p.name || "") + " " + (p.category || "") + " " + (p.provider || "")).toLowerCase();
+        return blob.indexOf(q) >= 0;
+      });
+    }
+    if (_svcFilter === "hidden") rows = rows.filter(p => hidden.has(String(p.code)));
+    if (_svcFilter === "visible") rows = rows.filter(p => !hidden.has(String(p.code)));
+    if (_svcFilter === "instant") rows = rows.filter(p => speed[String(p.code)] === "instant");
+    if (_svcFilter === "slow") rows = rows.filter(p => speed[String(p.code)] === "slow");
+    const dqMap = _svcMeta.disqualified || {};
+    const stats = _svcMeta.speed_stats || {};
+    const exemptSet = new Set((_svcMeta.exempt || []).map(String));
+    const limits = _svcMeta.limits || {};
+    if (_svcFilter === "disq") rows = rows.filter(p => dqMap[String(p.code)]);
+    if (_svcFilter === "tracked") rows = rows.filter(p => stats[String(p.code)]);
+    const discMap = _svcMeta.discounts || {};
+    if (_svcFilter === "discount") rows = rows.filter(p => svcDiscActive(discMap[String(p.code)]));
+
+    const countEl = document.getElementById("svcListCount");
+    if (countEl) countEl.textContent = rows.length + " টি সার্ভিস" + (rows.length > 80 ? " (প্রথম ৮০ দেখানো হচ্ছে)" : "");
+    window._svcLastRows = rows;
+    const show = rows.slice(0, 80);
+    const listEl = document.getElementById("svcCatalogList");
+    if (!listEl) return;
+    if (!show.length) {
+      listEl.innerHTML = "<span class='muted'>কিছু পাওয়া যায়নি — অন্য কীওয়ার্ড চেষ্টা করুন</span>";
+      return;
+    }
+    listEl.innerHTML = show.map(p => {
+      const code = String(p.code);
+      const isHid = hidden.has(code);
+      const sp = speed[code] || "";
+      const badges = (isHid ? "<span class='svc-badge hide'>HIDDEN</span>" : "") +
+        (sp === "instant" ? "<span class='svc-badge inst'>⚡ Instant</span>" : "") +
+        (sp === "slow" ? "<span class='svc-badge slow'>🐢 Slow</span>" : "") +
+        (p._custom ? "<span class='svc-badge inst'>CUSTOM</span>" : "") +
+        (dqMap[code] ? "<span class='svc-badge dq' title='" + esc(dqMap[code]) + "'>⛔ DISQUALIFIED</span>" : "") +
+        (svcDiscActive(discMap[code]) ? "<span class='svc-badge disc' title='" + esc(svcDiscTitle(discMap[code])) + "'>🏷 " + esc(svcDiscText(discMap[code])) + "</span>" : (discMap[code] ? "<span class='svc-badge tm' title='মেয়াদ শেষ'>ডিসকাউন্ট শেষ</span>" : "")) +
+        (exemptSet.has(code) ? "<span class='svc-badge ex'>EXEMPT</span>" : "") +
+        (stats[code] ? "<span class='svc-badge tm'>⏱ " + esc(stats[code].label) + " · " + stats[code].n + " অর্ডার</span>" : "") +
+        (limits[code] ? "<span class='svc-badge tm'>সীমা " + esc(String(limits[code])) + " ঘণ্টা</span>" : "");
+      const hideBtn = isHid
+        ? "<button type='button' class='svc-btn-show' onclick=\"svcUnhide('" + code + "')\">👁 আনহাইড</button>"
+        : "<button type='button' class='svc-btn-hide' onclick=\"svcHide('" + code + "')\">🚫 হাইড</button>";
+      return "<div class='svc-row" + (isHid ? " hidden-svc" : "") + "'>" +
+        "<div class='svc-row-title'>" + esc(p.name || code) + " " + badges + "</div>" +
+        "<div class='svc-row-meta'>#" + esc(code) + " · " + esc(p.platform || "") + " · " + esc(p.category || "") + " · " + esc(p.pricePerK || "") + "/1K · " + esc(p.provider || "") + "</div>" +
+        "<div class='svc-row-actions'>" + hideBtn +
+        "<button type='button' class='svc-btn-inst' onclick=\"svcSpeed('" + code + "','instant')\">⚡ Instant</button>" +
+        "<button type='button' class='svc-btn-slow' onclick=\"svcSpeed('" + code + "','slow')\">🐢 Slow</button>" +
+        (sp ? "<button type='button' onclick=\"svcSpeed('" + code + "','normal')\">Normal</button>" : "") +
+        (exemptSet.has(code)
+          ? "<button type='button' onclick=\"svcExempt('" + code + "',false)\">রেকর্ড-বিচার চালু করুন</button>"
+          : "<button type='button' onclick=\"svcExempt('" + code + "',true)\">🛡 Exempt</button>") +
+        "<button type='button' onclick=\"svcSetLimit('" + code + "')\">⏱ সময়-সীমা</button>" +
+        "<button type='button' class='svc-btn-inst' onclick=\"svcSetDiscount('" + code + "')\">🏷 ডিসকাউন্ট</button>" +
+        (discMap[code] ? "<button type='button' class='svc-btn-hide' onclick=\"svcRemoveDiscount('" + code + "')\">✖ ডিসকাউন্ট বন্ধ</button>" : "") +
+        (p._custom ? "<button type='button' class='svc-btn-hide' onclick=\"svcRemoveCustom('" + code + "')\">ডিলিট</button>" : "") +
+        "</div></div>";
+    }).join("");
+  }
+
+  async function svcApi(sub, extra) {
+    const body = Object.assign({ action: "admin_service_meta", sub: sub, token: ADMIN_TOKEN }, extra || {});
+    const res = await fetch(API, {
+      method: "POST", mode: "cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(body)
+    });
+    return res.json();
+  }
+  // ---------- ডিসকাউন্ট (per service code) ----------
+  function svcDiscActive(d) {
+    if (!d || !(Number(d.value) > 0)) return false;
+    if (d.until) { const t = Date.parse(d.until); if (!isNaN(t) && Date.now() > t) return false; }
+    return true;
+  }
+  function svcDiscText(d) { return d.type === "fixed" ? ("৳" + d.value + " ছাড়/1K") : (d.value + "% ছাড়"); }
+  function svcDiscTitle(d) { return (d.label ? d.label + " · " : "") + (d.until ? "মেয়াদ: " + d.until : "মেয়াদ নেই"); }
+
+  // prompt → { type, value, until, label } | null
+  function svcAskDiscount(cur) {
+    const t = prompt("ডিসকাউন্টের ধরন লিখুন:\n  % = শতকরা (যেমন ১০%)\n  ৳ = প্রতি 1K-তে নির্দিষ্ট টাকা ছাড়\n(লিখুন: % অথবা ৳)", cur ? (cur.type === "fixed" ? "৳" : "%") : "%");
+    if (t === null) return null;
+    const type = /৳|tk|fixed|f/i.test(t) ? "fixed" : "percent";
+    const v = prompt(type === "percent" ? "কত % ছাড়? (১–৯০)" : "প্রতি 1K-তে কত টাকা ছাড়?", cur ? String(cur.value) : "");
+    if (v === null) return null;
+    const value = Number(String(v).replace(/[^0-9.]/g, ""));
+    if (!(value > 0) || (type === "percent" && value > 90)) { alert("সঠিক সংখ্যা দিন (শতকরা সর্বোচ্চ ৯০)"); return null; }
+    const u = prompt("কতদিন চলবে? (ঘণ্টায় লিখুন, যেমন 24 = ১ দিন, 72 = ৩ দিন)\nফাঁকা/০ দিলে বন্ধ না করা পর্যন্ত চলবে।", "");
+    if (u === null) return null;
+    const hrs = Number(String(u).replace(/[^0-9.]/g, "")) || 0;
+    const until = hrs > 0 ? new Date(Date.now() + hrs * 3600 * 1000).toISOString() : "";
+    const label = prompt("অফারের নাম (ঐচ্ছিক, যেমন: ঈদ অফার):", cur && cur.label ? cur.label : "");
+    if (label === null) return null;
+    return { type: type, value: value, until: until, label: label.trim() };
+  }
+  async function svcSetDiscount(code) {
+    const d = svcAskDiscount((_svcMeta.discounts || {})[code]);
+    if (!d) return;
+    const r = await svcApi("set_discount", { code: code, type: d.type, value: d.value, until: d.until, label: d.label });
+    if (!(r && r.ok)) { alert("ফেল: " + ((r && r.error) || "backend-এ set_discount যোগ করা হয়নি")); return; }
+    loadServiceCatalog();
+  }
+  async function svcRemoveDiscount(code) {
+    if (!confirm("এই সার্ভিসের ডিসকাউন্ট বন্ধ করবেন? #" + code)) return;
+    const r = await svcApi("remove_discount", { code: code });
+    if (!(r && r.ok)) { alert("ফেল: " + ((r && r.error) || "unknown")); return; }
+    loadServiceCatalog();
+  }
+  // বর্তমান সার্চ/ফিল্টারে যে সার্ভিসগুলো দেখা যাচ্ছে সবগুলোতে একসাথে (সর্বোচ্চ ২০০টি)
+  async function svcBulkDiscount() {
+    const codes = (window._svcLastRows || []).map(p => String(p.code)).slice(0, 200);
+    if (!codes.length) { alert("আগে সার্চ/ফিল্টার করে সার্ভিস দেখান"); return; }
+    if (!confirm(codes.length + " টি সার্ভিসে একই ডিসকাউন্ট বসবে। চালিয়ে যাবেন?")) return;
+    const d = svcAskDiscount(null);
+    if (!d) return;
+    const r = await svcApi("set_discount_bulk", { codes: codes, type: d.type, value: d.value, until: d.until, label: d.label });
+    if (!(r && r.ok)) { alert("ফেল: " + ((r && r.error) || "unknown")); return; }
+    alert("✅ " + codes.length + " টি সার্ভিসে ডিসকাউন্ট চালু");
+    loadServiceCatalog();
+  }
+
+  async function svcHide(code) { await svcApi("hide", { code: code }); loadServiceCatalog(); }
+  async function svcUnhide(code) { await svcApi("unhide", { code: code }); loadServiceCatalog(); }
+  async function svcSpeed(code, speed) { await svcApi("set_speed", { code: code, speed: speed }); loadServiceCatalog(); }
+  async function svcExempt(code, on) { await svcApi(on ? "exempt" : "unexempt", { code: code }); loadServiceCatalog(); }
+  async function svcSetLimit(code) {
+    const cur = (_svcMeta.limits || {})[code] || "";
+    const v = prompt("এই সার্ভিসের সর্বোচ্চ গড় ডেলিভারি সময় (ঘণ্টায়)।\nফাঁকা/০ দিলে ডিফল্ট সীমা প্রযোজ্য হবে।", String(cur));
+    if (v === null) return;
+    await svcApi("set_limit", { code: code, hours: Number(v) || 0 });
+    loadServiceCatalog();
+  }
+  async function svcSpeedConfig() {
+    const c = _svcMeta.speed_config || { min_samples: 5, max_hours: 24, max_fail_pct: 40 };
+    const a = prompt("কমপক্ষে কতগুলো রেকর্ড হলে বিচার শুরু হবে?", String(c.min_samples)); if (a === null) return;
+    const b = prompt("ডিফল্ট সর্বোচ্চ ডেলিভারি সময় (ঘণ্টা, মিডিয়ান):", String(c.max_hours)); if (b === null) return;
+    const d = prompt("সর্বোচ্চ ব্যর্থ/ক্যানসেল অর্ডারের % :", String(c.max_fail_pct)); if (d === null) return;
+    await svcApi("set_config", { min_samples: Number(a), max_hours: Number(b), max_fail_pct: Number(d) });
+    loadServiceCatalog();
+  }
+  async function svcRemoveCustom(code) {
+    if (!confirm("কাস্টম সার্ভিস মুছবেন? " + code)) return;
+    await svcApi("remove_custom", { code: code });
+    loadServiceCatalog();
+  }
+  async function addCustomService() {
+    const code = document.getElementById("saCode").value.trim();
+    const name = document.getElementById("saName").value.trim();
+    if (!code || !name) { alert("Code ও Name লাগবে"); return; }
+    const data = await svcApi("add", {
+      code: code,
+      name: name,
+      platform: document.getElementById("saPlatform").value,
+      category: document.getElementById("saCategory").value || "Custom",
+      pricePerK: document.getElementById("saPrice").value.trim() || "0",
+      min: document.getElementById("saMin").value,
+      max: document.getElementById("saMax").value,
+      provider: document.getElementById("saProvider").value.trim(),
+      speed: document.getElementById("saSpeed").value
+    });
+    if (data && data.error === "previously_removed") {
+      if (!confirm((data.message || "এই সার্ভিস আগে সাইট থেকে বাদ দেওয়া হয়েছিল।") + "\n\nতবুও আবার যোগ করবেন?")) return;
+      data = await svcApi("add", { code: code, name: name, platform: document.getElementById("saPlatform").value, category: document.getElementById("saCategory").value || "Custom", pricePerK: document.getElementById("saPrice").value.trim() || "0", min: document.getElementById("saMin").value, max: document.getElementById("saMax").value, provider: document.getElementById("saProvider").value.trim(), speed: document.getElementById("saSpeed").value, force: true });
+    }
+    if (data && data.ok) { alert("✅ যোগ হয়েছে: " + code); loadServiceCatalog(); }
+    else alert("ফেল: " + ((data && data.error) || "unknown"));
+  }
+
+  const _svcSearchEl = document.getElementById("svcSearch");
+  if (_svcSearchEl) _svcSearchEl.addEventListener("input", function(){ renderServiceCatalog(); });
+  const _svcPf = document.getElementById("svcPlatformFilter");
+  if (_svcPf) _svcPf.addEventListener("change", function(){ renderServiceCatalog(); });
+  tkAutoLogin();
+</script>
+<div id="refillModal" class="refill-backdrop" style="display:none;" onclick="if(event.target===this)closeRefillModal()">
+  <div class="refill-modal" onclick="event.stopPropagation()">
+    <div class="rh">🔄 Submit Refill (Provider)</div>
+    <div class="rb">
+      <label>Category</label>
+      <select id="rfCategory" disabled><option>Orders</option></select>
+      <label>Subcategory</label>
+      <select id="rfSub" disabled><option>Refill</option></select>
+      <label>Site Order ID</label>
+      <input id="rfOrderId" readonly />
+      <label>Provider Order ID</label>
+      <input id="rfProvOrderId" readonly />
+      <label>Provider</label>
+      <input id="rfProvider" readonly />
+      <label>Message</label>
+      <textarea id="rfMessage">রিফিল করেন</textarea>
+      <p class="hint">Submit চাপলে প্রোভাইডার API-তে action=refill পাঠাবে (GetMyFollow-স্টাইল টিকিট ফর্মের মতো প্রিফিল)।</p>
+      <div class="rf-actions">
+        <button type="button" class="rf-cancel" onclick="closeRefillModal()">Cancel</button>
+        <button type="button" class="rf-go" id="rfSubmitBtn" onclick="submitRefill()">Submit refill</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("./sw.js").catch(function (e) { console.log("Admin SW failed", e); });
+  });
+}
+</script>
+</body>
+</html>
