@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="bn" data-theme="premium">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>লগইন — boostplus</title>
+<meta name="robots" content="noindex" />
+<meta name="theme-color" content="#0b1020" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=20261030a" />
+  <link rel="preload" href="fonts/hind-siliguri-v14-bengali_latin-regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="design/fonts.css?v=20261029y" />
+<script src="design/theme.js?v=20261030a"></script>
+<link rel="stylesheet" href="design/tokens.css?v=20261029a" />
+<link rel="stylesheet" href="design/pages.css?v=20261030a" />
+<link rel="stylesheet" href="design/home.css?v=20261026r" />
+<link rel="stylesheet" href="design/a11y.css?v=20261029a" />
+</head>
+<body>
+<a class="skip-link" href="#main">মূল অংশে যান</a>
+<header class="pg-top"><div class="pg-top-in">
+  <a class="pg-brand" href="index.html"><img src="logo-mark.svg?v=20261030a" alt="" width="30" height="30" /><span>boost<span class="bp-plus">plus</span></span></a>
+  <a class="pg-back" href="index.html">← সার্ভিস দেখুন</a>
+</div></header>
+<main class="lg-wrap" id="main" tabindex="-1">
+  <section class="lg-card" aria-labelledby="lgTitle">
+    <h1 id="lgTitle">অ্যাকাউন্টে লগইন</h1>
+    <p class="lg-sub" id="lgSub">মোবাইল নম্বর ও পিন দিয়ে আপনার অ্যাকাউন্টে প্রবেশ করুন।</p>
+    <p class="lg-svc" id="lgSvc" hidden></p>
+
+    <div class="lg-tabs" id="lgTabs" role="tablist">
+      <button type="button" class="lg-tab" id="lgTabLogin" role="tab" aria-selected="true">লগইন</button>
+      <button type="button" class="lg-tab" id="lgTabRegister" role="tab" aria-selected="false">নতুন অ্যাকাউন্ট</button>
+    </div>
+
+    <div class="lg-panel" id="lgPanel-login">
+      <div class="lg-field"><label for="lgLoginName">আপনার নাম</label>
+        <input class="lg-in" id="lgLoginName" type="text" maxlength="40" placeholder="যেমন: রাহিম আহমেদ" autocomplete="name" /></div>
+      <div class="lg-field"><label for="lgLoginMobile">মোবাইল নম্বর</label>
+        <input class="lg-in" id="lgLoginMobile" type="tel" inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX" autocomplete="username" /></div>
+      <div class="lg-field"><label for="lgLoginPin">পিন (৪–৬ ডিজিট)</label>
+        <div class="lg-in-wrap"><input class="lg-in" id="lgLoginPin" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" /><button type="button" class="lg-eye" id="lgEyeLogin" aria-label="পিন দেখান/লুকান">👁</button></div></div>
+      <button type="button" class="lg-btn" id="lgBtnLogin">লগইন</button>
+      <button type="button" class="lg-link" id="lgForgotLink">পিন ভুলে গেছেন?</button>
+    </div>
+
+    <div class="lg-panel" id="lgPanel-register" hidden>
+      <div class="lg-field"><label for="lgRegName">আপনার নাম</label>
+        <input class="lg-in" id="lgRegName" type="text" maxlength="40" placeholder="যেমন: রাহিম আহমেদ" autocomplete="name" /></div>
+      <div class="lg-field"><label for="lgRegMobile">মোবাইল নম্বর</label>
+        <input class="lg-in" id="lgRegMobile" type="tel" inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX" autocomplete="username" /></div>
+      <div class="lg-field"><label for="lgRegPin">পিন বানান (৪–৬ ডিজিট)</label>
+        <div class="lg-in-wrap"><input class="lg-in" id="lgRegPin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" /><button type="button" class="lg-eye" id="lgEyeReg" aria-label="পিন দেখান/লুকান">👁</button></div></div>
+      <button type="button" class="lg-btn" id="lgBtnRegister">অ্যাকাউন্ট খুলুন</button>
+    </div>
+
+    <div class="lg-panel" id="lgPanel-forgot" hidden>
+      <div class="lg-field"><label for="lgForgotMobile">মোবাইল নম্বর</label>
+        <input class="lg-in" id="lgForgotMobile" type="tel" inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX" /></div>
+      <button type="button" class="lg-btn" id="lgBtnSendCode">কোড পাঠান</button>
+      <div class="lg-panel" id="lgResetBox" hidden>
+        <div class="lg-field"><label for="lgCode">কোড</label>
+          <input class="lg-in" id="lgCode" type="tel" inputmode="numeric" autocomplete="one-time-code" /></div>
+        <div class="lg-field"><label for="lgNewPin">নতুন পিন (৪–৬ ডিজিট)</label>
+          <div class="lg-in-wrap"><input class="lg-in" id="lgNewPin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" /><button type="button" class="lg-eye" id="lgEyeNew" aria-label="পিন দেখান/লুকান">👁</button></div></div>
+        <button type="button" class="lg-btn" id="lgBtnReset">পিন বদলান</button>
+      </div>
+      <button type="button" class="lg-link" id="lgBackLogin">← লগইনে ফিরুন</button>
+    </div>
+
+    <p class="lg-msg" id="lgMsg" role="status" aria-live="polite"></p>
+  </section>
+  <p class="lg-note">লগইন ছাড়াও সার্ভিস ও দাম দেখা যায়। <a href="index.html">সার্ভিস লিস্টে ফিরুন</a></p>
+</main>
+<footer class="pg-foot">&copy; 2026 boostplus। · <a href="terms.html">শর্তাবলী</a> · <a href="privacy.html">গোপনীয়তা</a> · <a href="refund.html">রিফান্ড ও রিফিল</a></footer>
+<script src="login.js?v=20261030a"></script>
+</body>
+</html>

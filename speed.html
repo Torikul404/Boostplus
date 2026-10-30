@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>স্পিড ট্র্যাকার</title>
+<script>try{var t=localStorage.getItem("pb_admin_theme");if(!t)t=matchMedia("(prefers-color-scheme: light)").matches?"light":"premium";document.documentElement.setAttribute("data-theme",t==="light"?"light":"premium");}catch(e){document.documentElement.setAttribute("data-theme","premium");}</script>
+  <link rel="stylesheet" href="design/fonts.css?v=20261029y" />
+<link rel="stylesheet" href="design/tokens.css?v=20261029a">
+<link rel="stylesheet" href="design/a11y.css?v=20261029a">
+<style>
+:root{--card:var(--surface);--tx:var(--text);--mut:var(--muted);--bd:var(--border);--pri:var(--primary);--ok:var(--success);--warn:var(--warn);--bad:var(--danger)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);background-image:var(--hero-bg);background-repeat:no-repeat;background-size:100% 360px;color:var(--tx);font:15px/1.5 'Inter','Hind Siliguri',system-ui,-apple-system,sans-serif;padding:env(safe-area-inset-top) 0 calc(70px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--bd);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+header h1{font-size:17px;margin:0}
+.mut{color:var(--mut);font-size:12px}
+button{font:inherit;border:0;border-radius:12px;padding:8px 12px;background:var(--grad);color:var(--on-primary);cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--pri);border:1px solid var(--bd)}
+main{padding:12px 12px 0;max-width:760px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:12px;margin-bottom:10px;box-shadow:var(--shadow-sm)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.title{font-weight:600;word-break:break-word}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.grid div{background:var(--bg);border-radius:10px;padding:6px 8px;text-align:center}
+.grid b{display:block;font-size:14px}
+.badge{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--bg);border:1px solid var(--bd);white-space:nowrap}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.filters{display:flex;gap:8px;margin-bottom:10px}
+select,input{font:inherit;width:100%;padding:9px 10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx)}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--bd);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:transparent;color:var(--mut);border-radius:0;padding:12px 4px}
+nav button.on{color:var(--pri);font-weight:700}
+.sum b,.grid b{letter-spacing:-.01em}
+.sum{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.sum div{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:8px;text-align:center}
+.sum b{display:block;font-size:17px}
+#login{max-width:360px;margin:18vh auto;padding:0 16px}
+#login .card{padding:18px}
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;z-index:10}
+#sheet.on{display:flex}
+#sheet .in{background:var(--card);width:100%;max-height:85vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));max-width:760px;margin:0 auto}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed var(--bd)}
+.kv span:first-child{color:var(--mut)}
+.kv span:last-child{text-align:right;word-break:break-all}
+.empty{text-align:center;color:var(--mut);padding:40px 10px}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">মূল অংশে যান</a>
+<div id="login" hidden>
+  <div class="card">
+    <h2 style="margin:0 0 4px">স্পিড ট্র্যাকার</h2>
+    <p class="mut" style="margin:0 0 12px">Admin token দিয়ে লগইন করুন</p>
+    <input id="tok" type="password" placeholder="Admin token" autocomplete="off">
+    <button id="go" style="width:100%;margin-top:10px">লগইন</button>
+    <p id="lerr" class="bad" style="margin:8px 0 0"></p>
+    <p class="mut" style="margin:10px 0 0">সংস্করণ ২ · একবার লগইন করলে এই ফোনে সেভ থাকে</p>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <div><h1>⚡ স্পিড ট্র্যাকার</h1><div class="mut" id="upd">—</div></div>
+    <div><button class="ghost" id="rf">রিফ্রেশ</button> <button class="ghost" id="lo">লগআউট</button></div>
+  </header>
+  <main id="main" tabindex="-1">
+    <div class="sum" id="sum"></div>
+    <input id="fq" placeholder="সার্ভিসের নাম বা কোড খুঁজুন" style="margin-bottom:8px">
+    <div class="filters">
+      <select id="fp"></select>
+      <select id="fs">
+        <option value="">সব স্ট্যাটাস</option>
+        <option value="run">চলমান</option>
+        <option value="done">সম্পন্ন</option>
+        <option value="bad">Partial/Cancel</option>
+      </select>
+      <select id="ft">
+        <option value="">সব সার্ভিস</option>
+        <option value="no">টেস্ট হয়নি</option>
+        <option value="yes">টেস্ট হয়েছে</option>
+      </select>
+    </div>
+    <div id="view"></div>
+  </main>
+  <nav aria-label="স্পিড ট্র্যাকার মেনু">
+    <button data-t="svc" class="on">📋 সার্ভিস</button>
+    <button data-t="rank">🏆 র‍্যাংকিং</button>
+    <button data-t="orders">📦 অর্ডার</button>
+  </nav>
+</div>
+
+<div id="sheet"><div class="in" id="sin"></div></div>
+
+<script>
+const API = "https://script.google.com/macros/s/AKfycbxacUqhDDc_2kRsedBF_x8zTrqUhNloQryVEkKuJzDC7SAyh_po6BbxX2F0ZLrrPmhV/exec";
+const $ = id => document.getElementById(id);
+let TOKEN = "", ROWS = [], CAT = [], NOW = Date.now(), TAB = "svc", TIMER = null;
+const TK = "pb_speed_token";
+function tkIdb(op, val){ return new Promise(res => { try { const r = indexedDB.open("pb_speed", 1); r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onerror = () => res(""); r.onsuccess = () => { const db = r.result; try { const tx = db.transaction("kv", op === "get" ? "readonly" : "readwrite"), st = tx.objectStore("kv"); if (op === "get"){ const q = st.get("t"); q.onsuccess = () => { res(q.result || ""); db.close(); }; q.onerror = () => { res(""); db.close(); }; } else { if (op === "set") st.put(val, "t"); else st.delete("t"); tx.oncomplete = () => { res(true); db.close(); }; tx.onerror = () => { res(false); db.close(); }; } } catch(e){ res(""); } }; } catch(e){ res(""); } }); }
+function tkSave(t){ try { localStorage.setItem(TK, t); } catch(e){} tkIdb("set", t); try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){} }
+function tkClear(){ try { localStorage.removeItem(TK); } catch(e){} tkIdb("del"); }
+try { TOKEN = localStorage.getItem(TK) || ""; } catch (e) {}
+
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function dur(sec){
+  sec = Math.round(sec);
+  if(!sec||sec<0) return "—";
+  const d=Math.floor(sec/86400),h=Math.floor(sec%86400/3600),m=Math.floor(sec%3600/60);
+  if(d) return d+" দিন "+h+" ঘণ্টা";
+  if(h) return h+" ঘণ্টা "+m+" মিনিট";
+  if(m) return m+" মিনিট";
+  return sec+" সেকেন্ড";
+}
+function fdt(ms){
+  if(!ms) return "—";
+  return new Date(ms).toLocaleString("bn-BD",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
+}
+function median(a){ if(!a.length) return 0; const s=[...a].sort((x,y)=>x-y),m=s.length>>1; return s.length%2?s[m]:Math.round((s[m-1]+s[m])/2); }
+function kind(r){
+  const s=r.status.toLowerCase();
+  if(s==="completed") return "done";
+  if(s==="partial"||s==="canceled"||s==="cancelled"||s==="refunded") return "bad";
+  return "run";
+}
+function stLabel(r){
+  const k=kind(r);
+  return k==="done"?'<span class="ok">✅ সম্পন্ন</span>':k==="bad"?'<span class="bad">⚠️ '+esc(r.status)+'</span>':'<span class="warn">⏳ '+esc(r.status||"অপেক্ষায়")+'</span>';
+}
+
+async function api(){
+  const res = await fetch(API,{method:"POST",mode:"cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"admin_speedtest",token:TOKEN})});
+  const d = await res.json();
+  if(d.error==="locked_out") throw new Error("সাময়িকভাবে লক, কিছুক্ষণ পর চেষ্টা করুন");
+  if(d.error==="unauthorized") throw new Error("ভুল token");
+  if(!d.ok) throw new Error(d.error||"ত্রুটি");
+  return d;
+}
+
+async function load(){
+  try{
+    const d = await api();
+    ROWS = d.rows; CAT = d.catalog || []; NOW = d.now;
+    $("login").hidden = true; $("app").hidden = false;
+    $("upd").textContent = "আপডেট: " + new Date().toLocaleTimeString("bn-BD",{hour:"numeric",minute:"2-digit"});
+    fillProviders(); render();
+  }catch(e){
+    if(!ROWS.length){ $("app").hidden = true; $("login").hidden = false; $("lerr").textContent = e.message; }
+    else $("upd").textContent = "ত্রুটি: " + e.message;
+  }
+}
+
+function fillProviders(){
+  const cur = $("fp").value;
+  const ps = [...new Set(ROWS.map(r=>r.provider).concat(CAT.map(c=>c.provider)).filter(Boolean))].sort();
+  $("fp").innerHTML = '<option value="">সব প্রোভাইডার</option>' + ps.map(p=>'<option>'+esc(p)+'</option>').join("");
+  if(ps.includes(cur)) $("fp").value = cur;
+}
+
+function filtered(){
+  const p=$("fp").value, s=$("fs").value;
+  return ROWS.filter(r=>r.provider_order && (!p||r.provider===p) && (!s||kind(r)===s));
+}
+
+function render(){
+  const list = filtered();
+  const done = list.filter(r=>kind(r)==="done"&&r.total_secs>0);
+  const run = list.filter(r=>kind(r)==="run").length;
+  const bad = list.filter(r=>kind(r)==="bad").length;
+  $("sum").innerHTML =
+    '<div><b>'+list.length+'</b><span class="mut">মোট</span></div>'+
+    '<div><b class="ok">'+done.length+'</b><span class="mut">সম্পন্ন</span></div>'+
+    '<div><b class="warn">'+run+'</b><span class="mut">চলমান</span></div>'+
+    '<div><b class="bad">'+bad+'</b><span class="mut">সমস্যা</span></div>';
+  $("view").innerHTML = TAB==="svc" ? svcHtml() : TAB==="rank" ? rankHtml(list) : ordersHtml(list);
+}
+
+function statsByService(){
+  const g = {};
+  ROWS.forEach(r=>{
+    if(!r.provider_order) return;
+    const k = r.provider+"|"+r.service_id;
+    const o = g[k] || (g[k]={ok:[],bad:0,run:0,start:[],n:0});
+    o.n++;
+    const kd = kind(r);
+    if(kd==="done"&&r.total_secs>0) o.ok.push(r.total_secs);
+    else if(kd==="bad") o.bad++; else o.run++;
+    if(r.start_secs>0) o.start.push(r.start_secs);
+  });
+  return g;
+}
+
+function svcHtml(){
+  const p=$("fp").value, q=$("fq").value.trim().toLowerCase(), t=$("ft").value;
+  const st = statsByService();
+  let list = CAT.filter(c=>(!p||c.provider===p) && (!q || (c.name+" "+c.code+" "+c.category).toLowerCase().includes(q)));
+  list = list.map(c=>({c, s: st[c.provider+"|"+c.code]})).filter(x=> t==="no" ? !(x.s&&x.s.ok.length) : t==="yes" ? (x.s&&x.s.ok.length) : true);
+  list.sort((a,b)=>{
+    const am=a.s&&a.s.ok.length?median(a.s.ok):Infinity, bm=b.s&&b.s.ok.length?median(b.s.ok):Infinity;
+    return am-bm;
+  });
+  const total = CAT.length, tested = CAT.filter(c=>{const s=st[c.provider+"|"+c.code];return s&&s.ok.length;}).length;
+  const head = '<div class="mut" style="margin:0 2px 8px">সাইটে এখন '+total+'টি সার্ভিস · স্পিড টেস্ট হয়েছে '+tested+'টির · দেখাচ্ছে '+list.length+'টি</div>';
+  if(!CAT.length) return '<div class="empty">সার্ভিস তালিকা পাওয়া যায়নি।<br>Code.gs নতুন করে Deploy (New version) করেছেন কি?</div>';
+  if(!list.length) return head+'<div class="empty">কিছু পাওয়া যায়নি</div>';
+  return head + list.slice(0,150).map(x=>{
+    const c=x.c, s=x.s, has=s&&s.ok.length;
+    const fin = s ? s.ok.length+s.bad : 0, badPct = fin ? Math.round(s.bad/fin*100) : 0;
+    return '<div class="card"><div class="row"><div class="title">'+esc(c.name||("#"+c.code))+'</div></div>'+
+      '<div class="mut">'+esc(c.provider||"—")+' · #'+esc(c.code)+' · '+esc(c.price)+'/1K'+(c.refill==="Yes"?' · ♻️ রিফিল':'')+'</div>'+
+      (has ? '<div class="grid"><div><b>'+dur(median(s.ok))+'</b><span class="mut">মিডিয়ান</span></div>'+
+        '<div><b>'+dur(Math.max(...s.ok))+'</b><span class="mut">ধীরতম</span></div>'+
+        '<div><b class="'+(badPct>=20?"bad":badPct>0?"warn":"ok")+'">'+badPct+'%</b><span class="mut">ড্রপ/ফেইল</span></div></div>'+
+        '<div class="mut" style="margin-top:6px">'+s.ok.length+'টি অর্ডারের ডেটা'+(s.run?' · '+s.run+'টি চলমান':'')+'</div>'
+        : '<div style="margin-top:8px"><span class="badge warn">'+(s&&s.run?'⏳ '+s.run+'টি অর্ডার চলমান':'টেস্ট হয়নি')+'</span></div>')+
+      '</div>';
+  }).join("") + (list.length>150?'<div class="mut" style="text-align:center;padding:8px">প্রথম ১৫০টি দেখাচ্ছে, ফিল্টার দিয়ে ছোট করুন</div>':'');
+}
+
+function rankHtml(list){
+  const g = {};
+  list.forEach(r=>{
+    const k = r.provider+"|"+r.service_id;
+    const o = g[k] || (g[k]={provider:r.provider,svc:r.service_id,name:r.service_name,ok:[],start:[],bad:0,run:0,n:0});
+    if(!o.name && r.service_name) o.name = r.service_name;
+    o.n++;
+    const kd = kind(r);
+    if(kd==="done"&&r.total_secs>0) o.ok.push(r.total_secs);
+    else if(kd==="bad") o.bad++;
+    else o.run++;
+    if(r.start_secs>0) o.start.push(r.start_secs);
+  });
+  const arr = Object.values(g).sort((a,b)=>{
+    if(!a.ok.length && !b.ok.length) return b.n-a.n;
+    if(!a.ok.length) return 1; if(!b.ok.length) return -1;
+    return median(a.ok)-median(b.ok);
+  });
+  if(!arr.length) return '<div class="empty">এখনো কোনো ডেটা নেই।<br>সাইট থেকে অর্ডার দিন, এখানে নিজে থেকে আসবে।</div>';
+  let rank = 0;
+  return arr.map(o=>{
+    const has = o.ok.length>0; if(has) rank++;
+    const fin = o.ok.length + o.bad;
+    const badPct = fin ? Math.round(o.bad/fin*100) : 0;
+    const medal = !has ? "·" : rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":"#"+rank;
+    const sum = o.ok.reduce((a,b)=>a+b,0);
+    return '<div class="card"><div class="row"><div class="title">'+medal+' '+esc(o.provider)+' <span class="mut">#'+esc(o.svc)+'</span></div>'+
+      '<span class="badge '+(badPct>=20?"bad":badPct>0?"warn":"ok")+'">ড্রপ/ফেইল '+badPct+'%</span></div>'+
+      (o.name?'<div class="mut">'+esc(o.name)+'</div>':'')+
+      '<div class="grid">'+
+      '<div><b>'+(has?dur(median(o.ok)):"—")+'</b><span class="mut">মিডিয়ান</span></div>'+
+      '<div><b>'+(has?dur(Math.min(...o.ok)):"—")+'</b><span class="mut">দ্রুততম</span></div>'+
+      '<div><b>'+(has?dur(Math.max(...o.ok)):"—")+'</b><span class="mut">ধীরতম</span></div>'+
+      '<div><b>'+(has?dur(sum/o.ok.length):"—")+'</b><span class="mut">গড়</span></div>'+
+      '<div><b>'+dur(median(o.start))+'</b><span class="mut">শুরু হতে</span></div>'+
+      '<div><b>'+o.ok.length+'/'+o.n+'</b><span class="mut">সম্পন্ন</span></div>'+
+      '</div></div>';
+  }).join("");
+}
+
+function donePct(r){
+  const q=Number(r.quantity), m=Number(r.remains);
+  if(kind(r)==="done") return "১০০%";
+  if(!q||r.remains===""||r.remains==null||isNaN(m)) return "—";
+  return Math.max(0,Math.min(100,Math.round((q-m)/q*100)))+"%";
+}
+
+function ordersHtml(list){
+  if(!list.length) return '<div class="empty">কোনো অর্ডার নেই</div>';
+  return [...list].sort((a,b)=>b.ordered_at-a.ordered_at).map(r=>{
+    const k = kind(r);
+    const el = k==="run" ? (NOW - r.ordered_at)/1000 : r.total_secs;
+    return '<div class="card" data-row="'+r.row+'" style="cursor:pointer"><div class="row"><div class="title">'+esc(r.provider)+' <span class="mut">#'+esc(r.service_id)+'</span></div>'+stLabel(r)+'</div>'+
+      '<div class="mut">'+esc(r.service_name||r.order_id||"")+' · '+fdt(r.ordered_at)+'</div>'+
+      '<div class="grid"><div><b>'+dur(r.start_secs)+'</b><span class="mut">শুরু হতে</span></div>'+
+      '<div><b>'+dur(el)+'</b><span class="mut">'+(k==="run"?"এখন পর্যন্ত":"মোট সময়")+'</span></div>'+
+      '<div><b>'+esc(r.quantity||"—")+'</b><span class="mut">পরিমাণ</span></div></div>'+
+      '<div class="grid"><div><b>'+esc(r.start_count===""||r.start_count==null?"—":r.start_count)+'</b><span class="mut">শুরুর কাউন্ট</span></div>'+
+      '<div><b>'+esc(r.remains===""||r.remains==null?"—":r.remains)+'</b><span class="mut">বাকি</span></div>'+
+      '<div><b>'+donePct(r)+'</b><span class="mut">ডেলিভারি</span></div></div></div>';
+  }).join("");
+}
+
+function detail(row){
+  const r = ROWS.find(x=>x.row===row); if(!r) return;
+  const kv=(a,b)=>'<div class="kv"><span>'+a+'</span><span>'+b+'</span></div>';
+  $("sin").innerHTML =
+    '<div class="row"><h3 style="margin:0">অর্ডার বিস্তারিত</h3><button class="ghost" id="cl">বন্ধ</button></div>'+
+    kv("প্রোভাইডার",esc(r.provider))+kv("সার্ভিস আইডি",esc(r.service_id))+
+    (r.service_name?kv("সার্ভিস",esc(r.service_name)):"")+(r.platform?kv("প্ল্যাটফর্ম",esc(r.platform)):"")+
+    (r.link?kv("লিংক",esc(r.link)):"")+
+    kv("আমাদের অর্ডার আইডি",esc(r.order_id||"—"))+kv("প্রোভাইডার অর্ডার আইডি",esc(r.provider_order))+
+    kv("পরিমাণ",esc(r.quantity||"—"))+(r.amount?kv("মূল্য",esc(r.amount)):"")+
+    kv("স্ট্যাটাস",stLabel(r))+(r.site_status?kv("সাইটে স্ট্যাটাস",esc(r.site_status)):"")+
+    kv("শুরুর কাউন্ট",esc(r.start_count===""?"—":r.start_count))+kv("বাকি (remains)",esc(r.remains===""?"—":r.remains))+
+    kv("অর্ডারের সময়",fdt(r.ordered_at))+kv("শুরু হয়েছে",fdt(r.started_at))+kv("শেষ হয়েছে",fdt(r.completed_at))+
+    kv("শুরু হতে লেগেছে",dur(r.start_secs))+kv("মোট সময়",dur(r.total_secs))+
+    kv("সর্বশেষ চেক",fdt(r.last_checked));
+  $("sheet").classList.add("on");
+  $("cl").onclick = ()=>$("sheet").classList.remove("on");
+}
+
+$("go").onclick = ()=>{ TOKEN=$("tok").value.trim(); if(!TOKEN) return; tkSave(TOKEN); $("lerr").textContent=""; load(); };
+$("tok").addEventListener("keydown",e=>{ if(e.key==="Enter") $("go").click(); });
+$("rf").onclick = load;
+$("lo").onclick = ()=>{ tkClear(); TOKEN=""; ROWS=[]; $("app").hidden=true; $("login").hidden=false; };
+$("fp").onchange = $("fs").onchange = $("ft").onchange = render;
+$("fq").oninput = render;
+$("sheet").onclick = e=>{ if(e.target.id==="sheet") $("sheet").classList.remove("on"); };
+$("view").onclick = e=>{ const c=e.target.closest("[data-row]"); if(c) detail(Number(c.dataset.row)); };
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  TAB=b.dataset.t; document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b)); render();
+});
+
+(async () => { if (!TOKEN){ const t = await tkIdb("get"); if (t){ TOKEN = t; try { localStorage.setItem(TK, t); } catch(e){} } } else tkIdb("set", TOKEN); if (TOKEN) load(); else $("login").hidden = false; })();
+TIMER = setInterval(()=>{ if(TOKEN && !document.hidden) load(); }, 60000);
+</script>
+</body>
+</html>

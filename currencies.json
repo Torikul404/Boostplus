@@ -1,0 +1,16 @@
+[
+ {
+  "code": "BDT",
+  "symbol": "৳",
+  "name": "Bangladeshi Taka",
+  "per_bdt": 1,
+  "decimals": 2
+ },
+ {
+  "code": "USD",
+  "symbol": "$",
+  "name": "US Dollar",
+  "per_bdt": 0.0076335878,
+  "decimals": 4
+ }
+]
