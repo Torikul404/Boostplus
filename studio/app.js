@@ -11,7 +11,7 @@ const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:
 let token=ls.get('pb_studio_token')||'',busy=false,st={q:'',state:'all',cat:'',off:0},cur=null,lastList=null,qt=null,SC=null,fabMoved=false;
 const ERR={unauthorized:'টোকেন ঠিক নয়',locked_out:'অনেকবার ভুল হয়েছে — কিছুক্ষণ পরে চেষ্টা করুন',no_config:'এই প্রভাইডারের API সেট করা নেই',bad_json:'প্রভাইডার সঠিক উত্তর দেয়নি',provider_error:'প্রভাইডার ত্রুটি দিয়েছে',not_collected:'আগে "সংগ্রহ করুন" চাপুন',code_conflict:'এই আইডি সাইটে অন্য প্রভাইডারের সার্ভিস হিসেবে আছে',previously_removed:'এই সার্ভিস আগে সাইট থেকে বাদ দেওয়া হয়েছিল',category_required:'ক্যাটেগরি দিন',price_required:'দাম দিন',svc_failed:'সার্ভারে সমস্যা হয়েছে'};
 const mem={};let rid=0;
-function wipe(){for(const k in mem)delete mem[k];try{Object.keys(localStorage).filter(k=>k.indexOf('pbc_')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}}
+function wipe(){for(const k in mem)delete mem[k];for(const k in LSX)delete LSX[k];try{Object.keys(localStorage).filter(k=>k.indexOf('pbc_')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}}
 async function api(action,x){
   let r,txt,d;if(/^svc_(toggle|bulk|collect|site_edit|site_hide|site_bulk|tidy_apply|auto)$/.test(action))wipe();
   const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),60000);
@@ -34,6 +34,100 @@ const sel=new Set();let cq={q:'',refill:false},cn=0;
 const fmtT=s=>s<90?bn(Math.round(s))+' সে.':s<5400?bn(Math.round(s/60))+' মি.':bn(Math.round(s/360)/10)+' ঘণ্টা';
 const spdTag=r=>r.spd?`<div class="sub ${r.spd.m<=1800?'ok':r.spd.m>=21600?'hi':''}">⚡ গড় ${fmtT(r.spd.m)} · ${bn(r.spd.n)}টি অর্ডার${r.spd.f?' · ব্যর্থ '+bn(r.spd.f):''}</div>`:'';
 const nav=a=>`<div class="chips" role="navigation">${[['','প্রভাইডার'],['plat','প্ল্যাটফর্ম'],['mng','ম্যানেজ'],['cats','ক্যাটেগরি'],['cmp','তুলনা'],['chg','পরিবর্তন'],['tidy','সাজান']].map(x=>`<a class="chip" href="#${x[0]}" aria-current="${a===x[0]}">${x[1]}</a>`).join('')}</div>`;
+/* ---------- ফোনে CSV (IndexedDB): প্রভাইডারের সব সার্ভিস ফাইল নেমে গেলে তালিকা/খোঁজা/ফিল্টার সেখান থেকেই চলে ---------- */
+const svPLAT = [
+  ["Instagram", "instagram", /insta|\big\b/i], ["Facebook", "facebook", /facebook|\bfb\b/i], ["TikTok", "tiktok", /tik.?tok/i],
+  ["YouTube", "youtube", /youtube|\byt\b/i], ["Telegram", "telegram", /telegram|\btg\b/i], ["Twitter / X", "twitter", /twitter|\bx\b|tweet/i],
+  ["WhatsApp", "whatsapp", /whatsapp/i], ["Threads", "other", /threads/i], ["Spotify", "other", /spotify/i], ["LinkedIn", "other", /linkedin/i],
+  ["Snapchat", "other", /snap/i], ["Pinterest", "other", /pinterest/i], ["Discord", "other", /discord/i], ["Twitch", "other", /twitch/i],
+  ["Website Traffic", "other", /traffic|website|web ?visit/i]
+];
+const svTYPE = [
+  ["Story Views", /story|stories/i], ["Live Views", /\blive\b/i], ["Watch Time", /watch.?(time|hour)/i], ["Subscribers", /subscri/i],
+  ["Members", /member|joiner/i], ["Comments", /comment/i], ["Shares", /share|repost|retweet/i], ["Saves", /\bsave|bookmark/i],
+  ["Reactions", /reaction|\blove\b|haha|\bwow\b/i], ["Likes", /like|heart/i], ["Views", /view|impression|\breach\b|\bplays?\b|stream|listen/i],
+  ["Followers", /follow/i], ["Traffic", /traffic|visit/i]
+];
+const svSTOP = /^(cheap|cheapest|best|premium|new|special|bulk|hq|vip|server|services?|offer|promo|speed|fast|instant|real|non|usa|global|top|mix|other|others|smm|panel|packages?|all|any|old|updated|hot|sale|quality|high|low|slow|stable|exclusive|limited|test|custom|auto|manual|\d+)$/i;
+function svClean(t, keep) {
+  var s = String(t || "").replace(/[\u{1F000}-\u{1FFFF}\u{2190}-\u{2BFF}\uFE0F\u200D\u20E3]/gu, " ");
+  s = s.replace(/[\[\(\{]([^\]\)\}]*)[\]\)\}]/g, function (m, i) {
+    return keep && /\d/.test(i) && /min|hour|hr|day|%|\d\s?[kKmMdDhH]\b/i.test(i) && !/refill|drop/i.test(i) ? " (" + i.trim() + ") " : " ";
+  });
+  return s.replace(/[|•~*_=#>]+/g, " ").replace(/\s+/g, " ").replace(/^[\s\-–—:.]+|[\s\-–—:.]+$/g, "");
+}
+function svPick(list, text) {
+  for (var i = 0; i < list.length; i++) { var re = list[i][list[i].length - 1]; if (re.test(text)) return list[i]; }
+  return null;
+}
+function svPlatOf(r) {
+  var c = String(r.category || ""), n = String(r.name || ""), P = svPick(svPLAT, c) || svPick(svPLAT, n);
+  if (P) return P[0];
+  var seg = svClean(c).split(/\s[-–—|:\/>»]+\s|[|:»]/)[0].trim(), w = seg.split(/\s+/);
+  if (seg.length >= 2 && seg.length <= 24 && w.length <= 2 && !svSTOP.test(w[0]) && !svPick(svTYPE, seg)) return seg.replace(/\b\w/g, function (x) { return x.toUpperCase(); });
+  return "Other";
+}
+function csvParse(t){if(t.charCodeAt(0)===65279)t=t.slice(1);const out=[],n=t.length;let i=0,row=[];
+  while(i<n){let f;
+    if(t.charCodeAt(i)===34){let j=i+1,s='';for(;;){const k=t.indexOf('"',j);if(k<0){s+=t.slice(j);j=n;break}s+=t.slice(j,k);if(t.charCodeAt(k+1)===34){s+='"';j=k+2}else{j=k+1;break}}f=s;i=j}
+    else{let j=i;while(j<n){const x=t.charCodeAt(j);if(x===44||x===10||x===13)break;j++}f=t.slice(i,j);i=j}
+    row.push(f);const x=t.charCodeAt(i);
+    if(x===44){i++;if(i>=n){row.push('');out.push(row);row=[]}}
+    else{if(x===13&&t.charCodeAt(i+1)===10)i++;i++;out.push(row);row=[]}}
+  if(row.length)out.push(row);return out}
+const IDB={p:null,open(){if(!this.p)this.p=new Promise((ok,no)=>{try{const q=indexedDB.open('pb_studio_csv',1);q.onupgradeneeded=()=>q.result.createObjectStore('csv');q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error)}catch(e){no(e)}});return this.p},
+  async get(k){try{const db=await this.open();return await new Promise((ok,no)=>{const r=db.transaction('csv').objectStore('csv').get(k);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}catch(e){return null}},
+  async set(k,v){try{const db=await this.open();return await new Promise((ok,no)=>{const t=db.transaction('csv','readwrite');t.objectStore('csv').put(v,k);t.oncomplete=()=>ok(true);t.onerror=()=>no(t.error);t.onabort=()=>no(t.error)})}catch(e){return false}}};
+const LC={},LSX={};let syncing=false,syncP=null,noEnrich=false;
+async function lcMeta(){return(await IDB.get('meta'))||{}}
+function lcBuild(p,csv,at){const T=csvParse(csv),h=T.shift()||[],rows=[],cats={},pc={};
+  for(const r of T){if(r.length<3)continue;const o={};for(let i=0;i<h.length;i++)o[h[i]]=r[i];if(o.service_id==null||o.service_id==='')continue;
+    o._pl=svPlatOf(o);o._s=(o.name+' '+o.service_id+' '+o.category).toLowerCase();rows.push(o);cats[o.category]=(cats[o.category]||0)+1;pc[o._pl]=(pc[o._pl]||0)+1}
+  return{provider:p,at,count:rows.length,rows,cats,plats:Object.keys(pc).map(k=>({label:k,n:pc[k]})).sort((a,b)=>b.n-a.n)}}
+async function lcLoad(p){if(LC[p])return LC[p];const m=(await lcMeta())[p],v=m&&await IDB.get(p);if(v&&v.csv){LC[p]=lcBuild(p,v.csv,m.at);return LC[p]}return null}
+async function lcFetch(p,at){if(at==null){const ps=await api('svc_providers'),q=(ps.providers||[]).find(x=>x.provider===p);at=q?q.collected_at:''}
+  const d=await api('svc_csv',{provider:p}),x=lcBuild(p,d.csv,at);LC[p]=x;
+  x.saved=await IDB.set(p,{csv:d.csv});if(x.saved){const m=await lcMeta();m[p]={at,count:x.count};await IDB.set('meta',m)}return x}
+async function lcEnsure(p){const L=await lcLoad(p);if(L)return L;
+  const mn=$('#main');if(mn)mn.innerHTML='<div class="card"><div class="sub" role="status">📥 CSV ফাইল ফোনে নামছে… (প্রথমবার শুধু)</div></div>';
+  try{return await lcFetch(p)}catch(e){if(authFail(e))throw e;toast('CSV নামেনি — '+e.message);return null}}
+function lcTag(name,text,cls){document.querySelectorAll('[data-lc]').forEach(el=>{if(el.dataset.lc===name){el.textContent=text;el.className='sub'+(cls?' '+cls:'')}})}
+const tried={};
+async function lcSync(P){syncP=P;if(syncing)return;syncing=true;let refresh=false;
+  try{try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+    let snap,got=0,bad=0;do{snap=syncP;const meta=await lcMeta(),L=snap.filter(p=>p.count>0||p.has_api);
+      L.forEach(p=>{const m=meta[p.provider];if(p.count>0&&m&&m.at===p.collected_at)lcTag(p.provider,'📥 ফোনে আছে · '+bn(m.count)+'টি','ok')});
+      for(let i=0;i<L.length;i++){const p=L[i],m=meta[p.provider];let at=p.collected_at;
+        if(p.count>0&&m&&m.at===at)continue;
+        const pg=$('#prog');if(pg)pg.textContent=`📥 ${bn(i+1)}/${bn(L.length)} — ${p.provider}`;
+        try{
+          if(!(p.count>0)){if(tried[p.provider])continue;tried[p.provider]=1;lcTag(p.provider,'⏳ প্রথমবার সংগ্রহ হচ্ছে…');const r=await api('svc_collect',{provider:p.provider});at=r.collected_at;refresh=true}
+          lcTag(p.provider,'⏳ CSV নামছে…');
+          const x=await lcFetch(p.provider,at);got++;
+          if(x.saved===false)lcTag(p.provider,'⚠ ফোনে সেভ হয়নি — এখন চলবে, অ্যাপ বন্ধ করলে আবার নামবে','hi');
+          else lcTag(p.provider,'📥 ফোনে আছে · '+bn(x.count)+'টি','ok')}
+        catch(e){if(authFail(e))return;bad++;lcTag(p.provider,'⚠ '+e.message+' — "সংগ্রহ" চেপে আবার চেষ্টা করুন','hi')}}
+    }while(snap!==syncP);
+    const pg=$('#prog');if(pg)pg.textContent=bad?`⚠ ${bn(bad)}টি নামেনি`:'';
+    if(got&&!bad)toast(`${bn(got)}টি CSV ফোনে সেভ হয়েছে ✔`)}
+  finally{syncing=false}
+  if(refresh&&cur===null)home()}
+async function lcState(p){const k=LSX[p];if(k&&Date.now()-k.t<120000)return k;
+  const d=await api('svc_light',{provider:p}),o={t:Date.now(),on:{},cf:d.cf||{},fx:d.fx,sc:d.site_categories||[]};(d.on||[]).forEach(id=>{o.on[id]=1});LSX[p]=o;return o}
+async function lcEnrich(p,rows){if(noEnrich)return;const need=rows.filter(r=>!r._en);if(!need.length)return;
+  try{const d=await api('svc_enrich',{provider:p,rows:need.map(r=>({service_id:r.service_id,name:r.name,category:r.category,rate:r.rate,refill:r.refill}))});
+    need.forEach(r=>{const x=d.items&&d.items[r.service_id];if(x){r.suggest=x.suggest;r.spd=x.spd;r.tidy=x.tidy}r._en=1})}
+  catch(e){if(authFail(e))throw e;if(e.code==='unknown_action')noEnrich=true}}
+async function localList(L,p){const S=await lcState(p);
+  for(const r of L.rows){const id=r.service_id;if(S.on[id]){r.state='on'}else if(S.cf[id]){r.state='conflict';r.conflict_with=S.cf[id]}else r.state='off'}
+  const q=(st.q||'').toLowerCase().trim(),cat=st.cat||'',pf=st.plat||'',fl=st.state||'all',ty=cat?'':(st.type||'');
+  const out=L.rows.filter(r=>(!cat||r.category===cat)&&(!pf||r._pl===pf)&&(fl==='all'||r.state===fl)&&(!q||r._s.indexOf(q)>=0)&&(!ty||(r._t||(r._t=typeOf(r.category)))===ty));
+  const off=st.off||0,page=out.slice(off,off+50);await lcEnrich(p,page);
+  return{ok:true,total:out.length,rows:page,categories:L.cats,site_categories:S.sc,fx:S.fx,platforms:L.plats,next:off+page.length}}
+async function getList(p){const L=await lcEnsure(p);
+  if(L){try{return await localList(L,p)}catch(e){if(e.code!=='unknown_action')throw e;toast('Apps Script আপডেট করুন (PtServices.gs) — আপাতত সার্ভার থেকে চলছে')}}
+  return pageRows('svc_list',{provider:p,q:st.q,state:st.state,category:st.cat,platform:st.plat||''},st.off,50,st.cat?'':(st.type||''))}
+
 /* ---------- হোম: প্রভাইডার তালিকা ---------- */
 async function home(){
   $('#title').textContent='সার্ভিস স্টুডিও';$('#back').hidden=true;cur=null;
@@ -41,9 +135,9 @@ async function home(){
   try{
     await swr('svc_providers',{},d=>{const P=d.providers||[];
     el.innerHTML=nav('')+'<div class="bar"><button class="btn" id="all" style="max-width:260px">সব প্রভাইডার সংগ্রহ করুন</button><span id="prog" class="mut" role="status"></span></div><div class="list">'+
-    (P.length?P.map(p=>`<div class="card pv"><div class="top"><div><b>${esc(p.provider)}</b><div class="sub">${p.collected_at?'সংগ্রহ: '+esc(p.collected_at)+' · '+bn(p.count)+'টি':'এখনো সংগ্রহ হয়নি'}</div></div>${p.has_api?'':'<span class="tag hi">API নেই</span>'}</div><div class="acts"><button class="sm" data-c="${esc(p.provider)}" ${p.has_api?'':'disabled'}>সংগ্রহ</button><button class="sm" data-o="${esc(p.provider)}" ${p.count?'':'disabled'}>সার্ভিস দেখুন</button></div></div>`).join(''):'<div class="card empty">কোনো প্রভাইডার কনফিগার করা নেই</div>')+'</div>';
+    (P.length?P.map(p=>`<div class="card pv"><div class="top"><div><b>${esc(p.provider)}</b><div class="sub">${p.collected_at?'সংগ্রহ: '+esc(p.collected_at)+' · '+bn(p.count)+'টি':'এখনো সংগ্রহ হয়নি'}</div><div class="sub" data-lc="${esc(p.provider)}"></div></div>${p.has_api?'':'<span class="tag hi">API নেই</span>'}</div><div class="acts"><button class="sm" data-c="${esc(p.provider)}" ${p.has_api?'':'disabled'}>সংগ্রহ</button><button class="sm" data-o="${esc(p.provider)}" ${p.count?'':'disabled'}>সার্ভিস দেখুন</button></div></div>`).join(''):'<div class="card empty">কোনো প্রভাইডার কনফিগার করা নেই</div>')+'</div>';
     el.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>collect(b.dataset.c,b));
-    el.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{location.hash='p='+encodeURIComponent(b.dataset.o)});
+    el.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{location.hash='p='+encodeURIComponent(b.dataset.o)});lcSync(P);
     const all=$('#all');if(all)all.onclick=async()=>{all.disabled=true;let ok=0,bad=0;const L=P.filter(p=>p.has_api);for(let i=0;i<L.length;i++){$('#prog').textContent=`${bn(i+1)}/${bn(L.length)} — ${L[i].provider}`;try{await api('svc_collect',{provider:L[i].provider});ok++}catch(e){if(authFail(e))return;bad++}}toast(`সংগ্রহ শেষ: ${bn(ok)} সফল, ${bn(bad)} ব্যর্থ`);home()};
     });}catch(e){if(!authFail(e))el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p><button class="btn" id="rt" style="max-width:220px">আবার চেষ্টা করুন</button></div>`,$('#rt').onclick=home}
 }
@@ -60,7 +154,7 @@ async function provider(p,more){
   cur=p;$('#title').textContent=p;$('#back').hidden=false;const el=$('#main');
   if(!more){st.off=0;sel.clear();bulkBar();el.innerHTML='<div class="sk"></div>'}
   try{
-    const d=await pageRows('svc_list',{provider:p,q:st.q,state:st.state,category:st.cat,platform:st.plat||''},st.off,50,st.cat?'':(st.type||''));
+    const d=await getList(p);
     if(!more){lastList=d;
       el.innerHTML=tiles(d.platforms||[],st.plat||'')+`<div class="bar"><input id="q" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি খুঁজুন" value="${esc(st.q)}" aria-label="খুঁজুন"></div><div id="cats">${catUI(catsFor(d.categories,st.plat),st)}</div>
       <div class="chips" role="group" aria-label="অবস্থা">${[['all','সব'],['on','চালু'],['off','বন্ধ'],['conflict','জট']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${st.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="sa">সব বাছুন</button><button class="chip" id="csv">⤓ CSV</button></div>
@@ -117,7 +211,7 @@ function openSheet(r,btn,force){
   sh.returnValue='';sh.showModal();
 }
 async function dl(p){
-  try{const d=await api('svc_csv',{provider:p});const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([d.csv],{type:'text/csv;charset=utf-8'}));a.download=d.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
+  try{let csv,name='svc_'+p.replace(/[^a-z0-9.-]/gi,'_')+'.csv';const v=await IDB.get(p);if(v&&v.csv)csv=v.csv;else{const d=await api('svc_csv',{provider:p});csv=d.csv;name=d.name}const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
   catch(e){if(!authFail(e))toast(e.message)}
 }
 
