@@ -49,15 +49,15 @@ async function provider(p,more){
   cur=p;$('#title').textContent=p;$('#back').hidden=false;const el=$('#main');
   if(!more){st.off=0;sel.clear();bulkBar();el.innerHTML='<div class="sk"></div>'}
   try{
-    const d=await api('svc_list',{provider:p,q:st.q,state:st.state,category:st.cat,offset:st.off,limit:50});
+    const d=await api('svc_list',{provider:p,q:st.q,state:st.state,category:st.cat,platform:st.plat||'',offset:st.off,limit:50});
     if(!more){lastList=d;
-      el.innerHTML=`<div class="bar"><input id="q" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি খুঁজুন" value="${esc(st.q)}" aria-label="খুঁজুন"><select id="cs" aria-label="ক্যাটেগরি"><option value="">সব ক্যাটেগরি</option>${Object.keys(d.categories).sort().map(c=>`<option value="${esc(c)}"${c===st.cat?' selected':''}>${esc(c)} (${bn(d.categories[c])})</option>`).join('')}</select></div>
+      el.innerHTML=tiles(d.platforms||[],st.plat||'')+`<div class="bar"><input id="q" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি খুঁজুন" value="${esc(st.q)}" aria-label="খুঁজুন"><select id="cs" aria-label="ক্যাটেগরি"><option value="">সব ক্যাটেগরি</option>${Object.keys(d.categories).sort().map(c=>`<option value="${esc(c)}"${c===st.cat?' selected':''}>${esc(c)} (${bn(d.categories[c])})</option>`).join('')}</select></div>
       <div class="chips" role="group" aria-label="অবস্থা">${[['all','সব'],['on','চালু'],['off','বন্ধ'],['conflict','জট']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${st.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="sa">সব বাছুন</button><button class="chip" id="csv">⤓ CSV</button></div>
       <p class="sub" id="cnt"></p><div class="list" id="rows"></div><div id="moreWrap"></div>`;
       $('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{st.q=e.target.value;provider(p)},350)};
       $('#cs').onchange=e=>{st.cat=e.target.value;provider(p)};
       el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{st.state=b.dataset.s;provider(p)});
-      $('#csv').onclick=()=>dl(p);$('#sa').onclick=()=>el.querySelectorAll('.sel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange()}});
+      $('#csv').onclick=()=>dl(p);el.querySelectorAll('[data-pl]').forEach(b=>b.onclick=()=>{st.plat=b.dataset.pl;provider(p)});$('#sa').onclick=()=>el.querySelectorAll('.sel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange()}});
     }else lastList.rows=lastList.rows.concat(d.rows);
     $('#cnt').textContent=`মোট ${bn(d.total)}টি${d.fx?'':' · USD→৳ রেট সেট নেই (দাম USD-তে দিন)'}`;
     const box=$('#rows');if(!more)box.innerHTML='';
@@ -154,19 +154,17 @@ async function tidy(){
       try{const x=await api('svc_tidy_apply',{items});toast(bn(x.done)+'টি সাজানো হয়েছে');tidy()}catch(e){if(!authFail(e))toast(e.message);ta.disabled=false}};
   }catch(e){if(!authFail(e))el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`}}
 
-/* ---------- লোগো ---------- */
-const BR={instagram:'#C13584',facebook:'#1877F2',tiktok:'#111',youtube:'#F00',telegram:'#229ED9',twitter:'#000',whatsapp:'#25D366',spotify:'#1DB954',linkedin:'#0A66C2',snapchat:'#E6B800',pinterest:'#E60023',discord:'#5865F2',twitch:'#9146FF',threads:'#000',shopee:'#EE4D2D',reddit:'#FF4500',soundcloud:'#F50',website:'#4F46E5',other:'#6B7280'};
-const GL={instagram:'<rect x="7" y="7" width="18" height="18" rx="5.5" fill="none" stroke="#fff" stroke-width="2.2"/><circle cx="16" cy="16" r="4" fill="none" stroke="#fff" stroke-width="2.2"/><circle cx="21.2" cy="10.8" r="1.3" fill="#fff"/>',
-youtube:'<rect x="5" y="9" width="22" height="14" rx="4.5" fill="#fff"/><path d="M13.5 12.5v7l6-3.5z" fill="#F00"/>',
-telegram:'<path d="M6.5 15.5l18-7-3 15-5.5-4-3 3-.8-5z" fill="#fff"/>',
-twitter:'<path d="M9 9l14 14M23 9L9 23" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>',
-facebook:'<path d="M17.5 26v-9h3l.5-3.5h-3.5v-2c0-1 .4-1.7 1.8-1.7H21V6.7C20.6 6.6 19.6 6.5 18.5 6.5c-2.6 0-4.3 1.6-4.3 4.4v2.6h-3V17h3v9z" fill="#fff"/>',
-tiktok:'<path d="M17.5 7v12.3a3.6 3.6 0 11-3.6-3.6M17.5 7c.3 2.6 2 4.2 4.6 4.4" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>',
-whatsapp:'<path d="M16 6.5a9.5 9.5 0 00-8.1 14.4L6.5 25.5l4.7-1.2A9.5 9.5 0 1016 6.5z" fill="none" stroke="#fff" stroke-width="2.2"/><path d="M12.5 12.5c.5 3 2.7 5.2 5.8 6l1.2-1.6-2.2-1.1-.9.9a5 5 0 01-2.1-2.1l.9-.9-1.1-2.2z" fill="#fff"/>'};
-function logo(label,sz){const k=String(label||'').toLowerCase().replace(/[^a-z]/g,''),key=/twitter|^x$/.test(k)?'twitter':k;
+/* ---------- লোগো (সাইটের নিজস্ব SVG) ---------- */
+const SL={"facebook": "<circle cx=\"12\" cy=\"12\" r=\"12\" fill=\"#1877F2\"/><path fill=\"#fff\" d=\"M16.67 15.47l.53-3.47h-3.33V9.75c0-.95.47-1.88 1.96-1.88h1.51V4.92s-1.37-.23-2.69-.23c-2.74 0-4.53 1.66-4.53 4.67V12H7.08v3.47h3.05v8.39a12.1 12.1 0 0 0 3.75 0v-8.39z\"/>", "twitter": "<rect x=\"0.5\" y=\"0.5\" width=\"23\" height=\"23\" rx=\"6.5\" fill=\"#000\"/><path fill=\"#fff\" d=\"M17.5 6.2h2.2l-4.8 5.5 5.6 7.4h-4.4l-3.4-4.5-3.9 4.5H6.6l5.1-5.9L6.3 6.2h4.5l3.1 4.1 3.6-4.1zm-.77 11.6h1.2L9.34 7.53H8.05l8.68 10.27z\"/>", "tiktok": "<path fill=\"currentColor\" d=\"M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z\"/>", "telegram": "<circle cx=\"12\" cy=\"12\" r=\"12\" fill=\"#26A5E4\"/><path fill=\"#fff\" d=\"M16.906 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z\"/>", "instagram": "<rect x=\"0.5\" y=\"0.5\" width=\"23\" height=\"23\" rx=\"6.5\" fill=\"url(#pfIgGrad)\"/><circle cx=\"12\" cy=\"12\" r=\"5\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/><circle cx=\"18\" cy=\"6\" r=\"1.35\" fill=\"#fff\"/>", "youtube": "<rect x=\"0\" y=\"3.5\" width=\"24\" height=\"17\" rx=\"5\" fill=\"#FF0000\"/><path fill=\"#fff\" d=\"M9.8 8.6v6.8l5.9-3.4z\"/>", "whatsapp": "<circle cx=\"12\" cy=\"12\" r=\"12\" fill=\"#25D366\"/><path fill=\"#fff\" transform=\"translate(4.8 4.8) scale(.6)\" d=\"M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z\"/>"};
+const BR={spotify:'#1DB954',linkedin:'#0A66C2',snapchat:'#E6B800',pinterest:'#E60023',discord:'#5865F2',twitch:'#9146FF',threads:'#000',shopee:'#EE4D2D',reddit:'#FF4500',soundcloud:'#F50',website:'#4F46E5',other:'#6B7280'};
+document.body.insertAdjacentHTML('beforeend','<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="pfIgGrad" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#FEDA75"/><stop offset=".3" stop-color="#FA7E1E"/><stop offset=".55" stop-color="#D62976"/><stop offset=".8" stop-color="#962FBF"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs></svg>');
+function logo(label,sz){const k=String(label||'').toLowerCase().replace(/[^a-z]/g,''),key=/twitter|^x$/.test(k)?'twitter':k,s=sz||44;
+  if(SL[key])return `<svg class="lg" width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${SL[key]}</svg>`;
   const bg=BR[key]||('hsl('+(([...k].reduce((a,c)=>a+c.charCodeAt(0),0)*47)%360)+',55%,42%)');
-  const g=GL[key]||`<text x="16" y="21.5" text-anchor="middle" font-size="15" font-weight="700" fill="#fff" font-family="Inter,sans-serif">${esc(String(label||'?').trim().charAt(0).toUpperCase())}</text>`;
-  return `<svg class="lg" width="${sz||44}" height="${sz||44}" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="${bg}"/>${g}</svg>`}
+  return `<svg class="lg" width="${s}" height="${s}" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="${bg}"/><text x="16" y="21.5" text-anchor="middle" font-size="15" font-weight="700" fill="#fff" font-family="Inter,sans-serif">${esc(String(label||'?').trim().charAt(0).toUpperCase())}</text></svg>`}
+const ALLSVG='<svg class="lg" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M4 6.5h16M4 12h16M4 17.5h16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+function tiles(list,act){const tot=list.reduce((a,p)=>a+p.n,0);
+  return `<div class="ptiles" role="group" aria-label="প্ল্যাটফর্ম"><button class="ptile" data-pl="" aria-pressed="${!act}" aria-label="সব" title="সব">${ALLSVG}<i>${bn(tot)}</i></button>`+list.map(p=>`<button class="ptile" data-pl="${esc(p.label)}" aria-pressed="${act===p.label}" aria-label="${esc(p.label)}" title="${esc(p.label)}">${logo(p.label,32)}<i>${bn(p.n)}</i></button>`).join('')+'</div>'}
 
 /* ---------- প্ল্যাটফর্ম হাব ---------- */
 let ps={q:'',type:'',state:'all',off:0};
@@ -196,7 +194,7 @@ async function pload(label,more){
 let ms={q:'',plat:'',cat:'',state:'on',off:0};const ssel=new Set();
 function mng(){
   cur=null;$('#title').textContent='সাইটের সার্ভিস';$('#back').hidden=true;const el=$('#main');
-  el.innerHTML=nav('mng')+`<div class="chips pstrip" id="mps"></div><div class="bar"><input id="mq" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি" value="${esc(ms.q)}" aria-label="খুঁজুন"><select id="mc" aria-label="ক্যাটেগরি"></select></div><div class="chips">${[['on','চালু'],['off','লুকানো'],['all','সব']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${ms.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="msa">সব বাছুন</button></div><p class="sub" id="mcnt"></p><div class="list" id="ml"></div><div id="mmore"></div>`;
+  el.innerHTML=nav('mng')+`<div id="mps"></div><div class="bar"><input id="mq" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি" value="${esc(ms.q)}" aria-label="খুঁজুন"><select id="mc" aria-label="ক্যাটেগরি"></select></div><div class="chips">${[['on','চালু'],['off','লুকানো'],['all','সব']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${ms.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="msa">সব বাছুন</button></div><p class="sub" id="mcnt"></p><div class="list" id="ml"></div><div id="mmore"></div>`;
   $('#mq').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{ms.q=e.target.value;mload()},350)};
   $('#mc').onchange=e=>{ms.cat=e.target.value;mload()};
   el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ms.state=b.dataset.s;el.querySelectorAll('[data-s]').forEach(x=>x.setAttribute('aria-pressed',x===b));mload()});
@@ -206,8 +204,7 @@ async function mload(more){
   if(!more){ms.off=0;ssel.clear();msBar()}
   const box=$('#ml');if(!more)box.innerHTML='<div class="sk"></div>';
   try{const d=await api('svc_site_list',{q:ms.q,platform:ms.plat,category:ms.cat,state:ms.state,offset:ms.off,limit:40});window._mc=d.categories;
-    $('#mps').innerHTML=`<button class="chip pc" data-p="" aria-pressed="${!ms.plat}">সব</button>`+d.platforms.map(p=>`<button class="chip pc" data-p="${esc(p.label)}" aria-pressed="${ms.plat===p.label}">${logo(p.label,22)} ${esc(p.label)} ${bn(p.n)}</button>`).join('');
-    $('#mps').querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{ms.plat=b.dataset.p;ms.cat='';mload()});
+    $('#mps').innerHTML=tiles(d.platforms,ms.plat);$('#mps').querySelectorAll('[data-pl]').forEach(b=>b.onclick=()=>{ms.plat=b.dataset.pl;ms.cat='';mload()});
     $('#mc').innerHTML='<option value="">সব ক্যাটেগরি</option>'+d.categories.map(c=>`<option value="${esc(c)}"${c===ms.cat?' selected':''}>${esc(c)}</option>`).join('');
     $('#mcnt').textContent=`মোট ${bn(d.total)}টি`;
     if(!more)box.innerHTML='';if(!d.rows.length&&!more)box.innerHTML='<div class="card empty">কিছু পাওয়া যায়নি</div>';
@@ -216,11 +213,11 @@ async function mload(more){
   }catch(e){if(!authFail(e))box.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`}}
 function mrow(r){
   const c=document.createElement('div');c.className='card svc'+(r.state==='off'?' dim':'');
-  c.innerHTML=`<div><h4><input type="checkbox" class="sel msel" aria-label="নির্বাচন">${esc(r.name)}</h4><div class="sub">${logo(r.platform_label,18)} ${esc(r.platform_label)} · ID <b>${esc(r.code)}</b> · ${esc(r.category)}</div><div class="sub">খরচ <b>$${esc(r.cost)}</b> · সাইটে ≈ <b>৳${bn(r.sell)}</b> · ${bn(r.min)}–${bn(r.max)}${r.ov?' · নাম বদলানো':''}${r.state==='off'?' · লুকানো':''}</div></div><div class="acts2"><button class="sm" data-e>সম্পাদনা</button><button class="sm" data-h>${r.state==='off'?'ফেরান':'লুকান'}</button></div>`;
+  c.innerHTML=`<div><h4><input type="checkbox" class="sel msel" aria-label="নির্বাচন">${esc(r.name)}</h4><div class="sub">${logo(r.platform_label,18)} ${esc(r.platform_label)} · ID <b>${esc(r.code)}</b> · ${esc(r.category)}</div><div class="sub">খরচ <b>$${esc(r.cost)}</b> · সাইটে ≈ <b>৳${bn(r.sell)}</b> · ${bn(r.min)}–${bn(r.max)}${r.ov?' · নাম বদলানো':''}${r.state==='off'?' · লুকানো':''}</div></div><div class="acts2"><button class="sw" role="switch" aria-checked="${r.state!=='off'}" aria-label="সাইটে চালু/বন্ধ" data-h></button><button class="sm" data-e aria-label="সম্পাদনা">✎ এডিট</button></div>`;
   c.querySelector('.msel').onchange=e=>{e.target.checked?ssel.add(r):ssel.delete(r);msBar()};
   c.querySelector('[data-e]').onclick=()=>editSheet(r);
-  c.querySelector('[data-h]').onclick=async ev=>{if(busy)return;if(r.state!=='off'&&!confirm('এটা সাইট থেকে লুকানো হবে। চালিয়ে যাবেন?'))return;busy=true;ev.target.disabled=true;
-    try{await api('svc_site_hide',{codes:[r.code],on:r.state==='off'});toast(r.state==='off'?'ফিরিয়ে আনা হয়েছে':'লুকানো হয়েছে');mload()}catch(e){if(!authFail(e))toast(e.message);ev.target.disabled=false}busy=false};
+  c.querySelector('[data-h]').onclick=async ev=>{if(busy)return;const on=r.state==='off',b=ev.currentTarget;busy=true;b.disabled=true;
+    try{await api('svc_site_hide',{codes:[r.code],on});r.state=on?'on':'off';b.setAttribute('aria-checked',on);c.classList.toggle('dim',!on);toast(on?'চালু হয়েছে':'বন্ধ হয়েছে')}catch(e){if(!authFail(e))toast(e.message)}b.disabled=false;busy=false};
   return c}
 function editSheet(r){
   let dlg=$('#esh');if(!dlg){dlg=document.createElement('dialog');dlg.id='esh';document.body.appendChild(dlg)}
@@ -232,12 +229,14 @@ function editSheet(r){
     try{await api('svc_site_edit',{code:r.code,name:$('#enm').value,platform:$('#epl').value,category:$('#ect').value});toast('সংরক্ষিত ✔');mload()}catch(e){if(!authFail(e))toast(e.message)}};
   dlg.showModal()}
 function msBar(){let b=$('#bulk');if(!b){b=document.createElement('div');b.id='bulk';b.className='bulk';document.body.appendChild(b)}
-  b.hidden=!ssel.size;b.innerHTML=`<b>${bn(ssel.size)}টি</b><button class="sm" data-a="hide">লুকান</button><button class="sm" data-a="show">ফেরান</button><button class="sm" data-a="cat">ক্যাটেগরি</button><button class="sm" data-a="tidy">সাজান</button><button class="sm" data-a="x" aria-label="বাতিল">✕</button>`;
+  b.hidden=!ssel.size;b.innerHTML=`<b>${bn(ssel.size)}টি</b><button class="sm" data-a="show">চালু</button><button class="sm" data-a="hide">বন্ধ</button><button class="sm" data-a="del">মুছুন</button><button class="sm" data-a="cat">ক্যাটেগরি</button><button class="sm" data-a="tidy">সাজান</button><button class="sm" data-a="x" aria-label="বাতিল">✕</button>`;
   b.querySelectorAll('[data-a]').forEach(x=>x.onclick=()=>mact(x.dataset.a))}
 async function mact(k){
   if(k==='x'){ssel.clear();document.querySelectorAll('.msel').forEach(x=>x.checked=false);return msBar()}
   if(busy)return;const codes=[...ssel].map(r=>r.code);if(!codes.length)return;let act='svc_site_hide',a={codes};
-  if(k==='hide'||k==='show'){a.on=k==='show';if(k==='hide'&&!confirm(bn(codes.length)+'টি সার্ভিস সাইট থেকে লুকানো হবে?'))return}
+  if(k==='show')a.on=true;
+  else if(k==='hide'){a.on=false}
+  else if(k==='del'){if(!confirm(bn(codes.length)+'টি সার্ভিস সাইট থেকে মুছে ফেলা হবে?\n(স্টুডিও/বটে যোগ করাগুলো তালিকা থেকেও যাবে; পুরনোগুলো লুকানো থাকবে — "লুকানো" ফিল্টার থেকে ফেরানো যাবে)'))return;a.on=false;a.del=true}
   else{act='svc_site_bulk';if(k==='tidy'){if(!confirm(bn(codes.length)+'টির নাম ও ক্যাটেগরি অটো সাজানো হবে?'))return;a.tidy=true}else{const c=prompt('নতুন ক্যাটেগরি (সবগুলোর জন্য)','');if(!c)return;a.category=c}}
   busy=true;try{const r=await api(act,a);toast(bn(r.done)+'টি হয়েছে');mload()}catch(e){if(!authFail(e))toast(e.message)}busy=false}
 

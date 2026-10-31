@@ -134,13 +134,14 @@ function svcList_(d) {
   meta.custom.forEach(function (c) { if (c.category) siteCats[c.category] = 1; if (!c.ov) live[String(c.code)] = c; });
   meta.hidden.forEach(function (c) { hidden[String(c)] = 1; });
   var tiers = null, fx = svcFx_(); try { tiers = ptTiersLoad_(); } catch (e) {}
-  var q = String(d.q || "").toLowerCase().trim(), cat = String(d.category || ""), flt = String(d.state || "all");
+  var pf = String(d.platform || ""), q = String(d.q || "").toLowerCase().trim(), cat = String(d.category || ""), flt = String(d.state || "all");
   rows.forEach(function (r) { cats[r.category] = (cats[r.category] || 0) + 1; r.state = "off"; });
   var out = rows.filter(function (r) {
     var c = live[r.service_id];
     if (c && (!c.provider || c.provider === provider)) r.state = hidden[r.service_id] ? "off" : "on";
     else if (c) r.state = "conflict", r.conflict_with = c.provider;
     if (cat && r.category !== cat) return false;
+    if (pf && svcPlatOf_(r) !== pf) return false;
     if (flt !== "all" && r.state !== flt) return false;
     if (q && (r.name + " " + r.service_id + " " + r.category).toLowerCase().indexOf(q) < 0) return false;
     return true;
@@ -148,7 +149,7 @@ function svcList_(d) {
   var off = Math.max(0, Number(d.offset) || 0), lim = Math.min(200, Number(d.limit) || 100), page = out.slice(off, off + lim);
   var spd = svcSpd_(), cmap = svcCatMap_();
   page.forEach(function (r) { r.suggest = svcSuggest_(Number(r.rate), tiers, fx); r.spd = spd[r.service_id] || null; r.tidy = svcTidy_(r, cmap); });
-  return { ok: true, total: out.length, rows: page, categories: cats, site_categories: Object.keys(siteCats).sort(), fx: fx, tiers: !!tiers };
+  return { ok: true, total: out.length, rows: page, categories: cats, site_categories: Object.keys(siteCats).sort(), fx: fx, tiers: !!tiers, platforms: svcProvPlats_(provider) };
 }
 
 // ---------- ৪) অন/অফ ----------
@@ -533,6 +534,7 @@ function svcSiteHide_(d) {
     } else {
       if (meta.hidden.indexOf(code) === -1) meta.hidden.push(code);
       meta.removed[code] = { name: r.name.substring(0, 120), platform: r.platform, category: r.category, provider: "", at: new Date().toISOString(), via: "studio" };
+      if (d.del && r.src === "custom") { meta.custom = meta.custom.filter(function (c) { return String(c.code) !== code; }); meta.hidden = meta.hidden.filter(function (c) { return String(c) !== code; }); }
       logServiceEvent_(code, "remove", meta.removed[code], "service_studio");
     }
     n++;
@@ -555,4 +557,11 @@ function svcSiteBulk_(d) {
   });
   if (n) saveServiceMeta_(meta);
   return { ok: true, done: n };
+}
+
+// ---------- একটা প্রভাইডারের প্ল্যাটফর্ম-তালিকা (লোগো-টাইলের জন্য) ----------
+function svcProvPlats_(provider) {
+  var st = svcStatsLoad_(), c = st[provider];
+  if (!c) { var rows = svcRead_(provider); if (rows) { c = st[provider] = svcStatCalc_(rows); try { svcStatsSave_(st); } catch (e) {} } }
+  return Object.keys(c || {}).map(function (k) { return { label: k, n: c[k] }; }).sort(function (a, b) { return b.n - a.n; });
 }
