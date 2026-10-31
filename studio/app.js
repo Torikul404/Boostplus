@@ -578,7 +578,15 @@ async function agent(text){gtrim();gh.push({role:'user',parts:[{text}]});
       resp.push({functionResponse:{name:fc.name,response:{result:out}}})}
     gh.push({role:'user',parts:resp})}
   addMsg('ai','অনেক ধাপ হয়ে গেছে — আবার বলুন, কোথায় থেমেছি সেখান থেকে চালাব।')}
-const gerr=e=>e.status===429?'ফ্রি কোটা শেষ বা অনেক দ্রুত পাঠানো হয়েছে — একটু পরে চেষ্টা করুন':e.status===400&&/key/i.test(e.message)||e.status===403?'API key ঠিক নয় বা অনুমতি নেই — ⚙ থেকে দেখুন':e.status===404?'মডেলের নাম পাওয়া যায়নি — ⚙ থেকে মডেল বদলান':e.name==='TypeError'?'ইন্টারনেট/নেটওয়ার্ক সমস্যা':e.message;
+const gerr=e=>{const m=String(e&&e.message||'');
+  if(e.status===429)return'ফ্রি কোটা শেষ বা অনেক দ্রুত পাঠানো হয়েছে — একটু পরে চেষ্টা করুন';
+  if(e.status===404)return'মডেলের নাম পাওয়া যায়নি — ⚙ থেকে মডেল বদলান ('+m+')';
+  if(e.status===400&&/key/i.test(m)||e.status===403)return'API key ঠিক নয় বা অনুমতি নেই ['+e.status+'] — Google বলছে: '+m;
+  if(e.name==='TypeError'){
+    if(navigator.onLine===false)return'ফোনে ইন্টারনেট বন্ধ আছে';
+    if(/header|ISO-8859|Invalid value|non ISO/i.test(m))return'key-তে অবৈধ অক্ষর আছে (বাংলা/লুকানো অক্ষর) — AI Studio থেকে আবার কপি করে বসান';
+    return'Google সার্ভারে পৌঁছানো যায়নি (VPN, Private DNS, অ্যাড-ব্লকার, ডেটা সেভার বা ফায়ারওয়াল আটকাতে পারে) — ব্রাউজারের ত্রুটি: '+m}
+  return(e.status?'['+e.status+'] ':'')+m};
 function aiStatus(){const k=ls.get(GK);$('#aiSt').textContent=k?(ls.get(GOK)?'● সংযুক্ত':'● key আছে'):'○ সংযুক্ত নয়';$('#aiSt').className='sub'+(k&&ls.get(GOK)?' ok':'')}
 function aiInit(){if($('#aiFab'))return;
   document.body.insertAdjacentHTML('beforeend',`<button id="aiFab" class="aifab" popover="manual" aria-label="AI সহকারী — টেনে সরানো যায়" title="AI সহকারী (টেনে সরান)" hidden>${ROBOT}</button><section id="ai" class="aipanel" popover="manual" role="dialog" aria-label="AI সহকারী" hidden><header><b class="aiti">${ROBOT.replace('width="30" height="30"','width="22" height="22"')} AI সহকারী</b><span id="aiSt" class="sub"></span><span class="aihs"><button class="ib" id="aiSet" aria-label="সেটিং">⚙</button><button class="ib" id="aiNew" aria-label="নতুন চ্যাট" title="নতুন চ্যাট">↺</button><button class="ib" id="aiX" aria-label="বন্ধ">✕</button></span></header>
@@ -592,6 +600,7 @@ function aiInit(){if($('#aiFab'))return;
   $('#aiNew').onclick=()=>{gh=[];$('#aiMsgs').innerHTML='';hello()};
   $('#aiDel').onclick=()=>{ls.del(GK);ls.del(GOK);gh=[];$('#aiK').value='';aiStatus();$('#aiKe').textContent='key মোছা হয়েছে'};
   $('#aiSave').onclick=async()=>{const k=$('#aiK').value.trim(),m=$('#aiM').value.trim()||'gemini-2.5-flash',b=$('#aiSave');if(!k){$('#aiKe').textContent='key দিন';return}
+    if(!/^[\x21-\x7E]+$/.test(k)){$('#aiKe').textContent='key-তে অবৈধ অক্ষর আছে (বাংলা/স্পেস/লুকানো অক্ষর) — আবার কপি করে বসান';return}
     b.disabled=true;$('#aiKe').textContent='পরীক্ষা হচ্ছে…';const ok=[ls.get(GK),ls.get(GM)],old=gh;ls.set(GK,k);ls.set(GM,m);gh=[{role:'user',parts:[{text:'শুধু "ok" লিখুন'}]}];
     try{await gcall();ls.set(GOK,'1');gh=old;$('#aiKe').textContent='';keyBox(false);aiStatus();if(!$('#aiMsgs').children.length)hello();$('#aiIn').focus()}
     catch(e){gh=old;ls.del(GOK);if(ok[0]==null)ls.del(GK);else ls.set(GK,ok[0]);if(ok[1]==null)ls.del(GM);else ls.set(GM,ok[1]);$('#aiKe').textContent=gerr(e)}
