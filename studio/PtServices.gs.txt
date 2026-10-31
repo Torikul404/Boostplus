@@ -1,0 +1,558 @@
+/* PtServices.gs — "সার্ভিস স্টুডিও" ব্যাকএন্ড (নতুন স্ক্রিপ্ট-ফাইল; আলাদা PWA-র জন্য)
+   কাজ: ১) প্রভাইডারের লাইভ API (action=services) থেকে সার্ভিস এনে CSV বানানো, Drive-এ রাখা
+         ২) CSV পড়ে তালিকা দেওয়া (প্রতি সার্ভিসে অন/অফ অবস্থাসহ)
+         ৩) অন/অফ: Code.gs-এর আগের service_meta ব্যবহার করে সাইটে চালু/লুকানো
+   সব অ্যাকশনে অ্যাডমিন টোকেন লাগে। API key কখনো ব্রাউজারে যায় না।
+   Code.gs-এর doPost-এ একটা লাইন যোগ করতে হবে:
+       if (String(data.action || "").indexOf("svc_") === 0) return jsonOut_(ptSvcRoute_(data));
+   নির্ভর করে (Code.gs-এ আগে থেকেই): adminAuthError_, getProviderConfig_, getServiceMeta_, saveServiceMeta_, markServiceRemoved_, logServiceEvent_
+   ঐচ্ছিক: PtPricing.gs (ptTiersLoad_, ptSellPrice_) + Script Property USD_BDT_RATE → দাম নিজে থেকে প্রস্তাব হয়। */
+
+// শুধু এই ১০টা প্রভাইডার স্টুডিওতে দেখাবে/চলবে (এই তালিকার ক্রমেই দেখাবে)
+var SVC_ALLOWED_ = ["smmxpanel.com", "getmyfollow.com", "smmsun.com", "smmstarpro.com", "smmgen.com",
+  "socialpanel.pro", "smmrx.com", "bdsmmpanel.com", "amarboost.com", "growfollows.com"];
+function svcAllowed_(p) { return SVC_ALLOWED_.indexOf(String(p)) !== -1; }
+
+var SVC_HEAD_ = ["provider", "service_id", "name", "category", "type", "rate", "min", "max", "refill", "cancel", "dripfeed", "collected_at"];
+
+function ptSvcRoute_(d) {
+  var err = adminAuthError_(d.token); if (err) return { ok: false, error: err };
+  if (d.provider !== undefined && d.provider !== "" && !svcAllowed_(d.provider)) return { ok: false, error: "no_config" };
+  try {
+    switch (String(d.action)) {
+      case "svc_providers": return svcProviders_();
+      case "svc_collect":   return svcCollect_(String(d.provider || ""));
+      case "svc_list":      return svcList_(d);
+      case "svc_csv":       return svcCsvText_(String(d.provider || ""));
+      case "svc_toggle":    return svcToggle_(d);
+      case "svc_changes":   return svcChanges_();
+      case "svc_auto":      return svcAutoSet_(d);
+      case "svc_compare":   return svcCompare_(d);
+      case "svc_bulk":      return svcBulk_(d);
+      case "svc_tidy_list": return svcTidyList_();
+      case "svc_tidy_apply": return svcTidyApply_(d);
+      case "svc_platforms":  return svcPlatforms_();
+      case "svc_by_platform": return svcByPlatform_(d);
+      case "svc_site_list":  return svcSiteListAct_(d);
+      case "svc_site_edit":  return svcSiteEdit_(d);
+      case "svc_site_hide":  return svcSiteHide_(d);
+      case "svc_site_bulk":  return svcSiteBulk_(d);
+    }
+    return { ok: false, error: "unknown_action" };
+  } catch (e) { return { ok: false, error: "svc_failed", message: String(e && e.message || e).substring(0, 200) }; }
+}
+
+// ---------- CSV সহায়ক ----------
+function svcCsvCell_(v) { var s = String(v == null ? "" : v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function svcCsvLine_(a) { return a.map(svcCsvCell_).join(","); }
+function svcCsvParse_(text) {
+  var rows = [], row = [], cell = "", q = false, i, c;
+  text = String(text).replace(/^\uFEFF/, "");
+  for (i = 0; i < text.length; i++) {
+    c = text.charAt(i);
+    if (q) { if (c === '"') { if (text.charAt(i + 1) === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+    else if (c !== "\r") cell += c;
+  }
+  if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+function svcFlag_(v) { return v === true || v === 1 || v === "1" || v === "true" || v === "yes" ? 1 : 0; }
+
+// ---------- Drive ----------
+function svcFolder_() {
+  var p = PropertiesService.getScriptProperties(), id = p.getProperty("SVC_CSV_FOLDER_ID");
+  if (id) { try { return DriveApp.getFolderById(id); } catch (e) {} }
+  var f = DriveApp.createFolder("boostplus-services"); p.setProperty("SVC_CSV_FOLDER_ID", f.getId()); return f;
+}
+function svcFileName_(provider) { return "svc_" + provider.replace(/[^a-z0-9.-]/gi, "_") + ".csv"; }
+function svcFindFile_(name) { var it = svcFolder_().getFilesByName(name); return it.hasNext() ? it.next() : null; }
+function svcState_() { try { return JSON.parse(PropertiesService.getScriptProperties().getProperty("SVC_STATE") || "{}"); } catch (e) { return {}; } }
+
+// ---------- ১) প্রভাইডার তালিকা (নাম শুধু লগইনের পর) ----------
+function svcProviders_() {
+  var cfg = getProviderConfig_(), st = svcState_(), out = [];
+  SVC_ALLOWED_.filter(function (p) { return cfg[p]; }).forEach(function (p) {
+    var c = cfg[p]; out.push({ provider: p, has_api: !!(c && c.api_key && c.api_url), count: (st[p] && st[p].count) || 0, collected_at: (st[p] && st[p].at) || "" });
+  });
+  return { ok: true, providers: out };
+}
+
+// ---------- ২) লাইভ সংগ্রহ → CSV ----------
+function svcCollect_(provider) {
+  var cfg = getProviderConfig_()[provider];
+  if (!cfg || !cfg.api_key || !cfg.api_url) return { ok: false, error: "no_config" };
+  var resp = UrlFetchApp.fetch(cfg.api_url, { method: "post", payload: { key: cfg.api_key, action: "services" }, muteHttpExceptions: true });
+  var oldRows = svcRead_(provider);
+  var arr; try { arr = JSON.parse(resp.getContentText()); } catch (e) { return { ok: false, error: "bad_json", http: resp.getResponseCode() }; }
+  if (!Array.isArray(arr)) return { ok: false, error: "provider_error", message: String(arr && arr.error || "").substring(0, 120) };
+  var at = Utilities.formatDate(new Date(), "Asia/Dhaka", "yyyy-MM-dd HH:mm");
+  var lines = [svcCsvLine_(SVC_HEAD_)];
+  arr.forEach(function (s) {
+    if (!s || s.service == null) return;
+    lines.push(svcCsvLine_([provider, s.service, String(s.name || "").trim(), String(s.category || "").trim(), s.type || "", s.rate, s.min, s.max,
+      s.refill !== undefined ? svcFlag_(s.refill) : (/refill/i.test(s.name || "") ? 1 : 0), svcFlag_(s.cancel), svcFlag_(s.dripfeed), at]));
+  });
+  var csv = "\uFEFF" + lines.join("\n"), name = svcFileName_(provider), f = svcFindFile_(name);
+  if (f) f.setContent(csv); else svcFolder_().createFile(name, csv, MimeType.CSV);
+  // ব্যাকআপ: তারিখসহ কপি, শেষ ৫টি রাখা
+  var bn = name.replace(".csv", "_" + at.substring(0, 10) + ".csv"), old = svcFindFile_(bn); if (old) old.setTrashed(true);
+  svcFolder_().createFile(bn, csv, MimeType.CSV);
+  var all = [], it = svcFolder_().searchFiles('title contains "' + name.replace(".csv", "_") + '"');
+  while (it.hasNext()) all.push(it.next());
+  all.sort(function (a, b) { return b.getName() < a.getName() ? -1 : 1; }); all.slice(5).forEach(function (x) { x.setTrashed(true); });
+  var P = PropertiesService.getScriptProperties(), st = svcState_(); st[provider] = { at: at, count: lines.length - 1 };
+  P.setProperty("SVC_STATE", JSON.stringify(st));
+  try { var sx = svcStatsLoad_(); sx[provider] = svcStatCalc_(arr.filter(function (z) { return z && z.service != null; }).map(function (z) { return { name: z.name, category: z.category }; })); svcStatsSave_(sx); } catch (e) {}
+  var df = null;
+  if (oldRows) { try { df = svcDiff_(oldRows, arr); var ch = svcChgLoad_(); ch[provider] = { at: at, c: df.c, items: df.items }; svcChgSave_(ch); } catch (e) {} }
+  return { ok: true, provider: provider, count: lines.length - 1, collected_at: at, changes: df ? df.c : null };
+}
+
+function svcRead_(provider) {
+  var f = svcFindFile_(svcFileName_(provider)); if (!f) return null;
+  var rows = svcCsvParse_(f.getBlob().getDataAsString("UTF-8")), h = rows.shift() || [], out = [];
+  rows.forEach(function (r) { if (r.length < 3) return; var o = {}; h.forEach(function (k, i) { o[k] = r[i]; }); out.push(o); });
+  return out;
+}
+function svcCsvText_(provider) { var f = svcFindFile_(svcFileName_(provider)); return f ? { ok: true, csv: f.getBlob().getDataAsString("UTF-8"), name: svcFileName_(provider) } : { ok: false, error: "not_collected" }; }
+
+// ---------- দাম প্রস্তাব (ঐচ্ছিক) ----------
+function svcFx_() { var v = Number(PropertiesService.getScriptProperties().getProperty("USD_BDT_RATE")); return v > 0 ? v : (typeof SVC_USD_BDT_ !== "undefined" ? SVC_USD_BDT_ : 0); }
+function svcSuggest_(rateUsd) {   // সাইটে বিক্রয়মূল্য ≈ প্রভাইডার রেট + সাইটের মার্কআপ নিয়ম (শুধু দেখানোর জন্য; সাইট নিজেই মার্কআপ বসায়)
+  if (!(rateUsd >= 0)) return null;
+  return { bdt: Math.round(svcSellBdt_(rateUsd) * 100) / 100, usd: rateUsd, auto: true };
+}
+
+// ---------- ৩) তালিকা ----------
+function svcList_(d) {
+  var provider = String(d.provider || ""), rows = svcRead_(provider);
+  if (!rows) return { ok: false, error: "not_collected" };
+  var meta = getServiceMeta_(), live = {}, hidden = {}, cats = {}, siteCats = {};
+  meta.custom.forEach(function (c) { if (c.category) siteCats[c.category] = 1; if (!c.ov) live[String(c.code)] = c; });
+  meta.hidden.forEach(function (c) { hidden[String(c)] = 1; });
+  var tiers = null, fx = svcFx_(); try { tiers = ptTiersLoad_(); } catch (e) {}
+  var q = String(d.q || "").toLowerCase().trim(), cat = String(d.category || ""), flt = String(d.state || "all");
+  rows.forEach(function (r) { cats[r.category] = (cats[r.category] || 0) + 1; r.state = "off"; });
+  var out = rows.filter(function (r) {
+    var c = live[r.service_id];
+    if (c && (!c.provider || c.provider === provider)) r.state = hidden[r.service_id] ? "off" : "on";
+    else if (c) r.state = "conflict", r.conflict_with = c.provider;
+    if (cat && r.category !== cat) return false;
+    if (flt !== "all" && r.state !== flt) return false;
+    if (q && (r.name + " " + r.service_id + " " + r.category).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+  var off = Math.max(0, Number(d.offset) || 0), lim = Math.min(200, Number(d.limit) || 100), page = out.slice(off, off + lim);
+  var spd = svcSpd_(), cmap = svcCatMap_();
+  page.forEach(function (r) { r.suggest = svcSuggest_(Number(r.rate), tiers, fx); r.spd = spd[r.service_id] || null; r.tidy = svcTidy_(r, cmap); });
+  return { ok: true, total: out.length, rows: page, categories: cats, site_categories: Object.keys(siteCats).sort(), fx: fx, tiers: !!tiers };
+}
+
+// ---------- ৪) অন/অফ ----------
+function svcToggle_(d) {
+  var provider = String(d.provider || ""), code = String(d.code || "").trim(), meta = getServiceMeta_();
+  if (!provider || !code) return { ok: false, error: "code_required" };
+  var prev = null; meta.custom.forEach(function (c) { if (String(c.code) === code && !c.ov) prev = c; });
+  if (d.on) {
+    if (prev && prev.provider && prev.provider !== provider) return { ok: false, error: "code_conflict", with: prev.provider,
+      message: "এই আইডি (" + code + ") সাইটে আগেই " + prev.provider + "-এর সার্ভিস হিসেবে আছে" };
+    var row = (svcRead_(provider) || []).filter(function (r) { return r.service_id === code; })[0];
+    if (!row) return { ok: false, error: "not_in_csv" };
+    var cat = String(d.category || "").trim(), plat = String(d.platform || "other").toLowerCase().trim(), usd = Number(row.rate);   // সাইটে pricePerK = প্রভাইডারের খরচ; মার্কআপ সাইট নিজেই বসায়
+    if (!cat) return { ok: false, error: "category_required" };
+    if (!(usd > 0)) return { ok: false, error: "price_required" };
+    var rm = meta.removed[code]; if (rm && rm.provider && rm.provider !== provider) rm = null;
+    if (rm && !d.force) return { ok: false, error: "previously_removed", removed_info: rm, message: "এই সার্ভিস আগে সাইট থেকে বাদ দেওয়া হয়েছিল" };
+    var entry = { code: code, name: String(d.name || row.name).trim().substring(0, 120), platform: plat, category: cat, tags: [], pricePerK: "$" + usd,
+      min: Number(row.min) || 10, max: Number(row.max) || 10000, popular: false, provider: provider };
+    if (row.refill === "1") entry.refill = "yes";
+    meta.custom = meta.custom.filter(function (c) { return String(c.code) !== code; }); meta.custom.push(entry);
+    meta.hidden = meta.hidden.filter(function (c) { return String(c) !== code; }); delete meta.removed[code];
+    try { svcCatLearn_(provider, row.category, cat); } catch (e) {}
+    saveServiceMeta_(meta); logServiceEvent_(code, "add", entry, "service_studio");
+    return { ok: true, state: "on", code: code };
+  }
+  if (!prev) return { ok: true, state: "off", code: code };
+  if (meta.hidden.indexOf(code) === -1) meta.hidden.push(code);
+  markServiceRemoved_(meta, code, "hide"); saveServiceMeta_(meta); logServiceEvent_(code, "hide", {}, "service_studio");
+  return { ok: true, state: "off", code: code };
+}
+
+
+// ================= গতি (সাইটের অর্ডারের ডেটা থেকে) =================
+function svcSpd_() {
+  var o = {};
+  try { var s = getSpeedStats_(); Object.keys(s).forEach(function (k) { var v = s[k]; if (v && v.n) o[k] = { m: v.med_sec, n: v.n, f: v.fail || 0 }; }); } catch (e) {}
+  return o;
+}
+
+// ================= পরিবর্তন ধরা =================
+function svcChgFile_() { var it = svcFolder_().getFilesByName("svc_changes.json"); return it.hasNext() ? it.next() : null; }
+function svcChgLoad_() { var f = svcChgFile_(); if (!f) return {}; try { return JSON.parse(f.getBlob().getDataAsString("UTF-8")); } catch (e) { return {}; } }
+function svcChgSave_(o) { var t = JSON.stringify(o), f = svcChgFile_(); if (f) f.setContent(t); else svcFolder_().createFile("svc_changes.json", t, MimeType.PLAIN_TEXT); }
+
+function svcDiff_(oldRows, arr) {
+  var o = {}, n = {}, items = [], cnt = { up: 0, down: 0, rm: 0, nw: 0 }, per = { up: 0, down: 0, rm: 0, nw: 0 };
+  function add(k, t, it) { cnt[k]++; if (per[k] < 100) { per[k]++; it.t = t; items.push(it); } }
+  (oldRows || []).forEach(function (r) { o[r.service_id] = r; });
+  arr.forEach(function (s) { if (s && s.service != null) n[String(s.service)] = s; });
+  Object.keys(n).forEach(function (id) {
+    var s = n[id], r = o[id], nm = String(s.name || "").substring(0, 70);
+    if (!r) return add("nw", "new", { id: id, nm: nm, n: Number(s.rate) });
+    var a = Number(r.rate), b = Number(s.rate);
+    if (a > 0 && b > 0 && Math.abs(a - b) / a > 0.0001) { var k = b > a ? "up" : "down"; add(k, k, { id: id, nm: nm, o: a, n: b }); }
+  });
+  Object.keys(o).forEach(function (id) { if (!n[id]) add("rm", "rm", { id: id, nm: String(o[id].name || "").substring(0, 70), o: Number(o[id].rate) }); });
+  return { c: cnt, items: items };
+}
+
+function svcChanges_() {
+  var ch = svcChgLoad_(), meta = getServiceMeta_(), live = {}, hid = {}, out = [], ord = { rm: 0, up: 1, down: 2, "new": 3 };
+  meta.custom.forEach(function (c) { if (!c.ov) live[String(c.code)] = c.provider || ""; });
+  meta.hidden.forEach(function (c) { hid[String(c)] = 1; });
+  SVC_ALLOWED_.forEach(function (p) {
+    var e = ch[p]; if (!e) return;
+    var lr = 0, lu = 0;
+    e.items.forEach(function (i) {
+      i.live = (i.id in live) && (live[i.id] === p || live[i.id] === "") && !hid[i.id] ? 1 : 0;
+      if (i.live && i.t === "rm") lr++; if (i.live && i.t === "up") lu++;
+    });
+    e.items.sort(function (a, b) { return (b.live - a.live) || (ord[a.t] - ord[b.t]); });
+    out.push({ provider: p, at: e.at, c: e.c, live_rm: lr, live_up: lu, items: e.items.slice(0, 60) });
+  });
+  return { ok: true, providers: out, auto: svcAutoInfo_() };
+}
+
+// ---------- সাপ্তাহিক অটো-সংগ্রহ: রোজ ভোর ৩টায় চলে, ৭ দিনের পুরনো সর্বোচ্চ ৩টা প্রভাইডার সংগ্রহ করে ----------
+function svcTrig_(on) {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === "svcAutoRun") ScriptApp.deleteTrigger(t); });
+  if (on) ScriptApp.newTrigger("svcAutoRun").timeBased().everyDays(1).atHour(3).create();
+}
+function svcAutoInstall() { svcTrig_(true); }   // দরকার হলে এডিটর থেকে একবার চালান (অনুমতির জন্য)
+function svcAutoInfo_() {
+  var on = false;
+  try { ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === "svcAutoRun") on = true; }); } catch (e) { on = null; }
+  return { on: on, last: PropertiesService.getScriptProperties().getProperty("SVC_AUTO_LAST") || "" };
+}
+function svcAutoSet_(d) {
+  try { svcTrig_(!!d.on); }
+  catch (e) { return { ok: false, error: "trigger_failed", message: "অনুমতি লাগবে: Apps Script এডিটরে svcAutoInstall ফাংশনটা একবার Run করুন" }; }
+  return { ok: true, auto: svcAutoInfo_() };
+}
+function svcAutoRun() {
+  var st = svcState_(), t0 = Date.now(), due = [], done = [];
+  SVC_ALLOWED_.forEach(function (p) {
+    var at = st[p] && st[p].at, age = at ? (t0 - new Date(String(at).replace(" ", "T") + "+06:00").getTime()) / 864e5 : 99;
+    if (!(age < 7)) due.push({ p: p, age: age });
+  });
+  due.sort(function (a, b) { return b.age - a.age; });
+  due.slice(0, 3).forEach(function (x) {
+    if (Date.now() - t0 > 240000) return;
+    try { if (svcCollect_(x.p).ok) done.push(x.p); } catch (e) {}
+  });
+  PropertiesService.getScriptProperties().setProperty("SVC_AUTO_LAST", Utilities.formatDate(new Date(), "Asia/Dhaka", "yyyy-MM-dd HH:mm") + " · " + done.length + "/" + due.length);
+  if (!done.length) return;
+  try {
+    var a = 0; svcChanges_().providers.forEach(function (x) { if (done.indexOf(x.provider) >= 0) a += x.live_rm + x.live_up; });
+    if (a && OWNER_EMAIL) MailApp.sendEmail(OWNER_EMAIL, "সার্ভিস স্টুডিও: চালু সার্ভিসে পরিবর্তন", a + "টি চালু সার্ভিসে দাম বেড়েছে বা প্রভাইডার থেকে বাদ পড়েছে। স্টুডিও > পরিবর্তন দেখুন।");
+  } catch (e) {}
+}
+
+// ================= দাম তুলনা (১০ প্রভাইডারে একসাথে খোঁজা, সস্তা আগে) =================
+function svcCompare_(d) {
+  var q = String(d.q || "").toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (q.join("").length < 2) return { ok: true, rows: [], total: 0 };
+  var cmap = svcCatMap_(), meta = getServiceMeta_(), live = {}, hid = {}, sc = {}, spd = svcSpd_(), fx = svcFx_(), tiers = null, all = [];
+  meta.custom.forEach(function (c) { if (c.category) sc[c.category] = 1; if (!c.ov) live[String(c.code)] = c; });
+  meta.hidden.forEach(function (c) { hid[String(c)] = 1; });
+  try { tiers = ptTiersLoad_(); } catch (e) {}
+  SVC_ALLOWED_.forEach(function (p) {
+    (svcRead_(p) || []).forEach(function (r) {
+      var h = (r.name + " " + r.category).toLowerCase();
+      for (var i = 0; i < q.length; i++) if (h.indexOf(q[i]) < 0) return;
+      if (d.refill && r.refill !== "1") return;
+      all.push(r);
+    });
+  });
+  all.sort(function (a, b) { return Number(a.rate) - Number(b.rate); });
+  var rows = all.slice(0, 60);
+  rows.forEach(function (r) {
+    var c = live[r.service_id]; r.state = "off";
+    if (c) { if (!c.provider || c.provider === r.provider) r.state = hid[r.service_id] ? "off" : "on"; else { r.state = "conflict"; r.conflict_with = c.provider; } }
+    r.spd = spd[r.service_id] || null; r.suggest = svcSuggest_(Number(r.rate), tiers, fx); r.tidy = svcTidy_(r, cmap);
+  });
+  return { ok: true, total: all.length, rows: rows, fx: fx, site_categories: Object.keys(sc).sort() };
+}
+
+// ================= বাল্ক অন/অফ (একবারেই সেভ) =================
+function svcBulk_(d) {
+  var provider = String(d.provider || ""), codes = (d.codes || []).map(String).slice(0, 100), meta = getServiceMeta_(), by = {}, ok = 0, skip = 0, tiers = null, fx = svcFx_();
+  (svcRead_(provider) || []).forEach(function (r) { by[r.service_id] = r; });
+  try { tiers = ptTiersLoad_(); } catch (e) {}
+  var cat = String(d.category || "").trim(), mk = (d.markup === "" || d.markup == null) ? null : Number(d.markup);
+  var cmap = svcCatMap_();
+  codes.forEach(function (code) {
+    var prev = null; meta.custom.forEach(function (c) { if (String(c.code) === code && !c.ov) prev = c; });
+    if (prev && prev.provider && prev.provider !== provider) { skip++; return; }
+    if (!d.on) {
+      if (!prev) { skip++; return; }
+      if (meta.hidden.indexOf(code) === -1) meta.hidden.push(code);
+      markServiceRemoved_(meta, code, "hide"); logServiceEvent_(code, "hide", {}, "service_studio"); ok++; return;
+    }
+    var row = by[code]; if (!row) { skip++; return; }
+    var rm = meta.removed[code]; if (rm && rm.provider && rm.provider !== provider) rm = null;
+    if (rm && !d.force) { skip++; return; }
+    var usd = Math.round(Number(row.rate) * 1e6) / 1e6;   // প্রভাইডারের রেটই বসবে; মার্কআপ সাইট নিজে দেবে if (!(usd > 0)) { skip++; return; }
+    var t = svcTidy_(row, cmap);
+    var entry = { code: code, name: t.name.substring(0, 120), platform: t.plat, category: cat || t.cat, tags: [], pricePerK: "$" + usd,
+      min: Number(row.min) || 10, max: Number(row.max) || 10000, popular: false, provider: provider };
+    if (row.refill === "1") entry.refill = "yes";
+    meta.custom = meta.custom.filter(function (c) { return String(c.code) !== code; }); meta.custom.push(entry);
+    meta.hidden = meta.hidden.filter(function (c) { return String(c) !== code; }); delete meta.removed[code];
+    logServiceEvent_(code, "add", entry, "service_studio"); ok++;
+  });
+  if (ok) saveServiceMeta_(meta);
+  return { ok: true, done: ok, skipped: skip };
+}
+
+
+// ================= নাম/ক্যাটেগরি সাজানো (সাইটের নিজস্ব ছাঁচ) =================
+// ক্যাটেগরি = "প্ল্যাটফর্ম + ধরন" (যেমন Instagram Followers)
+// সার্ভিসের নাম = "প্ল্যাটফর্ম ধরন – ট্যাগ · ট্যাগ" (যেমন Instagram Followers – Real · Non-Drop · 30D Refill)
+// নতুন প্ল্যাটফর্ম/ধরন যোগ করতে নিচের দুই তালিকায় লাইন বাড়ান: [দেখানোর নাম, সাইটের platform কী, regex]
+var SVC_PLAT_ = [
+  ["Instagram", "instagram", /insta|\big\b/i], ["Facebook", "facebook", /facebook|\bfb\b/i], ["TikTok", "tiktok", /tik.?tok/i],
+  ["YouTube", "youtube", /youtube|\byt\b/i], ["Telegram", "telegram", /telegram|\btg\b/i], ["Twitter / X", "twitter", /twitter|\bx\b|tweet/i],
+  ["WhatsApp", "whatsapp", /whatsapp/i], ["Threads", "other", /threads/i], ["Spotify", "other", /spotify/i], ["LinkedIn", "other", /linkedin/i],
+  ["Snapchat", "other", /snap/i], ["Pinterest", "other", /pinterest/i], ["Discord", "other", /discord/i], ["Twitch", "other", /twitch/i],
+  ["Website Traffic", "other", /traffic|website|web ?visit/i]
+];
+var SVC_TYPE_ = [
+  ["Story Views", /story|stories/i], ["Live Views", /\blive\b/i], ["Watch Time", /watch.?(time|hour)/i], ["Subscribers", /subscri/i],
+  ["Members", /member|joiner/i], ["Comments", /comment/i], ["Shares", /share|repost|retweet/i], ["Saves", /\bsave|bookmark/i],
+  ["Reactions", /reaction|\blove\b|haha|\bwow\b/i], ["Likes", /like|heart/i], ["Views", /view|impression|\breach\b|\bplays?\b|stream|listen/i],
+  ["Followers", /follow/i], ["Traffic", /traffic|visit/i]
+];
+function svcPick_(list, text) {
+  for (var i = 0; i < list.length; i++) { var re = list[i][list[i].length - 1]; if (re.test(text)) return list[i]; }
+  return null;
+}
+function svcClean_(t, keep) {
+  var s = String(t || "").replace(/[\u{1F000}-\u{1FFFF}\u{2190}-\u{2BFF}\uFE0F\u200D\u20E3]/gu, " ");
+  s = s.replace(/[\[\(\{]([^\]\)\}]*)[\]\)\}]/g, function (m, i) {
+    return keep && /\d/.test(i) && /min|hour|hr|day|%|\d\s?[kKmMdDhH]\b/i.test(i) && !/refill|drop/i.test(i) ? " (" + i.trim() + ") " : " ";
+  });
+  return s.replace(/[|•~*_=#>]+/g, " ").replace(/\s+/g, " ").replace(/^[\s\-–—:.]+|[\s\-–—:.]+$/g, "");
+}
+function svcTags_(t, refillFlag) {
+  var o = [], m;
+  if (/\bhq\b|high.?quality|premium/i.test(t)) o.push("HQ"); else if (/\breal\b|organic/i.test(t)) o.push("Real");
+  m = t.match(/\b(usa|uk|india|indian|bangladesh|bd|turkey|brazil|arab|global|worldwide)\b/i);
+  if (m) o.push(m[1].length <= 3 ? m[1].toUpperCase() : m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase());
+  if (/non.?drop|no.?drop|\bnd\b/i.test(t)) o.push("Non-Drop");
+  var tr = t.replace(/\b(no|non|without)[\s\-]?refill\b/ig, " ");
+  if (/refill|♻|lifetime|\blt\b|\br\d{2,3}\b/i.test(tr) || refillFlag) {
+    m = tr.match(/(\d{2,3})\s*(?:d|days?)\b|\br(\d{2,3})\b/i);
+    o.push((m ? (m[1] || m[2]) + "D " : (/lifetime|\blt\b/i.test(tr) ? "Lifetime " : "")) + "Refill");
+  }
+  m = t.match(/(\d+)\s*(minutes?|mins?|hours?|hrs?)\b/i);
+  if (m) o.push(m[1] + (/^m/i.test(m[2]) ? " Min" : " Hr"));
+  if (/instant|super.?fast|\bfast\b/i.test(t)) o.push("Fast");
+  return o.slice(0, 4);
+}
+// r = CSV সারি ({provider, name, category, refill}); map = শেখা ক্যাটেগরি-তালিকা। ফেরত: {name, cat, plat}
+function svcTidy_(r, map) {
+  var c0 = String(r.category || ""), n0 = String(r.name || ""), all = c0 + " " + n0;
+  var P = svcPick_(SVC_PLAT_, c0) || svcPick_(SVC_PLAT_, n0), T = svcPick_(SVC_TYPE_, c0) || svcPick_(SVC_TYPE_, n0);
+  var mapped = map && map[(r.provider || "") + "|" + c0], base = (P && T) ? P[0] + " " + T[0] : "";
+  var cat = mapped || base || svcClean_(c0) || "Other", name;
+  if (base) { var tg = svcTags_(all, String(r.refill) === "1"); name = base + (tg.length ? " – " + tg.join(" · ") : ""); }
+  else name = svcClean_(n0, true) || n0;
+  return { name: name, cat: cat, plat: P ? P[1] : "other" };
+}
+
+// ---------- শেখা ক্যাটেগরি: আপনি যে নাম দিয়ে চালু করেন, পরেরবার সেটাই প্রস্তাব হয় ----------
+function svcCatFile_() { var it = svcFolder_().getFilesByName("svc_catmap.json"); return it.hasNext() ? it.next() : null; }
+function svcCatMap_() { try { var f = svcCatFile_(); return f ? JSON.parse(f.getBlob().getDataAsString("UTF-8")) : {}; } catch (e) { return {}; } }
+function svcCatLearn_(provider, raw, cat) {
+  if (!provider || !raw || !cat) return;
+  var m = svcCatMap_(), k = provider + "|" + raw; if (m[k] === cat) return; m[k] = cat;
+  var t = JSON.stringify(m), f = svcCatFile_(); if (f) f.setContent(t); else svcFolder_().createFile("svc_catmap.json", t, MimeType.PLAIN_TEXT);
+}
+
+// ---------- সাইটে চালু সার্ভিসের নাম সাজানোর তালিকা ও প্রয়োগ ----------
+function svcTidyList_() {
+  var meta = getServiceMeta_(), map = svcCatMap_(), cache = {}, hid = {}, out = [];
+  meta.hidden.forEach(function (c) { hid[String(c)] = 1; });
+  meta.custom.forEach(function (c) {
+    if (out.length >= 300 || hid[String(c.code)] || c.ov) return;
+    var p = c.provider || "", raw = null;
+    if (p && svcAllowed_(p)) {
+      if (!cache[p]) { cache[p] = {}; (svcRead_(p) || []).forEach(function (r) { cache[p][r.service_id] = r; }); }
+      raw = cache[p][String(c.code)];
+    }
+    var t = svcTidy_(raw || { provider: p, name: c.name, category: c.category, refill: c.refill === "yes" ? "1" : "0" }, map);
+    if (t.name !== c.name || t.cat !== c.category) out.push({ code: String(c.code), provider: p, cn: c.name, cc: c.category, nn: t.name, nc: t.cat });
+  });
+  return { ok: true, rows: out };
+}
+function svcTidyApply_(d) {
+  var meta = getServiceMeta_(), by = {}, n = 0;
+  meta.custom.forEach(function (c) { by[String(c.code)] = c; });
+  (d.items || []).slice(0, 300).forEach(function (it) {
+    var c = by[String(it.code)]; if (!c) return;
+    c.name = String(it.name || c.name).substring(0, 120); c.category = String(it.cat || c.category).substring(0, 80); n++;
+  });
+  if (n) saveServiceMeta_(meta);
+  return { ok: true, done: n };
+}
+
+
+// ================= প্ল্যাটফর্ম চেনা (প্রভাইডারের ক্যাটেগরি থেকে) =================
+var SVC_STOP_ = /^(cheap|cheapest|best|premium|new|special|bulk|hq|vip|server|services?|offer|promo|speed|fast|instant|real|non|usa|global|top|mix|other|others|smm|panel|packages?|all|any|old|updated|hot|sale|quality|high|low|slow|stable|exclusive|limited|test|custom|auto|manual|\d+)$/i;
+function svcPlatOf_(r) {
+  var c = String(r.category || ""), n = String(r.name || ""), P = svcPick_(SVC_PLAT_, c) || svcPick_(SVC_PLAT_, n);
+  if (P) return P[0];
+  var seg = svcClean_(c).split(/\s[-–—|:\/>»]+\s|[|:»]/)[0].trim(), w = seg.split(/\s+/);
+  if (seg.length >= 2 && seg.length <= 24 && w.length <= 2 && !SVC_STOP_.test(w[0]) && !svcPick_(SVC_TYPE_, seg)) return seg.replace(/\b\w/g, function (x) { return x.toUpperCase(); });
+  return "Other";
+}
+function svcSiteLabel_(slug) {
+  slug = String(slug || "").toLowerCase();
+  if (!slug || slug === "other") return "Other";
+  for (var i = 0; i < SVC_PLAT_.length; i++) if (SVC_PLAT_[i][1] === slug) return SVC_PLAT_[i][0];
+  return slug.charAt(0).toUpperCase() + slug.slice(1);
+}
+function svcStatFile_() { var it = svcFolder_().getFilesByName("svc_stats.json"); return it.hasNext() ? it.next() : null; }
+function svcStatsLoad_() { try { var f = svcStatFile_(); return f ? JSON.parse(f.getBlob().getDataAsString("UTF-8")) : {}; } catch (e) { return {}; } }
+function svcStatsSave_(o) { var t = JSON.stringify(o), f = svcStatFile_(); if (f) f.setContent(t); else svcFolder_().createFile("svc_stats.json", t, MimeType.PLAIN_TEXT); }
+function svcStatCalc_(rows) { var o = {}; rows.forEach(function (r) { var l = svcPlatOf_(r); o[l] = (o[l] || 0) + 1; }); return o; }
+function svcStats_() {
+  var st = svcStatsLoad_(), dirty = false;
+  SVC_ALLOWED_.forEach(function (p) { if (!st[p]) { var rows = svcRead_(p); if (rows) { st[p] = svcStatCalc_(rows); dirty = true; } } });
+  if (dirty) svcStatsSave_(st);
+  return st;
+}
+
+// ---------- প্ল্যাটফর্ম হাব: লোগো + কতগুলো সার্ভিস (১০ প্রভাইডার) + সাইটে কতগুলো চালু ----------
+function svcPlatforms_() {
+  var st = svcStats_(), tot = {}, site = {}, keys = {};
+  SVC_ALLOWED_.forEach(function (p) { Object.keys(st[p] || {}).forEach(function (l) { tot[l] = (tot[l] || 0) + st[p][l]; }); });
+  svcSiteAll_().forEach(function (r) { if (r.state === "on") site[r.platform_label] = (site[r.platform_label] || 0) + 1; });
+  Object.keys(tot).concat(Object.keys(site)).forEach(function (k) { keys[k] = 1; });
+  var out = Object.keys(keys).map(function (k) { return { label: k, total: tot[k] || 0, site: site[k] || 0 }; })
+    .sort(function (a, b) { return (b.total + b.site * 3) - (a.total + a.site * 3); });
+  return { ok: true, platforms: out };
+}
+// ---------- একটা প্ল্যাটফর্মের সব সার্ভিস (সব প্রভাইডারে), সস্তা আগে ----------
+function svcByPlatform_(d) {
+  var label = String(d.label || ""), q = String(d.q || "").toLowerCase().trim().split(/\s+/).filter(Boolean), type = String(d.type || ""), fl = String(d.state || "all");
+  var cmap = svcCatMap_(), meta = getServiceMeta_(), live = {}, hid = {}, sc = {}, spd = svcSpd_(), fx = svcFx_(), types = {}, all = [];
+  meta.custom.forEach(function (c) { if (c.category) sc[c.category] = 1; if (!c.ov) live[String(c.code)] = c; });
+  meta.hidden.forEach(function (c) { hid[String(c)] = 1; });
+  SVC_ALLOWED_.forEach(function (p) {
+    (svcRead_(p) || []).forEach(function (r) {
+      if (svcPlatOf_(r) !== label) return;
+      var h = (r.name + " " + r.service_id + " " + r.category).toLowerCase();
+      for (var i = 0; i < q.length; i++) if (h.indexOf(q[i]) < 0) return;
+      var T = svcPick_(SVC_TYPE_, r.category) || svcPick_(SVC_TYPE_, r.name), tl = T ? T[0] : "Other";
+      types[tl] = (types[tl] || 0) + 1;
+      if (type && tl !== type) return;
+      var c = live[r.service_id]; r.state = "off";
+      if (c) { if (!c.provider || c.provider === r.provider) r.state = hid[r.service_id] ? "off" : "on"; else { r.state = "conflict"; r.conflict_with = c.provider; } }
+      if (fl !== "all" && r.state !== fl) return;
+      all.push(r);
+    });
+  });
+  all.sort(function (a, b) { return Number(a.rate) - Number(b.rate); });
+  var off = Math.max(0, Number(d.offset) || 0), lim = Math.min(80, Number(d.limit) || 40), rows = all.slice(off, off + lim);
+  rows.forEach(function (r) { r.spd = spd[r.service_id] || null; r.suggest = svcSuggest_(Number(r.rate)); r.tidy = svcTidy_(r, cmap); });
+  var tl2 = Object.keys(types).map(function (k) { return [k, types[k]]; }).sort(function (a, b) { return b[1] - a[1]; });
+  return { ok: true, total: all.length, rows: rows, types: tl2, fx: fx, site_categories: Object.keys(sc).sort() };
+}
+
+// ================= সাইটের সার্ভিস ম্যানেজমেন্ট (নাম বদল / লুকানো / ফেরানো) =================
+// সাইটের তালিকা = packages-full.json (পুরনো) + স্টুডিও/বটে যোগ করা (custom)। একই কোডের custom এন্ট্রি পুরনোটার ওপর বসে (সাইট এভাবেই মেশায়),
+// তাই পুরনো সার্ভিসের নাম বদলাতে {code, name, ov:1} এন্ট্রি বসানো হয়।
+function svcSitePkgs_() {
+  try { var r = UrlFetchApp.fetch(PACKAGES_JSON_URL, { muteHttpExceptions: true, followRedirects: true }); return r.getResponseCode() < 300 ? (parsePkgs_(r.getContentText()) || []) : []; } catch (e) { return []; }
+}
+function svcSiteAll_() {
+  var meta = getServiceMeta_(), hid = {}, cust = {}, seen = {}, out = [];
+  meta.hidden.forEach(function (c) { hid[String(c)] = 1; });
+  meta.custom.forEach(function (c) { if (c && c.code != null) cust[String(c.code)] = c; });
+  function mk(m, src, ov) {
+    var cost = Number(String(m.pricePerK == null ? "" : m.pricePerK).replace(/[^0-9.]/g, "")) || 0, code = String(m.code);
+    return { code: code, name: String(m.name || ""), category: String(m.category || ""), platform: String(m.platform || ""), platform_label: svcSiteLabel_(m.platform),
+      cost: cost, sell: Math.round(svcSellBdt_(cost) * 100) / 100, min: Number(m.min) || 0, max: Number(m.max) || 0, src: src, ov: ov ? 1 : 0, state: hid[code] ? "off" : "on" };
+  }
+  svcSitePkgs_().forEach(function (p) {
+    if (!p || p.code == null) return;
+    var code = String(p.code), c = cust[code]; seen[code] = 1;
+    out.push(mk(c ? Object.assign({}, p, c) : p, "static", !!c));
+  });
+  meta.custom.forEach(function (c) { if (c && c.code != null && !seen[String(c.code)]) out.push(mk(c, "custom", false)); });
+  return out;
+}
+function svcSiteListAct_(d) {
+  var q = String(d.q || "").toLowerCase().trim(), pl = String(d.platform || ""), cat = String(d.category || ""), st = String(d.state || "all"), plc = {}, cats = {};
+  var base = svcSiteAll_().filter(function (r) {
+    return (st === "all" || r.state === st) && (!q || (r.name + " " + r.code + " " + r.category).toLowerCase().indexOf(q) >= 0);
+  });
+  base.forEach(function (r) { plc[r.platform_label] = (plc[r.platform_label] || 0) + 1; });
+  var f = base.filter(function (r) { return !pl || r.platform_label === pl; });
+  f.forEach(function (r) { if (r.category) cats[r.category] = 1; });
+  if (cat) f = f.filter(function (r) { return r.category === cat; });
+  var off = Math.max(0, Number(d.offset) || 0), lim = Math.min(100, Number(d.limit) || 40), cmap = svcCatMap_(), rows = f.slice(off, off + lim);
+  rows.forEach(function (r) { r.tidy = svcTidy_({ provider: "", name: r.name, category: r.category, refill: 0 }, cmap); });
+  return { ok: true, total: f.length, rows: rows, categories: Object.keys(cats).sort(),
+    platforms: Object.keys(plc).map(function (k) { return { label: k, n: plc[k] }; }).sort(function (a, b) { return b.n - a.n; }) };
+}
+function svcSiteEdit_(d) {
+  var code = String(d.code || "").trim(), meta = getServiceMeta_(), prev = null;
+  if (!code) return { ok: false, error: "code_required" };
+  meta.custom.forEach(function (c) { if (String(c.code) === code) prev = c; });
+  var name = String(d.name || "").trim().substring(0, 120), cat = String(d.category || "").trim().substring(0, 80), plat = String(d.platform || "").toLowerCase().trim();
+  if (!name) return { ok: false, error: "name_required" };
+  if (prev) { prev.name = name; if (cat) prev.category = cat; if (plat) prev.platform = plat; }
+  else { var o = { code: code, name: name, ov: 1 }; if (cat) o.category = cat; if (plat) o.platform = plat; meta.custom.push(o); }
+  saveServiceMeta_(meta); logServiceEvent_(code, "edit", { name: name, category: cat, platform: plat }, "service_studio");
+  return { ok: true };
+}
+function svcSiteHide_(d) {
+  var meta = getServiceMeta_(), by = {}, n = 0;
+  svcSiteAll_().forEach(function (r) { by[r.code] = r; });
+  (d.codes || []).map(String).slice(0, 200).forEach(function (code) {
+    var r = by[code]; if (!r) return;
+    if (d.on) {
+      meta.hidden = meta.hidden.filter(function (c) { return String(c) !== code; }); delete meta.removed[code];
+      logServiceEvent_(code, "add", { name: r.name, platform: r.platform, category: r.category }, "service_studio");
+    } else {
+      if (meta.hidden.indexOf(code) === -1) meta.hidden.push(code);
+      meta.removed[code] = { name: r.name.substring(0, 120), platform: r.platform, category: r.category, provider: "", at: new Date().toISOString(), via: "studio" };
+      logServiceEvent_(code, "remove", meta.removed[code], "service_studio");
+    }
+    n++;
+  });
+  if (n) saveServiceMeta_(meta);
+  return { ok: true, done: n };
+}
+function svcSiteBulk_(d) {
+  var meta = getServiceMeta_(), by = {}, cust = {}, n = 0, cmap = svcCatMap_(), cat = String(d.category || "").trim(), plat = String(d.platform || "").toLowerCase().trim();
+  svcSiteAll_().forEach(function (r) { by[r.code] = r; });
+  meta.custom.forEach(function (c) { cust[String(c.code)] = c; });
+  (d.codes || []).map(String).slice(0, 200).forEach(function (code) {
+    var r = by[code]; if (!r) return;
+    var name = r.name, ct = r.category;
+    if (d.tidy) { var t = svcTidy_({ provider: "", name: r.name, category: r.category, refill: 0 }, cmap); name = t.name; ct = t.cat; }
+    if (cat) ct = cat;
+    var c = cust[code]; if (!c) { c = { code: code, ov: 1 }; meta.custom.push(c); cust[code] = c; }
+    c.name = name.substring(0, 120); c.category = ct.substring(0, 80); if (plat) c.platform = plat;
+    n++;
+  });
+  if (n) saveServiceMeta_(meta);
+  return { ok: true, done: n };
+}

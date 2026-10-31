@@ -22,7 +22,7 @@ const authFail=e=>{if(e&&(e.code==='unauthorized'||e.code==='locked_out')){logou
 const sel=new Set();let cq={q:'',refill:false},cn=0;
 const fmtT=s=>s<90?bn(Math.round(s))+' সে.':s<5400?bn(Math.round(s/60))+' মি.':bn(Math.round(s/360)/10)+' ঘণ্টা';
 const spdTag=r=>r.spd?`<div class="sub ${r.spd.m<=1800?'ok':r.spd.m>=21600?'hi':''}">⚡ গড় ${fmtT(r.spd.m)} · ${bn(r.spd.n)}টি অর্ডার${r.spd.f?' · ব্যর্থ '+bn(r.spd.f):''}</div>`:'';
-const nav=a=>`<div class="chips" role="navigation">${[['','প্রভাইডার'],['cmp','তুলনা'],['chg','পরিবর্তন'],['tidy','সাজান']].map(x=>`<a class="chip" href="#${x[0]}" aria-current="${a===x[0]}">${x[1]}</a>`).join('')}</div>`;
+const nav=a=>`<div class="chips" role="navigation">${[['','প্রভাইডার'],['plat','প্ল্যাটফর্ম'],['mng','ম্যানেজ'],['cmp','তুলনা'],['chg','পরিবর্তন'],['tidy','সাজান']].map(x=>`<a class="chip" href="#${x[0]}" aria-current="${a===x[0]}">${x[1]}</a>`).join('')}</div>`;
 /* ---------- হোম: প্রভাইডার তালিকা ---------- */
 async function home(){
   $('#title').textContent='সার্ভিস স্টুডিও';$('#back').hidden=true;cur=null;
@@ -154,13 +154,100 @@ async function tidy(){
       try{const x=await api('svc_tidy_apply',{items});toast(bn(x.done)+'টি সাজানো হয়েছে');tidy()}catch(e){if(!authFail(e))toast(e.message);ta.disabled=false}};
   }catch(e){if(!authFail(e))el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`}}
 
+/* ---------- লোগো ---------- */
+const BR={instagram:'#C13584',facebook:'#1877F2',tiktok:'#111',youtube:'#F00',telegram:'#229ED9',twitter:'#000',whatsapp:'#25D366',spotify:'#1DB954',linkedin:'#0A66C2',snapchat:'#E6B800',pinterest:'#E60023',discord:'#5865F2',twitch:'#9146FF',threads:'#000',shopee:'#EE4D2D',reddit:'#FF4500',soundcloud:'#F50',website:'#4F46E5',other:'#6B7280'};
+const GL={instagram:'<rect x="7" y="7" width="18" height="18" rx="5.5" fill="none" stroke="#fff" stroke-width="2.2"/><circle cx="16" cy="16" r="4" fill="none" stroke="#fff" stroke-width="2.2"/><circle cx="21.2" cy="10.8" r="1.3" fill="#fff"/>',
+youtube:'<rect x="5" y="9" width="22" height="14" rx="4.5" fill="#fff"/><path d="M13.5 12.5v7l6-3.5z" fill="#F00"/>',
+telegram:'<path d="M6.5 15.5l18-7-3 15-5.5-4-3 3-.8-5z" fill="#fff"/>',
+twitter:'<path d="M9 9l14 14M23 9L9 23" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>',
+facebook:'<path d="M17.5 26v-9h3l.5-3.5h-3.5v-2c0-1 .4-1.7 1.8-1.7H21V6.7C20.6 6.6 19.6 6.5 18.5 6.5c-2.6 0-4.3 1.6-4.3 4.4v2.6h-3V17h3v9z" fill="#fff"/>',
+tiktok:'<path d="M17.5 7v12.3a3.6 3.6 0 11-3.6-3.6M17.5 7c.3 2.6 2 4.2 4.6 4.4" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>',
+whatsapp:'<path d="M16 6.5a9.5 9.5 0 00-8.1 14.4L6.5 25.5l4.7-1.2A9.5 9.5 0 1016 6.5z" fill="none" stroke="#fff" stroke-width="2.2"/><path d="M12.5 12.5c.5 3 2.7 5.2 5.8 6l1.2-1.6-2.2-1.1-.9.9a5 5 0 01-2.1-2.1l.9-.9-1.1-2.2z" fill="#fff"/>'};
+function logo(label,sz){const k=String(label||'').toLowerCase().replace(/[^a-z]/g,''),key=/twitter|^x$/.test(k)?'twitter':k;
+  const bg=BR[key]||('hsl('+(([...k].reduce((a,c)=>a+c.charCodeAt(0),0)*47)%360)+',55%,42%)');
+  const g=GL[key]||`<text x="16" y="21.5" text-anchor="middle" font-size="15" font-weight="700" fill="#fff" font-family="Inter,sans-serif">${esc(String(label||'?').trim().charAt(0).toUpperCase())}</text>`;
+  return `<svg class="lg" width="${sz||44}" height="${sz||44}" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="${bg}"/>${g}</svg>`}
+
+/* ---------- প্ল্যাটফর্ম হাব ---------- */
+let ps={q:'',type:'',state:'all',off:0};
+async function plat(){
+  cur=null;$('#title').textContent='প্ল্যাটফর্ম';$('#back').hidden=true;const el=$('#main');el.innerHTML=nav('plat')+'<div class="sk"></div>';
+  try{const d=await api('svc_platforms');
+    el.innerHTML=nav('plat')+'<p class="sub">লোগোতে ট্যাপ করুন — ১০ প্রভাইডারের ওই প্ল্যাটফর্মের সব সার্ভিস আসবে।</p><div class="pg">'+d.platforms.map(p=>`<a class="pt" href="#pl=${encodeURIComponent(p.label)}">${logo(p.label,52)}<b>${esc(p.label)}</b><span class="sub">${bn(p.total)}টি · সাইটে ${bn(p.site)}</span></a>`).join('')+'</div>';
+  }catch(e){if(!authFail(e))el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`}}
+function platPage(label){
+  cur=null;$('#title').textContent=label;$('#back').hidden=false;const el=$('#main');ps={q:'',type:'',state:'all',off:0};
+  el.innerHTML=`<div class="phd">${logo(label,48)}<div><b>${esc(label)}</b><div class="sub" id="pcnt"></div></div></div><div class="bar"><input id="pq" type="search" placeholder="নাম বা আইডি খুঁজুন" aria-label="খুঁজুন"></div><div class="chips" id="pty"></div><div class="chips">${[['all','সব'],['on','চালু'],['off','বন্ধ']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${s[0]==='all'}">${s[1]}</button>`).join('')}</div><div class="list" id="pl"></div><div id="pmore"></div>`;
+  $('#pq').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{ps.q=e.target.value;pload(label)},350)};
+  el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ps.state=b.dataset.s;el.querySelectorAll('[data-s]').forEach(x=>x.setAttribute('aria-pressed',x===b));pload(label)});
+  pload(label)}
+async function pload(label,more){
+  if(!more)ps.off=0;const box=$('#pl');if(!more)box.innerHTML='<div class="sk"></div>';
+  try{const d=await api('svc_by_platform',{label,q:ps.q,type:ps.type,state:ps.state,offset:ps.off,limit:40});d.cmp=1;window._fx=d.fx;window._sc=d.site_categories;
+    $('#pcnt').textContent=`মোট ${bn(d.total)}টি · সস্তা আগে`;
+    $('#pty').innerHTML=`<button class="chip" data-t="" aria-pressed="${!ps.type}">সব ধরন</button>`+d.types.map(t=>`<button class="chip" data-t="${esc(t[0])}" aria-pressed="${ps.type===t[0]}">${esc(t[0])} ${bn(t[1])}</button>`).join('');
+    $('#pty').querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{ps.type=b.dataset.t;pload(label)});
+    if(!more)box.innerHTML='';if(!d.rows.length&&!more)box.innerHTML='<div class="card empty">কিছু পাওয়া যায়নি</div>';
+    d.rows.forEach(r=>box.appendChild(row(r,d)));ps.off+=d.rows.length;
+    $('#pmore').innerHTML=ps.off<d.total?'<button class="sm" id="pm" style="width:100%;margin-top:8px">আরও দেখান</button>':'';const m=$('#pm');if(m)m.onclick=()=>pload(label,true);
+  }catch(e){if(!authFail(e))box.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`}}
+
+/* ---------- সাইটের সার্ভিস ম্যানেজ: নাম বদল / লুকান / ফেরান ---------- */
+let ms={q:'',plat:'',cat:'',state:'on',off:0};const ssel=new Set();
+function mng(){
+  cur=null;$('#title').textContent='সাইটের সার্ভিস';$('#back').hidden=true;const el=$('#main');
+  el.innerHTML=nav('mng')+`<div class="chips pstrip" id="mps"></div><div class="bar"><input id="mq" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি" value="${esc(ms.q)}" aria-label="খুঁজুন"><select id="mc" aria-label="ক্যাটেগরি"></select></div><div class="chips">${[['on','চালু'],['off','লুকানো'],['all','সব']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${ms.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="msa">সব বাছুন</button></div><p class="sub" id="mcnt"></p><div class="list" id="ml"></div><div id="mmore"></div>`;
+  $('#mq').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{ms.q=e.target.value;mload()},350)};
+  $('#mc').onchange=e=>{ms.cat=e.target.value;mload()};
+  el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ms.state=b.dataset.s;el.querySelectorAll('[data-s]').forEach(x=>x.setAttribute('aria-pressed',x===b));mload()});
+  $('#msa').onclick=()=>el.querySelectorAll('.msel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange()}});
+  mload()}
+async function mload(more){
+  if(!more){ms.off=0;ssel.clear();msBar()}
+  const box=$('#ml');if(!more)box.innerHTML='<div class="sk"></div>';
+  try{const d=await api('svc_site_list',{q:ms.q,platform:ms.plat,category:ms.cat,state:ms.state,offset:ms.off,limit:40});window._mc=d.categories;
+    $('#mps').innerHTML=`<button class="chip pc" data-p="" aria-pressed="${!ms.plat}">সব</button>`+d.platforms.map(p=>`<button class="chip pc" data-p="${esc(p.label)}" aria-pressed="${ms.plat===p.label}">${logo(p.label,22)} ${esc(p.label)} ${bn(p.n)}</button>`).join('');
+    $('#mps').querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{ms.plat=b.dataset.p;ms.cat='';mload()});
+    $('#mc').innerHTML='<option value="">সব ক্যাটেগরি</option>'+d.categories.map(c=>`<option value="${esc(c)}"${c===ms.cat?' selected':''}>${esc(c)}</option>`).join('');
+    $('#mcnt').textContent=`মোট ${bn(d.total)}টি`;
+    if(!more)box.innerHTML='';if(!d.rows.length&&!more)box.innerHTML='<div class="card empty">কিছু পাওয়া যায়নি</div>';
+    d.rows.forEach(r=>box.appendChild(mrow(r)));ms.off+=d.rows.length;
+    $('#mmore').innerHTML=ms.off<d.total?'<button class="sm" id="mm" style="width:100%;margin-top:8px">আরও দেখান</button>':'';const m=$('#mm');if(m)m.onclick=()=>mload(true);
+  }catch(e){if(!authFail(e))box.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`}}
+function mrow(r){
+  const c=document.createElement('div');c.className='card svc'+(r.state==='off'?' dim':'');
+  c.innerHTML=`<div><h4><input type="checkbox" class="sel msel" aria-label="নির্বাচন">${esc(r.name)}</h4><div class="sub">${logo(r.platform_label,18)} ${esc(r.platform_label)} · ID <b>${esc(r.code)}</b> · ${esc(r.category)}</div><div class="sub">খরচ <b>$${esc(r.cost)}</b> · সাইটে ≈ <b>৳${bn(r.sell)}</b> · ${bn(r.min)}–${bn(r.max)}${r.ov?' · নাম বদলানো':''}${r.state==='off'?' · লুকানো':''}</div></div><div class="acts2"><button class="sm" data-e>সম্পাদনা</button><button class="sm" data-h>${r.state==='off'?'ফেরান':'লুকান'}</button></div>`;
+  c.querySelector('.msel').onchange=e=>{e.target.checked?ssel.add(r):ssel.delete(r);msBar()};
+  c.querySelector('[data-e]').onclick=()=>editSheet(r);
+  c.querySelector('[data-h]').onclick=async ev=>{if(busy)return;if(r.state!=='off'&&!confirm('এটা সাইট থেকে লুকানো হবে। চালিয়ে যাবেন?'))return;busy=true;ev.target.disabled=true;
+    try{await api('svc_site_hide',{codes:[r.code],on:r.state==='off'});toast(r.state==='off'?'ফিরিয়ে আনা হয়েছে':'লুকানো হয়েছে');mload()}catch(e){if(!authFail(e))toast(e.message);ev.target.disabled=false}busy=false};
+  return c}
+function editSheet(r){
+  let dlg=$('#esh');if(!dlg){dlg=document.createElement('dialog');dlg.id='esh';document.body.appendChild(dlg)}
+  const pls=[...new Set([r.platform,...PLAT.map(p=>p[0])].filter(Boolean))];
+  dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 8px">সম্পাদনা · ID ${esc(r.code)}</h3><label for="enm">সার্ভিসের নাম</label><input id="enm" maxlength="120" value="${esc(r.name)}"><label for="epl">প্ল্যাটফর্ম</label><select id="epl">${pls.map(p=>`<option${p===r.platform?' selected':''}>${esc(p)}</option>`).join('')}</select><label for="ect">ক্যাটেগরি</label><input id="ect" list="ects" value="${esc(r.category)}"><datalist id="ects">${(window._mc||[]).map(c=>`<option value="${esc(c)}">`).join('')}</datalist><p id="eer" class="err" role="alert"></p><div class="acts"><button class="sm" value="cancel" formnovalidate>বাতিল</button><button class="sm" id="etd" type="button">অটো সাজান</button><button class="btn" value="ok">সংরক্ষণ</button></div></form>`;
+  $('#etd').onclick=()=>{const t=r.tidy||{};if(t.name)$('#enm').value=t.name;if(t.cat)$('#ect').value=t.cat};
+  dlg.querySelector('form').onsubmit=e=>{if(e.submitter&&e.submitter.value==='ok'&&!$('#enm').value.trim()){e.preventDefault();$('#eer').textContent='নাম দিন'}};
+  dlg.onclose=async()=>{if(dlg.returnValue!=='ok')return;
+    try{await api('svc_site_edit',{code:r.code,name:$('#enm').value,platform:$('#epl').value,category:$('#ect').value});toast('সংরক্ষিত ✔');mload()}catch(e){if(!authFail(e))toast(e.message)}};
+  dlg.showModal()}
+function msBar(){let b=$('#bulk');if(!b){b=document.createElement('div');b.id='bulk';b.className='bulk';document.body.appendChild(b)}
+  b.hidden=!ssel.size;b.innerHTML=`<b>${bn(ssel.size)}টি</b><button class="sm" data-a="hide">লুকান</button><button class="sm" data-a="show">ফেরান</button><button class="sm" data-a="cat">ক্যাটেগরি</button><button class="sm" data-a="tidy">সাজান</button><button class="sm" data-a="x" aria-label="বাতিল">✕</button>`;
+  b.querySelectorAll('[data-a]').forEach(x=>x.onclick=()=>mact(x.dataset.a))}
+async function mact(k){
+  if(k==='x'){ssel.clear();document.querySelectorAll('.msel').forEach(x=>x.checked=false);return msBar()}
+  if(busy)return;const codes=[...ssel].map(r=>r.code);if(!codes.length)return;let act='svc_site_hide',a={codes};
+  if(k==='hide'||k==='show'){a.on=k==='show';if(k==='hide'&&!confirm(bn(codes.length)+'টি সার্ভিস সাইট থেকে লুকানো হবে?'))return}
+  else{act='svc_site_bulk';if(k==='tidy'){if(!confirm(bn(codes.length)+'টির নাম ও ক্যাটেগরি অটো সাজানো হবে?'))return;a.tidy=true}else{const c=prompt('নতুন ক্যাটেগরি (সবগুলোর জন্য)','');if(!c)return;a.category=c}}
+  busy=true;try{const r=await api(act,a);toast(bn(r.done)+'টি হয়েছে');mload()}catch(e){if(!authFail(e))toast(e.message)}busy=false}
+
 /* ---------- রাউটার, লগইন, ইনস্টল ---------- */
-function route(){const h=decodeURIComponent(location.hash.replace('#',''));const bb=$('#bulk');if(bb)bb.hidden=true;sel.clear();if(h==='cmp')cmp();else if(h==='chg')chg();else if(h==='tidy')tidy();else if(h.indexOf('p=')===0){st={q:'',state:'all',cat:'',off:0};provider(h.slice(2))}else home();$('#main').focus({preventScroll:true})}
+function route(){const h=decodeURIComponent(location.hash.replace('#',''));const bb=$('#bulk');if(bb)bb.hidden=true;sel.clear();ssel.clear();if(h==='cmp')cmp();else if(h==='chg')chg();else if(h==='tidy')tidy();else if(h==='plat')plat();else if(h==='mng')mng();else if(h.indexOf('pl=')===0)platPage(h.slice(3));else if(h.indexOf('p=')===0){st={q:'',state:'all',cat:'',off:0};provider(h.slice(2))}else home();$('#main').focus({preventScroll:true})}
 function show(a){$('#login').hidden=a;$('#app').hidden=!a}
 function logout(m){token='';ls.del('pb_studio_token');show(false);$('#loginErr').textContent=m||'';$('#tok').value=''}
 $('#loginForm').onsubmit=async e=>{e.preventDefault();token=$('#tok').value.trim();const b=e.target.querySelector('button');b.disabled=true;$('#loginErr').textContent='';
   try{await api('svc_providers');ls.set('pb_studio_token',token);show(true);route()}catch(x){$('#loginErr').textContent=ERR[x.code]||('সংযোগ করা যায়নি — '+x.message)}b.disabled=false};
-$('#logout').onclick=()=>logout();$('#back').onclick=()=>{location.hash=''};
+$('#logout').onclick=()=>logout();$('#back').onclick=()=>{location.hash=location.hash.indexOf('#pl=')===0?'plat':''};
 addEventListener('hashchange',()=>token&&route());
 let dip=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e;$('#install').hidden=false});
 $('#install').onclick=async()=>{if(!dip)return;dip.prompt();await dip.userChoice;dip=null;$('#install').hidden=true};
