@@ -87,3 +87,16 @@ details{margin-top:8px}summary{cursor:pointer;min-height:44px;display:flex;align
 .catbar{display:flex;flex-direction:column;gap:8px;margin:0 0 12px;border-color:var(--pr)}.catbar .acts{margin:0}
 .sm.dng{border-color:var(--er);color:var(--er)}
 @media(min-width:1024px){.catbar{flex-direction:row;align-items:center;justify-content:space-between}.catbar .acts{flex:none}}
+
+/* AI সহকারী */
+.aifab{position:fixed;right:14px;bottom:calc(var(--bn) + 14px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;border:0;background:var(--pr);color:#fff;font-size:24px;z-index:40;box-shadow:0 6px 20px #0006;cursor:pointer}
+.aipanel{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+.aipanel header{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--cd);border-bottom:1px solid var(--bd)}.aipanel header b{flex:1}.aihs{display:flex;gap:6px}
+.aikey{padding:12px;background:var(--cd);border-bottom:1px solid var(--bd);overflow:auto;max-height:70vh}
+.aimsgs{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.am{max-width:90%;padding:10px 12px;border-radius:14px;word-break:break-word;font-size:15px}
+.am.me{align-self:flex-end;background:var(--pr);color:#fff}.am.ai{align-self:flex-start;background:var(--cd);border:1px solid var(--bd)}
+.am.tool{align-self:flex-start;font-size:12px;color:var(--mu);padding:2px 6px}.am.err{align-self:flex-start;color:var(--er);border:1px solid var(--er)}
+#aiChips{padding:0 12px;flex-wrap:wrap;overflow:visible}#aiChips .chip{white-space:normal;text-align:left;min-height:40px;padding:6px 14px;font-size:14px}
+#aiForm{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--cd);border-top:1px solid var(--bd)}#aiForm input{margin:0;flex:1}#aiForm .btn{width:auto;flex:none}
+@media(min-width:1024px){.aifab{bottom:20px}.aipanel{inset:auto 16px 16px auto;width:420px;height:min(680px,86vh);border:1px solid var(--bd);border-radius:16px;overflow:hidden;padding-top:0}}

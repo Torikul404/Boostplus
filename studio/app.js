@@ -80,7 +80,7 @@ async function provider(p,more){
 function row(r,d){
   const c=document.createElement('div');c.className='card svc';
   const sg=r.suggest?` · সাইটে ≈ <b>৳${bn(r.suggest.bdt)}</b>`:'';
-  c.innerHTML=`<div><h4>${d&&d.cmp?'':'<input type="checkbox" class="sel" aria-label="নির্বাচন">'}${esc(r.name)}</h4><div class="sub">${d&&d.cmp?'<b>'+esc(r.provider)+'</b> · ':''}ID <b>${esc(r.service_id)}</b> · ${esc(r.category)}</div><div class="sub">রেট <b>${esc(r.rate)}</b> · ${bn(r.min)}–${bn(r.max)}${r.refill==='1'?' · Refill':''}${r.cancel==='1'?' · Cancel':''}${sg}</div>${spdTag(r)}${r.tidy&&r.state!=='on'?`<div class="sub ok">সাইটে: ${esc(r.tidy.name)} · ${esc(r.tidy.cat)}</div>`:''}${r.state==='conflict'?`<div class="sub hi">জট: ${esc(r.conflict_with)}-এর সার্ভিস হিসেবে আছে</div>`:''}</div>
+  c.innerHTML=`<div><h4>${d&&d.cmp?'':'<input type="checkbox" class="sel" aria-label="নির্বাচন">'}${esc(r.name)}</h4><div class="sub">${d&&d.cmp?'<b>'+esc(r.provider)+'</b> · ':''}ID <b>${esc(r.service_id)}</b> · ${esc(r.category)}</div><div class="sub">রেট <b>${esc(r.rate)}</b> · ${bn(r.min)}–${bn(r.max)}${r.refill==='1'?' · Refill':''}${r.cancel==='1'?' · Cancel':''}${sg}</div>${spdTag(r)}${r.tidy&&r.state!=='on'?`<div class="sub ok">সাইটে: ${esc(nice(r)||r.tidy.name)} · ${esc(r.tidy.cat)}</div>`:''}${r.state==='conflict'?`<div class="sub hi">জট: ${esc(r.conflict_with)}-এর সার্ভিস হিসেবে আছে</div>`:''}</div>
   <button class="sw" role="switch" aria-checked="${r.state==='on'}" aria-label="${esc(r.name)} সাইটে চালু/বন্ধ" ${r.state==='conflict'?'disabled':''}></button>`;
   c.querySelector('.sw').onclick=ev=>toggle(r,ev.currentTarget);
   const cb=c.querySelector('.sel');if(cb)cb.onchange=()=>{cb.checked?sel.add(r):sel.delete(r);bulkBar()};
@@ -98,7 +98,7 @@ async function toggle(r,btn){
 }
 function openSheet(r,btn,force){
   const sh=$('#sheet');$('#shN').textContent=`ID ${r.service_id} · রেট ${r.rate} · মূল: ${r.name} | ${r.category}`;
-  const t=r.tidy||{};$('#shName').value=t.name||r.name;$('#shCat').value=t.cat||r.category;
+  const t=r.tidy||{};$('#shName').value=nice(r)||t.name||r.name;$('#shCat').value=t.cat||r.category;
   $('#shPlat').innerHTML=PLAT.map(p=>`<option>${p[0]}</option>`).join('');$('#shPlat').value=t.plat||guess(r.category+' '+r.name);
   $('#shCats').innerHTML=(window._sc||[]).map(c=>`<option value="${esc(c)}">`).join('');
   $('#shPriceBdt').hidden=true;$('#shPriceUsd').hidden=true;$('#shUsd').value=r.rate;
@@ -128,7 +128,9 @@ async function bulk(k){
   if(busy)return;const codes=[...sel].map(r=>r.service_id),on=k==='on';let cat='',mk='';
   if(on){cat=prompt('ক্যাটেগরি লিখুন, অথবা ফাঁকা রাখুন (ফাঁকা = প্রতিটার নাম ও ক্যাটেগরি অটো সাজানো হবে)','');if(cat===null)return;}
   else if(!confirm(bn(codes.length)+'টি সার্ভিস সাইট থেকে লুকানো হবে?'))return;
-  busy=true;try{const r=await api('svc_bulk',{provider:cur,codes,on,category:(cat||'').trim(),markup:mk});toast(`${bn(r.done)}টি হয়েছে, ${bn(r.skipped)}টি বাদ`);sel.clear();bulkBar();provider(cur)}catch(e){if(!authFail(e))toast(e.message)}busy=false}
+  busy=true;try{const r=await api('svc_bulk',{provider:cur,codes,on,category:(cat||'').trim(),markup:mk});
+    if(on){const its=[...sel].filter(x=>x.state==='off').map(x=>({code:x.service_id,name:nice(x)||(x.tidy&&x.tidy.name)||x.name,cat:(cat||'').trim()||(x.tidy&&x.tidy.cat)||x.category}));for(const ch of chunks(its,300)){try{await api('svc_tidy_apply',{items:ch})}catch(e){}}}
+    toast(`${bn(r.done)}টি হয়েছে, ${bn(r.skipped)}টি বাদ`);sel.clear();bulkBar();provider(cur)}catch(e){if(!authFail(e))toast(e.message)}busy=false}
 
 /* ---------- দাম তুলনা ---------- */
 async function cmp(){
@@ -152,16 +154,33 @@ async function chg(){
     $('#au').onclick=async e=>{e.target.disabled=true;try{await api('svc_auto',{on:!a.on});toast('হয়েছে');chg()}catch(x){if(!authFail(x))toast(x.message);e.target.disabled=false}}
   }catch(e){if(!authFail(e))el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`}}
 
-/* ---------- নাম সাজান ---------- */
+/* ---------- নাম সাজান (সাইটের নিজস্ব ছাঁচে) ---------- */
 async function tidy(){
-  cur=null;$('#title').textContent='নাম সাজান';$('#back').hidden=true;const el=$('#main');el.innerHTML=nav('tidy')+'<div class="sk"></div>';
-  try{const d=await api('svc_tidy_list'),R=d.rows;
-    el.innerHTML=nav('tidy')+'<p class="sub">সাইটে চালু সার্ভিসের নাম ও ক্যাটেগরি একই ছাঁচে সাজানো হবে। ⚠ ক্যাটেগরির নাম বদলালে সাইটে সেই ক্যাটেগরির ক্রম/সেটিং নতুন নামে আবার ঠিক করা লাগতে পারে।</p>'+
-    (R.length?`<div class="bar"><button class="btn" id="ta">নির্বাচিতগুলো প্রয়োগ করুন (${bn(R.length)}টি)</button></div><div class="list">`+R.map((r,i)=>`<label class="card tdy"><input type="checkbox" class="sel" data-i="${i}" checked><div><div class="sub">${esc(r.provider)} · ID ${esc(r.code)}</div><div class="sub">${esc(r.cn)} · ${esc(r.cc)}</div><h4>→ ${esc(r.nn)}</h4><div class="sub ok">${esc(r.nc)}</div></div></label>`).join('')+'</div>':'<div class="card empty">সব সার্ভিস আগেই সাজানো ✔</div>');
-    const ta=$('#ta');if(ta)ta.onclick=async()=>{const items=[...el.querySelectorAll('.sel:checked')].map(x=>R[+x.dataset.i]).map(r=>({code:r.code,name:r.nn,cat:r.nc}));
-      if(!items.length||!confirm(bn(items.length)+'টি সার্ভিসের নাম বদলানো হবে?'))return;ta.disabled=true;
-      try{const x=await api('svc_tidy_apply',{items});toast(bn(x.done)+'টি সাজানো হয়েছে');tidy()}catch(e){if(!authFail(e))toast(e.message);ta.disabled=false}};
-  }catch(e){if(!authFail(e))el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`}}
+  cur=null;$('#title').textContent='নাম সাজান';$('#back').hidden=true;const el=$('#main');
+  el.innerHTML=nav('tidy')+`<div class="card"><b>নামের ছাঁচ</b><div class="sub">ধরন – কোয়ালিটি · দেশ · ড্রপ · রিফিল · স্পিড · স্টার্ট · Max</div><div class="sub ok">যেমন: Followers – HQ Real · NoDrop · ♻30D · 50K/D · ⚡Instant · Max1M</div><div class="sub">♻ = রিফিল (দিন) · /D = প্রতিদিন · ⚡ = শুরুর সময়</div><div class="sub">ট্যাগ শুধু প্রভাইডারের নিজের নাম/ক্যাটেগরি থেকে নেওয়া হয় — নিজে থেকে কিছু যোগ হয় না। ক্যাটেগরি বদলায় না।</div><button class="btn" id="tscan" style="margin-top:10px">সাইটের চালু সার্ভিস স্ক্যান করুন</button><p class="sub" id="tprog" role="status"></p></div><div id="tres"></div>`;
+  $('#tscan').onclick=async()=>{const b=$('#tscan');b.disabled=true;const R=[];let off=0,tot=1,n=0;
+    try{while(off<tot){const d=await api('svc_site_list',{q:'',platform:'',category:'',state:'on',offset:off,limit:100});tot=d.total;if(!d.rows.length)break;
+        d.rows.forEach(r=>{n++;const nm=nice(r);if(nm&&nm!==r.name)R.push({code:r.code,cn:r.name,nn:nm,category:r.category,src:r.src,ov:r.ov,on:true})});
+        off+=d.rows.length;$('#tprog').textContent=`স্ক্যান: ${bn(off)}/${bn(tot)}`}
+      $('#tprog').textContent=`${bn(n)}টি দেখা হয়েছে — ${bn(R.length)}টির নাম বদলাবে`;tidyShow(R)}
+    catch(e){if(!authFail(e))$('#tprog').textContent=e.message}b.disabled=false}}
+function tidyShow(R){const box=$('#tres');let shown=0;
+  if(!R.length){box.innerHTML='<div class="card empty">সব সার্ভিস আগেই এই ছাঁচে সাজানো ✔</div>';return}
+  box.innerHTML=`<div class="bar"><button class="btn" id="ta"></button></div><div class="chips"><button class="chip" id="tall">সব বাছুন</button><button class="chip" id="tnone">সব বাদ</button></div><div class="list" id="tl"></div><div id="tm"></div>`;
+  const cnt=()=>{const k=R.filter(r=>r.on).length;$('#ta').textContent=`নির্বাচিতগুলো প্রয়োগ করুন (${bn(k)}টি)`;$('#ta').disabled=!k};
+  const more=()=>{R.slice(shown,shown+100).forEach(r=>{const l=document.createElement('label');l.className='card tdy';
+      l.innerHTML=`<input type="checkbox" class="sel" ${r.on?'checked':''}><div><div class="sub">ID ${esc(r.code)} · ${esc(r.category)}</div><div class="sub">${esc(r.cn)}</div><h4>→ ${esc(r.nn)}</h4></div>`;
+      l.querySelector('input').onchange=e=>{r.on=e.target.checked;cnt()};$('#tl').appendChild(l)});
+    shown=Math.min(R.length,shown+100);$('#tm').innerHTML=shown<R.length?`<button class="sm" id="tmb" style="width:100%;margin-top:8px">আরও দেখান (${bn(R.length-shown)}টি বাকি)</button>`:'';const m=$('#tmb');if(m)m.onclick=more};
+  more();cnt();
+  $('#tall').onclick=()=>{R.forEach(r=>r.on=true);$('#tl').innerHTML='';shown=0;more();cnt()};
+  $('#tnone').onclick=()=>{R.forEach(r=>r.on=false);$('#tl').innerHTML='';shown=0;more();cnt()};
+  $('#ta').onclick=async()=>{const it=R.filter(r=>r.on);if(!it.length||busy||!confirm(bn(it.length)+'টি সার্ভিসের নাম বদলানো হবে?'))return;busy=true;$('#ta').disabled=true;
+    try{const need=it.filter(r=>r.src==='static'&&!r.ov).map(r=>r.code);let i=0;
+      for(const c of chunks(need,200)){$('#tprog').textContent='প্রস্তুত হচ্ছে… '+bn(Math.min(need.length,(++i)*200))+'/'+bn(need.length);await api('svc_site_bulk',{codes:c})}
+      let done=0,k=0;for(const c of chunks(it.map(r=>({code:r.code,name:r.nn,cat:r.category})),300)){$('#tprog').textContent='নাম বসানো হচ্ছে… '+bn(Math.min(it.length,(++k)*300))+'/'+bn(it.length);const x=await api('svc_tidy_apply',{items:c});done+=x.done}
+      toast(bn(done)+'টির নাম সাজানো হয়েছে ✔');busy=false;tidy()}
+    catch(e){busy=false;if(!authFail(e))toast(e.message);$('#ta').disabled=false}}}
 
 /* ---------- লোগো (সাইটের নিজস্ব SVG) ---------- */
 const SL={"facebook": "<circle cx=\"12\" cy=\"12\" r=\"12\" fill=\"#1877F2\"/><path fill=\"#fff\" d=\"M16.67 15.47l.53-3.47h-3.33V9.75c0-.95.47-1.88 1.96-1.88h1.51V4.92s-1.37-.23-2.69-.23c-2.74 0-4.53 1.66-4.53 4.67V12H7.08v3.47h3.05v8.39a12.1 12.1 0 0 0 3.75 0v-8.39z\"/>", "twitter": "<rect x=\"0.5\" y=\"0.5\" width=\"23\" height=\"23\" rx=\"6.5\" fill=\"#000\"/><path fill=\"#fff\" d=\"M17.5 6.2h2.2l-4.8 5.5 5.6 7.4h-4.4l-3.4-4.5-3.9 4.5H6.6l5.1-5.9L6.3 6.2h4.5l3.1 4.1 3.6-4.1zm-.77 11.6h1.2L9.34 7.53H8.05l8.68 10.27z\"/>", "tiktok": "<path fill=\"currentColor\" d=\"M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z\"/>", "telegram": "<circle cx=\"12\" cy=\"12\" r=\"12\" fill=\"#26A5E4\"/><path fill=\"#fff\" d=\"M16.906 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z\"/>", "instagram": "<rect x=\"0.5\" y=\"0.5\" width=\"23\" height=\"23\" rx=\"6.5\" fill=\"url(#pfIgGrad)\"/><circle cx=\"12\" cy=\"12\" r=\"5\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/><circle cx=\"18\" cy=\"6\" r=\"1.35\" fill=\"#fff\"/>", "youtube": "<rect x=\"0\" y=\"3.5\" width=\"24\" height=\"17\" rx=\"5\" fill=\"#FF0000\"/><path fill=\"#fff\" d=\"M9.8 8.6v6.8l5.9-3.4z\"/>", "whatsapp": "<circle cx=\"12\" cy=\"12\" r=\"12\" fill=\"#25D366\"/><path fill=\"#fff\" transform=\"translate(4.8 4.8) scale(.6)\" d=\"M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z\"/>"};
@@ -203,6 +222,38 @@ const catsFor=(o,pl)=>Object.keys(o||{}).filter(c=>!pl||platMatch(pl,c)).map(c=>
 async function pageRows(act,base,off,lim,type){let rows=[],raw=off,d;const L=type?100:lim;
   for(let i=0;i<8;i++){d=await api(act,Object.assign({},base,{offset:raw,limit:L}));raw+=d.rows.length;rows=rows.concat(type?d.rows.filter(r=>typeOf(r.category)===type):d.rows);if(!type||rows.length>=lim||raw>=d.total||!d.rows.length)break}
   d.rows=rows;d.next=raw;return d}
+
+/* ---------- সাইটের নিজস্ব নামের ছাঁচ ----------
+   নাম = "ধরন – কোয়ালিটি · দেশ · ড্রপ · রিফিল · স্পিড · স্টার্ট · Max" (প্ল্যাটফর্ম ক্যাটেগরিতেই থাকে, তাই নামে নেই)
+   সব ট্যাগ শুধু প্রভাইডারের নিজের নাম/ক্যাটেগরি/ফিল্ড থেকে নেওয়া — নিজে থেকে কিছু বানানো হয় না। */
+const NP=[['Instagram',/insta|\big\b/i],['Facebook',/facebook|\bfb\b/i],['TikTok',/tik.?tok/i],['YouTube',/youtube|\byt\b/i],['Telegram',/telegram|\btg\b/i],['Twitter / X',/twitter|\bx\b|tweet/i],['WhatsApp',/whatsapp/i],['Threads',/threads/i],['Spotify',/spotify/i],['LinkedIn',/linkedin/i],['Snapchat',/snap/i],['Pinterest',/pinterest/i],['Discord',/discord/i],['Twitch',/twitch/i],['Website Traffic',/traffic|website|web ?visit/i]];
+const NT=[['Story Views',/story|stories/i],['Live Views',/\blive\b/i],['Watch Time',/watch.?(time|hour)/i],['Subscribers',/subscri/i],['Members',/member|joiner/i],['Comments',/comment/i],['Shares',/share|repost|retweet/i],['Saves',/\bsave|bookmark/i],['Reactions',/reaction|\blove\b|haha|\bwow\b/i],['Likes',/like|heart/i],['Views',/view|impression|\breach\b|\bplays?\b|stream|listen/i],['Followers',/follow/i],['Traffic',/traffic|visit/i]];
+const pick=(L,t)=>L.find(x=>x[1].test(t));
+const CTRY={usa:'USA',uk:'UK',india:'India',indian:'India',bangladesh:'BD',bd:'BD',turkey:'Turkey',turkish:'Turkey',brazil:'Brazil',brazilian:'Brazil',arab:'Arab',arabic:'Arab',indonesia:'Indonesia',pakistan:'Pakistan',russia:'Russia',germany:'Germany',france:'France',spain:'Spain',italy:'Italy',global:'Worldwide',worldwide:'Worldwide'};
+const kfmt=n=>n>=1e6?(+(n/1e6).toFixed(2))+'M':n>=1e3?(+(n/1e3).toFixed(1))+'K':String(n);
+function niceTags(t,flag,max){const o=[];let m;
+  const hq=/\bhq\b|high.?quality/i.test(t),pr=/premium/i.test(t),real=/\breal\b|organic|authentic/i.test(t);
+  if((hq||pr)&&real)o.push('HQ Real');else if(hq)o.push('HQ');else if(pr)o.push('Premium');else if(real)o.push('Real');else if(/\bmix(ed)?\b/i.test(t))o.push('Mix');else if(/\bbots?\b|low.?quality|\blq\b|lowq/i.test(t))o.push('LowQ');
+  m=t.match(/\b(usa|uk|india|indian|bangladesh|bd|turkey|turkish|brazil|brazilian|arab|arabic|indonesia|pakistan|russia|germany|france|spain|italy|global|worldwide)\b/i);if(m)o.push(CTRY[m[1].toLowerCase()]);
+  if(/non.?drop|no.?drop|\bnd\b|\b0\s*%\s*drop|zero.?drop/i.test(t))o.push('NoDrop');else if(/low.?drop|less.?drop/i.test(t))o.push('LowDrop');else if(m=t.match(/(\d{1,2})\s*%\s*drop/i))o.push(m[1]+'%Drop');
+  if(/\b(no|non|without)[\s\-]?refill\b/i.test(t))o.push('NoRefill');
+  else if(/refill|♻|lifetime|\blt\b|\br\d{2,3}\b/i.test(t)||flag===true){m=t.match(/♻\s*(\d{2,3})\s*d\b/i)||t.match(/refill\D{0,12}(\d{2,3})\s*(?:d|days?)\b/i)||t.match(/(\d{2,3})\s*(?:d|days?)\W{0,3}refill/i)||t.match(/\br(\d{2,3})\b/i);
+    o.push(m?'♻'+m[1]+'D':/lifetime|\blt\b|♻\s*life/i.test(t)?'♻Life':'Refill')}
+  else if(flag===false)o.push('NoRefill');
+  m=t.match(/(\d+(?:\.\d+)?\s*[kKmM]?(?:\s*[-–]\s*\d+(?:\.\d+)?\s*[kKmM]?)?)\s*(?:\/|per\s*)\s*(day|d|hour|hr|h)\b/i);
+  if(m)o.push(m[1].replace(/\s+/g,'').toUpperCase()+(/^d/i.test(m[2])?'/D':'/Hr'));
+  if(/instant/i.test(t))o.push('⚡Instant');
+  else if(m=t.match(/(?:start(?:s|ing)?(?:\s*time)?|begins?)\W{0,4}(\d+(?:\s?[-–]\s?\d+)?)\s*(min|hour|hr)/i)||t.match(/⚡\s*(\d+(?:\s?[-–]\s?\d+)?)\s*(min|hour|hr)/i))o.push('⚡'+m[1].replace(/\s+/g,'')+(/^m/i.test(m[2])?'Min':'Hr'));
+  max=+max||0;if(max>0)o.push('Max'+kfmt(max));
+  return o}
+function nice(r){
+  if(!r)return null;const c0=String(r.category||''),n0=String(r.name||''),all=c0+' '+n0;
+  const P=pick(NP,c0)||pick(NP,n0),T=pick(NT,c0)||pick(NT,n0);if(!T)return null;
+  const base=P&&P[0]==='Website Traffic'?'Traffic':T[0];
+  const flag=r.refill===undefined||r.refill===null||r.refill===''?null:String(r.refill)==='1'||r.refill===true;
+  let tg=niceTags(all,flag,r.max),nm;
+  do{nm=base+(tg.length?' – '+tg.join(' · '):'');if(nm.length<=64)break;tg.pop()}while(tg.length);
+  return nm.substring(0,120)}
 
 /* ---------- প্ল্যাটফর্ম হাব ---------- */
 let ps={q:'',type:'',state:'all',off:0};
@@ -263,7 +314,7 @@ function editSheet(r){
   let dlg=$('#esh');if(!dlg){dlg=document.createElement('dialog');dlg.id='esh';document.body.appendChild(dlg)}
   const pls=[...new Set([r.platform,...PLAT.map(p=>p[0])].filter(Boolean))];
   dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 8px">সম্পাদনা · ID ${esc(r.code)}</h3><label for="enm">সার্ভিসের নাম</label><input id="enm" maxlength="120" value="${esc(r.name)}"><label for="epl">প্ল্যাটফর্ম</label><select id="epl">${pls.map(p=>`<option${p===r.platform?' selected':''}>${esc(p)}</option>`).join('')}</select><label for="ect">ক্যাটেগরি</label><input id="ect" list="ects" value="${esc(r.category)}"><datalist id="ects">${(window._mc||[]).map(c=>`<option value="${esc(c)}">`).join('')}</datalist><p id="eer" class="err" role="alert"></p><div class="acts"><button class="sm" value="cancel" formnovalidate>বাতিল</button><button class="sm" id="etd" type="button">অটো সাজান</button><button class="btn" value="ok">সংরক্ষণ</button></div></form>`;
-  $('#etd').onclick=()=>{const t=r.tidy||{};if(t.name)$('#enm').value=t.name;if(t.cat)$('#ect').value=t.cat};
+  $('#etd').onclick=()=>{const t=r.tidy||{},nn=nice(r)||t.name;if(nn)$('#enm').value=nn;if(t.cat)$('#ect').value=t.cat};
   dlg.querySelector('form').onsubmit=e=>{if(e.submitter&&e.submitter.value==='ok'&&!$('#enm').value.trim()){e.preventDefault();$('#eer').textContent='নাম দিন'}};
   dlg.onclose=async()=>{if(dlg.returnValue!=='ok')return;
     try{await api('svc_site_edit',{code:r.code,name:$('#enm').value,platform:$('#epl').value,category:$('#ect').value});toast('সংরক্ষিত ✔');mload()}catch(e){if(!authFail(e))toast(e.message)}};
@@ -303,9 +354,106 @@ async function mact(k){
   else{act='svc_site_bulk';if(k==='tidy'){if(!confirm(bn(codes.length)+'টির নাম ও ক্যাটেগরি অটো সাজানো হবে?'))return;a.tidy=true}else{const c=prompt('নতুন ক্যাটেগরি (সবগুলোর জন্য)','');if(!c)return;a.category=c}}
   busy=true;try{const r=await api(act,a);toast(bn(r.done)+'টি হয়েছে');mload()}catch(e){if(!authFail(e))toast(e.message)}busy=false}
 
+/* ---------- AI সহকারী (Gemini) — key শুধু এই ডিভাইসের ব্রাউজারে থাকে ---------- */
+const GK='pb_gem_key',GM='pb_gem_model',GOK='pb_gem_ok';let gh=[],gbusy=false;
+const SYS=`তুমি "boostplus সার্ভিস স্টুডিও"-র AI সহকারী। সবসময় বাংলায়, ছোট ও পরিষ্কার উত্তর দাও।
+টুল দিয়ে তুমি সাইটের সার্ভিস ও ১০ প্রভাইডারের সার্ভিস খুঁজতে, ক্যাটেগরি/নাম সাজাতে, চালু-বন্ধ করতে, ক্যাটেগরির নাম বদলাতে/মুছতে পারো।
+নিয়ম:
+১) কোয়ালিটি/ট্যাগ শুধু প্রভাইডারের নিজের নামে যা আছে তা-ই; নিজে কিছু বানাবে না। কিছু না পেলে স্পষ্ট বলো।
+২) যেকোনো পরিবর্তনের টুল ব্যবহারকারীর কাছে নিশ্চিতকরণ চায়। তবু টুল ডাকার আগে এক লাইনে বলো কী করছ।
+৩) নাম সাজাতে tidy_preview/tidy_apply ব্যবহার করো। ব্যবহারকারী নির্দিষ্ট নাম না বললে set_service দিয়ে নিজে নাম বানিয়ো না।
+৪) সাইটের নামের ছাঁচ: "ধরন – কোয়ালিটি · দেশ · ড্রপ · ♻রিফিল · স্পিড · ⚡স্টার্ট · Max" (যেমন Followers – HQ Real · NoDrop · ♻30D · 50K/D · Max1M)।
+৫) দাম ৳ প্রতি ১০০০; প্রভাইডারের রেট USD। ফল তালিকা ছোট রাখো (সর্বোচ্চ ১০টা), বাকিটা কতগুলো আছে বলো।`;
+const TOOLS=[{functionDeclarations:[
+ {name:'search_site',description:'সাইটে থাকা সার্ভিস খোঁজে। মোট সংখ্যা ও কিছু সার্ভিস ফেরত দেয়।',parameters:{type:'OBJECT',properties:{q:{type:'STRING',description:'নাম/আইডি/ক্যাটেগরির অংশ'},platform:{type:'STRING',description:'যেমন Instagram, Facebook, TikTok'},category:{type:'STRING',description:'হুবহু ক্যাটেগরির নাম'},state:{type:'STRING',description:'on, off বা all (ডিফল্ট on)'},limit:{type:'INTEGER'}}}},
+ {name:'search_providers',description:'১০ প্রভাইডারের সব সার্ভিসে খোঁজে, সস্তা আগে (দাম তুলনা)। q কমপক্ষে ২ অক্ষর, যেমন "instagram followers"।',parameters:{type:'OBJECT',properties:{q:{type:'STRING'},refill:{type:'BOOLEAN',description:'শুধু রিফিল আছে এমন'},limit:{type:'INTEGER'}},required:['q']}},
+ {name:'list_categories',description:'সাইটের প্ল্যাটফর্ম ও ক্যাটেগরির তালিকা (platform দিলে শুধু ওটার)।',parameters:{type:'OBJECT',properties:{platform:{type:'STRING'}}}},
+ {name:'tidy_preview',description:'নাম সাজালে কতগুলো বদলাবে ও নমুনা দেখায় (কিছু বদলায় না)। category/q দিয়ে সীমিত করা যায়।',parameters:{type:'OBJECT',properties:{category:{type:'STRING'},q:{type:'STRING'},platform:{type:'STRING'}}}},
+ {name:'tidy_apply',description:'সাইটের চালু সার্ভিসের নাম সাইটের ছাঁচে সাজায় (নিশ্চিতকরণ চায়)। category/q/platform দিয়ে সীমিত করা যায়।',parameters:{type:'OBJECT',properties:{category:{type:'STRING'},q:{type:'STRING'},platform:{type:'STRING'}}}},
+ {name:'set_service',description:'একটা সার্ভিসের নাম বা ক্যাটেগরি বদলায় (নিশ্চিতকরণ চায়)।',parameters:{type:'OBJECT',properties:{code:{type:'STRING'},name:{type:'STRING'},category:{type:'STRING'}},required:['code']}},
+ {name:'set_visibility',description:'সার্ভিস সাইটে চালু (on=true) বা বন্ধ/লুকানো (on=false) করে (নিশ্চিতকরণ চায়)।',parameters:{type:'OBJECT',properties:{codes:{type:'ARRAY',items:{type:'STRING'}},on:{type:'BOOLEAN'}},required:['codes','on']}},
+ {name:'rename_category',description:'একটা ক্যাটেগরির সব সার্ভিসের ক্যাটেগরির নাম বদলায় (নিশ্চিতকরণ চায়)।',parameters:{type:'OBJECT',properties:{old:{type:'STRING'},new:{type:'STRING'}},required:['old','new']}},
+ {name:'delete_category',description:'একটা ক্যাটেগরির সব চালু সার্ভিস সাইট থেকে সরায় (নিশ্চিতকরণ চায়, পরে ফেরানো যায়)।',parameters:{type:'OBJECT',properties:{category:{type:'STRING'}},required:['category']}}
+]}];
+const LBL={search_site:'🔎 সাইটে খুঁজছি…',search_providers:'🔎 ১০ প্রভাইডারে খুঁজছি…',list_categories:'🗂 ক্যাটেগরি দেখছি…',tidy_preview:'🧹 নাম পরীক্ষা করছি…',tidy_apply:'🧹 নাম সাজাচ্ছি…',set_service:'✎ সার্ভিস বদলাচ্ছি…',set_visibility:'👁 চালু/বন্ধ করছি…',rename_category:'✎ ক্যাটেগরির নাম বদলাচ্ছি…',delete_category:'🗑 ক্যাটেগরি সরাচ্ছি…'};
+const glim=n=>Math.max(1,Math.min(+n||12,30)),gref=()=>{if(location.hash==='#mng')mload()};
+const gslim=r=>({code:r.code,name:r.name,category:r.category,platform:r.platform_label,cost_usd:r.cost,sell_bdt:r.sell,min:r.min,max:r.max,state:r.state});
+async function scanSite(f){const R=[];let off=0,tot=1;while(off<tot){const d=await api('svc_site_list',{q:f.q||'',platform:f.platform||'',category:f.category||'',state:'on',offset:off,limit:100});tot=d.total;if(!d.rows.length)break;R.push(...d.rows);off+=d.rows.length}return R}
+async function tidyItems(f){const rows=await scanSite(f||{}),it=[];rows.forEach(r=>{const nm=nice(r);if(nm&&nm!==r.name)it.push({code:r.code,cn:r.name,nn:nm,category:r.category,src:r.src,ov:r.ov})});return{n:rows.length,it}}
+async function tidyDo(it){const need=it.filter(r=>r.src==='static'&&!r.ov).map(r=>r.code);for(const c of chunks(need,200))await api('svc_site_bulk',{codes:c});
+  let done=0;for(const c of chunks(it.map(r=>({code:r.code,name:r.nn,cat:r.category})),300)){const x=await api('svc_tidy_apply',{items:c});done+=x.done}return done}
+async function catRenameCore(cat,nn){nn=String(nn||'').trim();if(!cat||!nn||nn===cat)return{error:'নাম ঠিক নয়'};if(nn.length>80)return{error:'নাম ৮০ অক্ষরের বেশি'};
+  const codes=await catCodes(cat,'all');if(!codes.length)return{error:'এই ক্যাটেগরিতে কিছু নেই'};
+  if(!confirm('"'+cat+'" ক্যাটেগরির '+bn(codes.length)+'টি সার্ভিসের ক্যাটেগরি বদলে "'+nn+'" হবে। চালিয়ে যাবেন?'))return{cancelled:true};
+  let done=0;for(const c of chunks(codes,200)){const r=await api('svc_site_bulk',{codes:c,category:nn});done+=r.done}gref();return{done}}
+async function catDeleteCore(cat){const codes=await catCodes(cat,'on');if(!codes.length)return{error:'এই নামে চালু সার্ভিস নেই'};
+  if(!confirm('"'+cat+'" ক্যাটেগরির চালু '+bn(codes.length)+'টি সার্ভিস সাইট থেকে সরানো হবে (পরে "লুকানো" থেকে ফেরানো যাবে)। নিশ্চিত?'))return{cancelled:true};
+  let done=0;for(const c of chunks(codes,200)){const r=await api('svc_site_hide',{codes:c,on:false,del:true});done+=r.done}gref();return{done}}
+const TOOLFN={
+ async search_site(a){const d=await api('svc_site_list',{q:a.q||'',platform:a.platform||'',category:a.category||'',state:a.state||'on',offset:0,limit:glim(a.limit)});return{total:d.total,rows:d.rows.map(gslim),categories_in_result:d.categories.slice(0,40)}},
+ async search_providers(a){const d=await api('svc_compare',{q:a.q||'',refill:!!a.refill});return{total:d.total,rows:d.rows.slice(0,glim(a.limit)).map(r=>({provider:r.provider,id:r.service_id,name:r.name,category:r.category,rate_usd_per_1k:r.rate,min:r.min,max:r.max,refill:r.refill==='1',on_site:r.state==='on',avg_time_sec:r.spd?Math.round(r.spd.m):null}))}},
+ async list_categories(a){const d=await api('svc_site_list',{q:'',platform:a.platform||'',category:'',state:'on',offset:0,limit:1});return{total_services:d.total,platforms:d.platforms,categories:d.categories}},
+ async tidy_preview(a){const t=await tidyItems(a);return{scanned:t.n,would_change:t.it.length,samples:t.it.slice(0,12).map(x=>({code:x.code,from:x.cn,to:x.nn}))}},
+ async tidy_apply(a){const t=await tidyItems(a);if(!t.it.length)return{message:'সব সার্ভিস আগেই সাজানো',scanned:t.n};
+  if(!confirm(bn(t.it.length)+'টি সার্ভিসের নাম সাইটের ছাঁচে বদলানো হবে। যেমন:\n'+t.it.slice(0,3).map(x=>x.cn+'\n→ '+x.nn).join('\n\n')+'\n\nচালিয়ে যাবেন?'))return{cancelled:true};
+  const done=await tidyDo(t.it);gref();return{done}},
+ async set_service(a){const code=String(a.code||'').trim();if(!code)return{error:'আইডি দিন'};const d=await api('svc_site_list',{q:code,state:'all',offset:0,limit:30}),r=d.rows.find(x=>String(x.code)===code);if(!r)return{error:'এই আইডি সাইটে নেই'};
+  const name=String(a.name||r.name).trim(),cat=String(a.category||r.category).trim();
+  if(!confirm('ID '+code+'\nনাম: '+name+'\nক্যাটেগরি: '+cat+'\n\nসংরক্ষণ করবেন?'))return{cancelled:true};
+  await api('svc_site_edit',{code,name,platform:r.platform,category:cat});gref();return{ok:true,name,category:cat}},
+ async set_visibility(a){const codes=(a.codes||[]).map(String).slice(0,400);if(!codes.length)return{error:'কোনো আইডি নেই'};
+  if(!confirm(bn(codes.length)+'টি সার্ভিস সাইটে '+(a.on?'চালু':'বন্ধ')+' করা হবে। আইডি: '+codes.slice(0,8).join(', ')+(codes.length>8?'…':'')))return{cancelled:true};
+  let done=0;for(const c of chunks(codes,200)){const r=await api('svc_site_hide',{codes:c,on:!!a.on});done+=r.done}gref();return{done}},
+ rename_category(a){return catRenameCore(a.old,a.new)},
+ delete_category(a){return catDeleteCore(a.category)}};
+const gmd=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
+function addMsg(k,t){const b=$('#aiMsgs');if(!b)return null;const d=document.createElement('div');d.className='am '+k;if(k==='ai')d.innerHTML=gmd(t);else d.textContent=t;b.appendChild(d);b.scrollTop=b.scrollHeight;return d}
+async function gcall(){const key=ls.get(GK),model=ls.get(GM)||'gemini-2.5-flash';
+  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({systemInstruction:{parts:[{text:SYS}]},contents:gh,tools:TOOLS,generationConfig:{temperature:.3}})});
+  const d=await r.json().catch(()=>({}));if(!r.ok){const e=new Error((d.error&&d.error.message)||('HTTP '+r.status));e.status=r.status;throw e}return d}
+function gtrim(){if(gh.length<=40)return;let i=gh.length-14;while(i<gh.length&&!(gh[i].role==='user'&&gh[i].parts&&gh[i].parts[0]&&gh[i].parts[0].text!==undefined))i++;gh=i<gh.length?gh.slice(i):gh.slice(-2)}
+async function agent(text){gtrim();gh.push({role:'user',parts:[{text}]});
+  for(let i=0;i<8;i++){const d=await gcall(),c=d.candidates&&d.candidates[0];
+    if(!c||!c.content){addMsg('err','উত্তর আসেনি'+(d.promptFeedback&&d.promptFeedback.blockReason?' (ব্লক: '+d.promptFeedback.blockReason+')':''));return}
+    gh.push(c.content);const parts=c.content.parts||[],calls=parts.filter(p=>p.functionCall),tx=parts.filter(p=>p.text&&!p.thought).map(p=>p.text).join('');
+    if(tx)addMsg('ai',tx);if(!calls.length)return;
+    const resp=[];for(const p of calls){const fc=p.functionCall;addMsg('tool',LBL[fc.name]||fc.name);let out;
+      try{if(!TOOLFN[fc.name])throw new Error('অজানা টুল');out=await TOOLFN[fc.name](fc.args||{})}catch(e){if(authFail(e))return;out={error:e.message}}
+      resp.push({functionResponse:{name:fc.name,response:{result:out}}})}
+    gh.push({role:'user',parts:resp})}
+  addMsg('ai','অনেক ধাপ হয়ে গেছে — আবার বলুন, কোথায় থেমেছি সেখান থেকে চালাব।')}
+const gerr=e=>e.status===429?'ফ্রি কোটা শেষ বা অনেক দ্রুত পাঠানো হয়েছে — একটু পরে চেষ্টা করুন':e.status===400&&/key/i.test(e.message)||e.status===403?'API key ঠিক নয় বা অনুমতি নেই — ⚙ থেকে দেখুন':e.status===404?'মডেলের নাম পাওয়া যায়নি — ⚙ থেকে মডেল বদলান':e.name==='TypeError'?'ইন্টারনেট/নেটওয়ার্ক সমস্যা':e.message;
+function aiStatus(){const k=ls.get(GK);$('#aiSt').textContent=k?(ls.get(GOK)?'● সংযুক্ত':'● key আছে'):'○ সংযুক্ত নয়';$('#aiSt').className='sub'+(k&&ls.get(GOK)?' ok':'')}
+function aiInit(){if($('#aiFab'))return;
+  document.body.insertAdjacentHTML('beforeend',`<button id="aiFab" class="aifab" aria-label="AI সহকারী" hidden>✨</button><section id="ai" class="aipanel" role="dialog" aria-label="AI সহকারী" hidden><header><b>✨ AI সহকারী</b><span id="aiSt" class="sub"></span><span class="aihs"><button class="ib" id="aiSet" aria-label="সেটিং">⚙</button><button class="ib" id="aiNew" aria-label="নতুন চ্যাট" title="নতুন চ্যাট">↺</button><button class="ib" id="aiX" aria-label="বন্ধ">✕</button></span></header>
+<div id="aiKey" class="aikey" hidden><label for="aiK">Gemini API key</label><input id="aiK" type="password" autocomplete="off" placeholder="AIza…"><label for="aiM">মডেল</label><input id="aiM" autocomplete="off"><p class="sub">key শুধু এই ফোনের ব্রাউজারে থাকে। Google AI Studio-তে key-তে সীমা (restriction) বেঁধে রাখুন।</p><p class="err" id="aiKe" role="alert"></p><div class="acts"><button class="sm" id="aiDel" type="button">key মুছুন</button><button class="btn" id="aiSave" type="button">সংরক্ষণ ও পরীক্ষা</button></div></div>
+<div id="aiMsgs" class="aimsgs" aria-live="polite"></div><div id="aiChips" class="chips"></div><form id="aiForm"><input id="aiIn" placeholder="যা করাতে চান লিখুন…" autocomplete="off" aria-label="বার্তা"><button class="btn" id="aiGo">পাঠান</button></form></section>`);
+  const P=$('#ai'),F=$('#aiFab');
+  const open=()=>{P.hidden=false;F.hidden=true;aiStatus();if(!ls.get(GK))keyBox(true);else $('#aiIn').focus()};
+  const close=()=>{P.hidden=true;F.hidden=!token};
+  const keyBox=v=>{$('#aiKey').hidden=!v;if(v){$('#aiK').value=ls.get(GK)||'';$('#aiM').value=ls.get(GM)||'gemini-2.5-flash';$('#aiKe').textContent=''}};
+  F.onclick=open;$('#aiX').onclick=close;$('#aiSet').onclick=()=>keyBox($('#aiKey').hidden);
+  $('#aiNew').onclick=()=>{gh=[];$('#aiMsgs').innerHTML='';hello()};
+  $('#aiDel').onclick=()=>{ls.del(GK);ls.del(GOK);gh=[];$('#aiK').value='';aiStatus();$('#aiKe').textContent='key মোছা হয়েছে'};
+  $('#aiSave').onclick=async()=>{const k=$('#aiK').value.trim(),m=$('#aiM').value.trim()||'gemini-2.5-flash',b=$('#aiSave');if(!k){$('#aiKe').textContent='key দিন';return}
+    b.disabled=true;$('#aiKe').textContent='পরীক্ষা হচ্ছে…';const ok=[ls.get(GK),ls.get(GM)],old=gh;ls.set(GK,k);ls.set(GM,m);gh=[{role:'user',parts:[{text:'শুধু "ok" লিখুন'}]}];
+    try{await gcall();ls.set(GOK,'1');gh=old;$('#aiKe').textContent='';keyBox(false);aiStatus();if(!$('#aiMsgs').children.length)hello();$('#aiIn').focus()}
+    catch(e){gh=old;ls.del(GOK);if(ok[0]==null)ls.del(GK);else ls.set(GK,ok[0]);if(ok[1]==null)ls.del(GM);else ls.set(GM,ok[1]);$('#aiKe').textContent=gerr(e)}
+    b.disabled=false;aiStatus()};
+  const send=async t=>{t=(t||'').trim();if(!t||gbusy)return;if(!ls.get(GK)){keyBox(true);return}
+    gbusy=true;$('#aiGo').disabled=true;$('#aiIn').value='';addMsg('me',t);const w=addMsg('tool','⏳ ভাবছি…');
+    try{await agent(t);ls.set(GOK,'1')}catch(e){addMsg('err',gerr(e))}
+    if(w)w.remove();gbusy=false;$('#aiGo').disabled=false;aiStatus();$('#aiIn').focus()};
+  $('#aiForm').onsubmit=e=>{e.preventDefault();send($('#aiIn').value)};
+  const hello=()=>{addMsg('ai','আমি সাইটের সার্ভিস খুঁজতে, ক্যাটেগরি/নাম সাজাতে, চালু-বন্ধ করতে পারি। কী করাতে চান?');
+    $('#aiChips').innerHTML=['TikTok Followers-এর সবচেয়ে সস্তা ৫টা (সব প্রভাইডার)','ফেসবুকের ক্যাটেগরিগুলো দেখাও','কতগুলো সার্ভিসের নাম সাজানো বাকি?','Instagram Followers-এর নাম সাজাও'].map(x=>`<button class="chip" type="button">${esc(x)}</button>`).join('');
+    $('#aiChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>send(b.textContent))};
+  hello();aiStatus();window._aiClose=close}
+function aiShow(a){aiInit();const F=$('#aiFab'),P=$('#ai');if(!a){P.hidden=true;F.hidden=true}else F.hidden=!P.hidden?true:false}
+
 /* ---------- রাউটার, লগইন, ইনস্টল ---------- */
 function route(){rid++;const h=decodeURIComponent(location.hash.replace('#',''));const bb=$('#bulk');if(bb)bb.hidden=true;sel.clear();ssel.clear();if(h==='cmp')cmp();else if(h==='chg')chg();else if(h==='tidy')tidy();else if(h==='plat')plat();else if(h==='mng')mng();else if(h.indexOf('pl=')===0)platPage(h.slice(3));else if(h.indexOf('p=')===0){st={q:'',state:'all',cat:'',off:0};provider(h.slice(2))}else home();$('#main').focus({preventScroll:true})}
-function show(a){$('#login').hidden=a;$('#app').hidden=!a}
+function show(a){$('#login').hidden=a;$('#app').hidden=!a;aiShow(a)}
 function logout(m){token='';wipe();ls.del('pb_studio_token');show(false);$('#loginErr').textContent=m||'';$('#tok').value=''}
 $('#loginForm').onsubmit=async e=>{e.preventDefault();token=$('#tok').value.trim();const b=e.target.querySelector('button');b.disabled=true;$('#loginErr').textContent='';
   try{await api('svc_providers');ls.set('pb_studio_token',token);show(true);route()}catch(x){$('#loginErr').textContent=ERR[x.code]||('সংযোগ করা যায়নি — '+x.message)}b.disabled=false};
