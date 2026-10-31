@@ -292,9 +292,8 @@
 
 </style>
 <script>try{document.documentElement.setAttribute("data-theme",localStorage.getItem("pb_admin_theme")==="light"?"light":"premium");}catch(e){document.documentElement.setAttribute("data-theme","premium");}</script>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="preload" href="fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="design/admin-fonts.css?v=20261029x" />
 <link rel="stylesheet" href="design/tokens.css?v=20261026r" />
 <link rel="stylesheet" href="design/admin.css?v=20261026r" />
 <style>
@@ -334,6 +333,7 @@
 <body>
 
 <div id="loginView" class="login-box">
+  <img src="icons/admin-logo.png?v=20261030" alt="Boost plus Admin Panel" width="180" height="180" style="display:block;width:180px;height:180px;max-width:70%;height:auto;margin:0 auto 6px;">
   <h1>🔐 Admin Login</h1>
   <input id="tokenInput" type="password" placeholder="Admin token দিন" autocomplete="off" />
   <button onclick="doLogin()">প্রবেশ করুন</button>
@@ -365,6 +365,7 @@
 </div>
 
 <div id="panelView" class="wrap" style="display:none;">
+  <div class="admin-brand" style="display:flex;align-items:center;gap:10px;margin:0 0 10px;"><img src="icons/admin-192.png?v=20261030" alt="" width="34" height="34" style="width:34px;height:34px;border-radius:8px;"><b style="font-size:15px;">Boost plus <span style="color:var(--muted);font-weight:400;">Admin Panel</span></b></div>
   <div class="tabs">
     <button type="button" id="tabOrders" class="on" onclick="showTab('orders')">📋 অর্ডার</button>
     <button type="button" id="tabInbox" onclick="showTab('inbox')">📥 ইনবক্স</button>
@@ -672,10 +673,10 @@
   <div id="ptPane" style="display:none;">
     <h1>🛰 Provider টিকেট</h1>
     <div class="card">
-      <div class="row"><b>Refill / Cancel পাঠান</b> <span class="muted">— bdsmmpanel: আগে Ai Support, না হলে Human Support। smmgen / smmrx / amarboost / growfollows / socialpanel: সরাসরি টিকেট ফর্ম। কোনোটা না হলে Telegram</span></div>
+      <div class="row"><b>Refill / Cancel পাঠান</b> <span class="muted">— প্রোভাইডার অনুযায়ী পদ্ধতি আলাদা (Ai/Human সাপোর্ট বা টিকেট ফর্ম)। কোনোটা না হলে Telegram</span></div>
       <div class="toolbar">
         <select id="ptType"><option value="Refill">🔄 Refill</option><option value="Cancel">❌ Cancel</option></select>
-        <select id="ptProvider"><option value="">🔎 অটো (সাইট অর্ডার থেকে)</option><option value="bdsmmpanel.com">bdsmmpanel.com</option><option value="smmgen.com">smmgen.com</option><option value="smmrx.com">smmrx.com</option><option value="amarboost.com">amarboost.com</option><option value="growfollows.com">growfollows.com</option><option value="socialpanel.pro">socialpanel.pro</option></select>
+        <select id="ptProvider"><option value="">🔎 অটো (সাইট অর্ডার থেকে)</option></select>
       </div>
       <input id="ptSite" placeholder="সাইটের অর্ডার আইডি (কমা দিয়ে)" style="width:100%;margin:6px 0;padding:10px;box-sizing:border-box;">
       <input id="ptProv" placeholder="অথবা সরাসরি প্রভাইডার অর্ডার আইডি (কমা দিয়ে)" style="width:100%;margin:6px 0;padding:10px;box-sizing:border-box;">
@@ -687,7 +688,7 @@
       <button onclick="ptSync()">📥 প্রভাইডারের রিপ্লাই আনুন</button>
     </div>
     <h1 style="font-size:16px;">📩 প্রভাইডারের রিপ্লাই</h1>
-    <div class="row muted">শুধু bdsmmpanel-এর রিপ্লাই এখানে আসে। অন্য প্রভাইডারের উত্তর তাদের সাইটের /tickets পেজে দেখুন।</div>
+    <div class="row muted">শুধু সংযুক্ত সাপোর্ট-চ্যানেলের রিপ্লাই এখানে আসে। বাকিগুলোর উত্তর প্রভাইডারের নিজের টিকেট পেজে দেখুন।</div>
     <div id="ptReplies"></div>
     <h1 style="font-size:16px;">📤 পাঠানো অনুরোধ</h1>
     <div id="ptReqs"></div>
@@ -1319,7 +1320,7 @@
 
   // ---------- Provider টিকেট ----------
   const PT_VIA = { ai: "🤖 Ai Support", human: "👤 Human Support", form: "🎫 টিকেট ফর্ম", telegram: "📲 Telegram (নিজে পাঠান)" };
-  // via যেমন "form (smmrx.com)" আসতে পারে → লেবেল + হোস্ট
+  // via যেমন "form (হোস্ট)" আসতে পারে → লেবেল + হোস্ট
   function ptViaLabel(via) {
     const m = /^(\w+)\s*\((.+)\)$/.exec(String(via || ""));
     return m ? (PT_VIA[m[1]] || m[1]) + " · " + m[2] : (PT_VIA[via] || via || "");
@@ -1481,9 +1482,20 @@
     }
   }
 
+  /* প্রোভাইডারের নাম HTML এ লেখা থাকে না: লগইনের পর ব্যালেন্স-ডেটা থেকে টিকেট-ড্রপডাউন ভরে */
+  function ptFillProviders() {
+    const s = document.getElementById("ptProvider"); if (!s) return;
+    const hosts = Object.keys(balanceCache || {});
+    if (s.options.length - 1 === hosts.length) return;
+    const cur = s.value, first = s.options[0];
+    s.innerHTML = ""; s.appendChild(first);
+    hosts.forEach(h => { const o = document.createElement("option"); o.value = h; o.textContent = h; s.appendChild(o); });
+    s.value = cur;
+  }
   function renderBalances() {
     const grid = document.getElementById("balanceGrid");
     if (!grid) return;
+    ptFillProviders();
     const list = Object.keys(balanceCache).map(k => balanceCache[k]);
     if (!list.length) {
       grid.innerHTML = '<div class="muted">কোনো provider কনফিগ নেই</div>';
@@ -3308,7 +3320,7 @@
       <input id="rfProvider" readonly />
       <label>Message</label>
       <textarea id="rfMessage">রিফিল করেন</textarea>
-      <p class="hint">Submit চাপলে প্রোভাইডার API-তে action=refill পাঠাবে (GetMyFollow-স্টাইল টিকিট ফর্মের মতো প্রিফিল)।</p>
+      <p class="hint">Submit চাপলে প্রোভাইডার API-তে action=refill পাঠাবে।</p>
       <div class="rf-actions">
         <button type="button" class="rf-cancel" onclick="closeRefillModal()">Cancel</button>
         <button type="button" class="rf-go" id="rfSubmitBtn" onclick="submitRefill()">Submit refill</button>
@@ -3316,13 +3328,6 @@
     </div>
   </div>
 </div>
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", function () {
-    navigator.serviceWorker.register("./admin/sw.js", { scope: "./admin/" }).catch(function (e) { console.log("Admin SW failed", e); });
-  });
-}
-</script>
 
 <div class="fund-ov" id="fundOv" onclick="if(event.target===this)closeAddFunds()">
   <div class="fund-box" role="dialog" aria-modal="true">
