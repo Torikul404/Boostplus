@@ -70,7 +70,7 @@ async function provider(p,more){
 }
 function row(r,d){
   const c=document.createElement('div');c.className='card svc';
-  const sg=r.suggest?` · প্রস্তাব <b>৳${bn(r.suggest.bdt)}</b>${r.suggest.auto?'':' (হাতে)'}`:'';
+  const sg=r.suggest?` · সাইটে ≈ <b>৳${bn(r.suggest.bdt)}</b>`:'';
   c.innerHTML=`<div><h4>${d&&d.cmp?'':'<input type="checkbox" class="sel" aria-label="নির্বাচন">'}${esc(r.name)}</h4><div class="sub">${d&&d.cmp?'<b>'+esc(r.provider)+'</b> · ':''}ID <b>${esc(r.service_id)}</b> · ${esc(r.category)}</div><div class="sub">রেট <b>${esc(r.rate)}</b> · ${bn(r.min)}–${bn(r.max)}${r.refill==='1'?' · Refill':''}${r.cancel==='1'?' · Cancel':''}${sg}</div>${spdTag(r)}${r.tidy&&r.state!=='on'?`<div class="sub ok">সাইটে: ${esc(r.tidy.name)} · ${esc(r.tidy.cat)}</div>`:''}${r.state==='conflict'?`<div class="sub hi">জট: ${esc(r.conflict_with)}-এর সার্ভিস হিসেবে আছে</div>`:''}</div>
   <button class="sw" role="switch" aria-checked="${r.state==='on'}" aria-label="${esc(r.name)} সাইটে চালু/বন্ধ" ${r.state==='conflict'?'disabled':''}></button>`;
   c.querySelector('.sw').onclick=ev=>toggle(r,ev.currentTarget);
@@ -92,10 +92,8 @@ function openSheet(r,btn,force){
   const t=r.tidy||{};$('#shName').value=t.name||r.name;$('#shCat').value=t.cat||r.category;
   $('#shPlat').innerHTML=PLAT.map(p=>`<option>${p[0]}</option>`).join('');$('#shPlat').value=t.plat||guess(r.category+' '+r.name);
   $('#shCats').innerHTML=(window._sc||[]).map(c=>`<option value="${esc(c)}">`).join('');
-  const fx=window._fx||0;$('#shPriceBdt').hidden=!fx;
-  $('#shBdt').value=r.suggest?r.suggest.bdt:'';$('#shUsd').value=r.suggest?r.suggest.usd:'';$('#shUsd').readOnly=!!fx;
-  $('#shInfo').textContent=fx?'৳ দাম বদলালে USD নিজে হিসাব হবে (১ USD = ৳'+fx+')':'দাম USD-তে লিখুন';$('#shErr').textContent='';
-  $('#shBdt').oninput=()=>{$('#shUsd').value=fx?Math.round($('#shBdt').value/fx*10000)/10000:''};
+  $('#shPriceBdt').hidden=true;$('#shPriceUsd').hidden=true;$('#shUsd').value=r.rate;
+  $('#shInfo').textContent=`দাম অটো: প্রভাইডার $${r.rate}/1K → সাইটে ≈ ৳${r.suggest?bn(r.suggest.bdt):'?'}/1K (সাইটের মার্কআপ নিয়মে)`;$('#shErr').textContent='';
   sh.onclose=async()=>{
     if(sh.returnValue!=='ok')return;
     busy=true;btn.disabled=true;
@@ -104,7 +102,7 @@ function openSheet(r,btn,force){
     catch(e){if(authFail(e)){}else if(e.code==='previously_removed'&&confirm(e.message+'\nতবুও চালু করবেন?'))openSheet(r,btn,true);else toast(e.message)}
     busy=false;btn.disabled=false;
   };
-  $('#shForm').onsubmit=e=>{const u=+$('#shUsd').value,c=$('#shCat').value.trim();if(e.submitter&&e.submitter.value==='ok'&&(!c||!(u>0))){e.preventDefault();$('#shErr').textContent=!c?'ক্যাটেগরি দিন':'দাম দিন'}};
+  $('#shForm').onsubmit=e=>{const u=+$('#shUsd').value,c=$('#shCat').value.trim();if(e.submitter&&e.submitter.value==='ok'&&!c){e.preventDefault();$('#shErr').textContent='ক্যাটেগরি দিন'}};
   sh.showModal();
 }
 async function dl(p){
@@ -119,7 +117,7 @@ function bulkBar(){let b=$('#bulk');if(!b){b=document.createElement('div');b.id=
 async function bulk(k){
   if(k==='x'){sel.clear();document.querySelectorAll('.sel').forEach(x=>x.checked=false);return bulkBar()}
   if(busy)return;const codes=[...sel].map(r=>r.service_id),on=k==='on';let cat='',mk='';
-  if(on){cat=prompt('ক্যাটেগরি লিখুন, অথবা ফাঁকা রাখুন (ফাঁকা = প্রতিটার নাম ও ক্যাটেগরি অটো সাজানো হবে)','');if(cat===null)return;mk=prompt('মার্জিন % (রেটের ওপর)। ফাঁকা = অটো প্রস্তাব','30');if(mk===null)return}
+  if(on){cat=prompt('ক্যাটেগরি লিখুন, অথবা ফাঁকা রাখুন (ফাঁকা = প্রতিটার নাম ও ক্যাটেগরি অটো সাজানো হবে)','');if(cat===null)return;}
   else if(!confirm(bn(codes.length)+'টি সার্ভিস সাইট থেকে লুকানো হবে?'))return;
   busy=true;try{const r=await api('svc_bulk',{provider:cur,codes,on,category:(cat||'').trim(),markup:mk});toast(`${bn(r.done)}টি হয়েছে, ${bn(r.skipped)}টি বাদ`);sel.clear();bulkBar();provider(cur)}catch(e){if(!authFail(e))toast(e.message)}busy=false}
 
