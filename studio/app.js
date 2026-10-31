@@ -1,12 +1,14 @@
 /* boostplus সার্ভিস স্টুডিও — প্রভাইডারের লাইভ সার্ভিস → CSV → প্রতি সার্ভিসে অন/অফ সুইচ */
 (function(){
 'use strict';
+/* /studio (শেষে স্ল্যাশ ছাড়া) খুললে manifest/sw ভুল জায়গা থেকে আসে — স্ল্যাশসহ ঠিক ঠিকানায় নিয়ে যায় */
+if(!/\/$/.test(location.pathname)&&!/\.[a-z0-9]+$/i.test(location.pathname)){location.replace(location.pathname+'/'+location.search+location.hash);return}
 const API='https://script.google.com/macros/s/AKfycbx47uFKaYzBg0sFfOOY-382zadF8mSfQLYTDZPFqSSTHhOT5h4H-wnDzhJFZ16W3Ajy/exec';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const bn=n=>(+n||0).toLocaleString('bn-BD');
 const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
-let token=ls.get('pb_studio_token')||'',busy=false,st={q:'',state:'all',cat:'',off:0},cur=null,lastList=null,qt=null;
+let token=ls.get('pb_studio_token')||'',busy=false,st={q:'',state:'all',cat:'',off:0},cur=null,lastList=null,qt=null,SC=null,fabMoved=false;
 const ERR={unauthorized:'টোকেন ঠিক নয়',locked_out:'অনেকবার ভুল হয়েছে — কিছুক্ষণ পরে চেষ্টা করুন',no_config:'এই প্রভাইডারের API সেট করা নেই',bad_json:'প্রভাইডার সঠিক উত্তর দেয়নি',provider_error:'প্রভাইডার ত্রুটি দিয়েছে',not_collected:'আগে "সংগ্রহ করুন" চাপুন',code_conflict:'এই আইডি সাইটে অন্য প্রভাইডারের সার্ভিস হিসেবে আছে',previously_removed:'এই সার্ভিস আগে সাইট থেকে বাদ দেওয়া হয়েছিল',category_required:'ক্যাটেগরি দিন',price_required:'দাম দিন',svc_failed:'সার্ভারে সমস্যা হয়েছে'};
 const mem={};let rid=0;
 function wipe(){for(const k in mem)delete mem[k];try{Object.keys(localStorage).filter(k=>k.indexOf('pbc_')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}}
@@ -31,7 +33,7 @@ async function swr(act,x,draw){const my=rid,key='pbc_'+act+JSON.stringify(x||{})
 const sel=new Set();let cq={q:'',refill:false},cn=0;
 const fmtT=s=>s<90?bn(Math.round(s))+' সে.':s<5400?bn(Math.round(s/60))+' মি.':bn(Math.round(s/360)/10)+' ঘণ্টা';
 const spdTag=r=>r.spd?`<div class="sub ${r.spd.m<=1800?'ok':r.spd.m>=21600?'hi':''}">⚡ গড় ${fmtT(r.spd.m)} · ${bn(r.spd.n)}টি অর্ডার${r.spd.f?' · ব্যর্থ '+bn(r.spd.f):''}</div>`:'';
-const nav=a=>`<div class="chips" role="navigation">${[['','প্রভাইডার'],['plat','প্ল্যাটফর্ম'],['mng','ম্যানেজ'],['cmp','তুলনা'],['chg','পরিবর্তন'],['tidy','সাজান']].map(x=>`<a class="chip" href="#${x[0]}" aria-current="${a===x[0]}">${x[1]}</a>`).join('')}</div>`;
+const nav=a=>`<div class="chips" role="navigation">${[['','প্রভাইডার'],['plat','প্ল্যাটফর্ম'],['mng','ম্যানেজ'],['cats','ক্যাটেগরি'],['cmp','তুলনা'],['chg','পরিবর্তন'],['tidy','সাজান']].map(x=>`<a class="chip" href="#${x[0]}" aria-current="${a===x[0]}">${x[1]}</a>`).join('')}</div>`;
 /* ---------- হোম: প্রভাইডার তালিকা ---------- */
 async function home(){
   $('#title').textContent='সার্ভিস স্টুডিও';$('#back').hidden=true;cur=null;
@@ -98,7 +100,7 @@ async function toggle(r,btn){
 }
 function openSheet(r,btn,force){
   const sh=$('#sheet');$('#shN').textContent=`ID ${r.service_id} · রেট ${r.rate} · মূল: ${r.name} | ${r.category}`;
-  const t=r.tidy||{};$('#shName').value=nice(r)||t.name||r.name;$('#shCat').value=t.cat||r.category;
+  const t=r.tidy||{};$('#shName').value=nice(r)||t.name||r.name;$('#shCat').value=matchCat(t.cat||r.category);
   $('#shPlat').innerHTML=PLAT.map(p=>`<option>${p[0]}</option>`).join('');$('#shPlat').value=t.plat||guess(r.category+' '+r.name);
   $('#shCats').innerHTML=(window._sc||[]).map(c=>`<option value="${esc(c)}">`).join('');
   $('#shPriceBdt').hidden=true;$('#shPriceUsd').hidden=true;$('#shUsd').value=r.rate;
@@ -112,7 +114,7 @@ function openSheet(r,btn,force){
     busy=false;btn.disabled=false;
   };
   $('#shForm').onsubmit=e=>{const u=+$('#shUsd').value,c=$('#shCat').value.trim();if(e.submitter&&e.submitter.value==='ok'&&!c){e.preventDefault();$('#shErr').textContent='ক্যাটেগরি দিন'}};
-  sh.showModal();
+  sh.returnValue='';sh.showModal();
 }
 async function dl(p){
   try{const d=await api('svc_csv',{provider:p});const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([d.csv],{type:'text/csv;charset=utf-8'}));a.download=d.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
@@ -157,7 +159,7 @@ async function chg(){
 /* ---------- নাম সাজান (সাইটের নিজস্ব ছাঁচে) ---------- */
 async function tidy(){
   cur=null;$('#title').textContent='নাম সাজান';$('#back').hidden=true;const el=$('#main');
-  el.innerHTML=nav('tidy')+`<div class="card"><b>নামের ছাঁচ</b><div class="sub">ধরন – কোয়ালিটি · দেশ · ড্রপ · রিফিল · স্পিড · স্টার্ট · Max</div><div class="sub ok">যেমন: Followers – HQ Real · NoDrop · ♻30D · 50K/D · ⚡Instant · Max1M</div><div class="sub">♻ = রিফিল (দিন) · /D = প্রতিদিন · ⚡ = শুরুর সময়</div><div class="sub">ট্যাগ শুধু প্রভাইডারের নিজের নাম/ক্যাটেগরি থেকে নেওয়া হয় — নিজে থেকে কিছু যোগ হয় না। ক্যাটেগরি বদলায় না।</div><button class="btn" id="tscan" style="margin-top:10px">সাইটের চালু সার্ভিস স্ক্যান করুন</button><p class="sub" id="tprog" role="status"></p></div><div id="tres"></div>`;
+  el.innerHTML=nav('tidy')+`<div class="card"><b>নামের ছাঁচ</b><div class="sub">ধরন – কোয়ালিটি · দেশ · ড্রপ · রিফিল · স্পিড · স্টার্ট · Max</div><div class="sub ok">যেমন: 👥 Followers – 💎 HQ Real · 🛡️ NoDrop · ♻30D · 🚀 50K/D · ⚡Instant · 📈 Max1M</div><div class="sub">ইমুজি চালু/বন্ধ করা যায় — ক্যাটেগরি পাতায় (🙂 বোতাম)।</div><div class="sub">♻ = রিফিল (দিন) · /D = প্রতিদিন · ⚡ = শুরুর সময়</div><div class="sub">ট্যাগ শুধু প্রভাইডারের নিজের নাম/ক্যাটেগরি থেকে নেওয়া হয় — নিজে থেকে কিছু যোগ হয় না। ক্যাটেগরি বদলায় না।</div><button class="btn" id="tscan" style="margin-top:10px">সাইটের চালু সার্ভিস স্ক্যান করুন</button><p class="sub" id="tprog" role="status"></p></div><div id="tres"></div>`;
   $('#tscan').onclick=async()=>{const b=$('#tscan');b.disabled=true;const R=[];let off=0,tot=1,n=0;
     try{while(off<tot){const d=await api('svc_site_list',{q:'',platform:'',category:'',state:'on',offset:off,limit:100});tot=d.total;if(!d.rows.length)break;
         d.rows.forEach(r=>{n++;const nm=nice(r);if(nm&&nm!==r.name)R.push({code:r.code,cn:r.name,nn:nm,category:r.category,src:r.src,ov:r.ov,on:true})});
@@ -231,6 +233,17 @@ const NT=[['Story Views',/story|stories/i],['Live Views',/\blive\b/i],['Watch Ti
 const pick=(L,t)=>L.find(x=>x[1].test(t));
 const CTRY={usa:'USA',uk:'UK',india:'India',indian:'India',bangladesh:'BD',bd:'BD',turkey:'Turkey',turkish:'Turkey',brazil:'Brazil',brazilian:'Brazil',arab:'Arab',arabic:'Arab',indonesia:'Indonesia',pakistan:'Pakistan',russia:'Russia',germany:'Germany',france:'France',spain:'Spain',italy:'Italy',global:'Worldwide',worldwide:'Worldwide'};
 const kfmt=n=>n>=1e6?(+(n/1e6).toFixed(2))+'M':n>=1e3?(+(n/1e3).toFixed(1))+'K':String(n);
+
+/* ---------- ইমুজি দিয়ে সাজানো (চালু/বন্ধ: pb_emo) ---------- */
+const emoOn=()=>ls.get('pb_emo')!=='0';
+const PE={'Instagram':'📸','Facebook':'📘','TikTok':'🎵','YouTube':'▶️','Telegram':'✈️','Twitter / X':'🐦','WhatsApp':'💬','Threads':'🧵','Spotify':'🎧','LinkedIn':'💼','Snapchat':'👻','Pinterest':'📌','Discord':'🎮','Twitch':'🟣','Website Traffic':'🌐'};
+const TE={'Followers':'👥','Likes':'❤️','Views':'👁️','Story Views':'📖','Live Views':'🔴','Watch Time':'⏱️','Subscribers':'🔔','Members':'🙋','Comments':'💬','Shares':'🔁','Saves':'🔖','Reactions':'😍','Traffic':'🚦'};
+const FLAG={USA:'🇺🇸',UK:'🇬🇧',India:'🇮🇳',BD:'🇧🇩',Turkey:'🇹🇷',Brazil:'🇧🇷',Arab:'🇸🇦',Indonesia:'🇮🇩',Pakistan:'🇵🇰',Russia:'🇷🇺',Germany:'🇩🇪',France:'🇫🇷',Spain:'🇪🇸',Italy:'🇮🇹',Worldwide:'🌍'};
+const TAGE=[[/^HQ Real$/,'💎'],[/^HQ$/,'💎'],[/^Premium$/,'👑'],[/^Real$/,'✅'],[/^Mix$/,'🎲'],[/^LowQ$/,'🔻'],[/^(NoDrop|LowDrop|\d+%Drop)$/,'🛡️'],[/^NoRefill$/,'🚫'],[/^Refill$/,'♻'],[/^[\d.]+[KM]?(-[\d.]+[KM]?)?\/(D|Hr)$/,'🚀'],[/^Max/,'📈'],[/^Fast$/,'⏩']];
+const emTag=t=>{if(FLAG[t])return FLAG[t]+' '+t;const x=TAGE.find(a=>a[0].test(t));return x?x[1]+' '+t:t};
+const stripEmo=s=>String(s==null?'':s).replace(/^[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u200D\u20E3\s]+/u,'').trim();
+/* ক্যাটেগরির নাম: প্ল্যাটফর্মের ইমুজি + নাম (আগের ইমুজি সরিয়ে একবারই বসে — বারবার চালালে একই থাকে) */
+function catNice(cat){const c=stripEmo(cat);if(!c||!emoOn())return c;const P=pick(NP,c),T=pick(NT,c),e=P?PE[P[0]]:(T?TE[T[0]]:'📦');return (e+' '+c).substring(0,80)}
 function niceTags(t,flag,max){const o=[];let m;
   const hq=/\bhq\b|high.?quality/i.test(t),pr=/premium/i.test(t),real=/\breal\b|organic|authentic/i.test(t);
   if((hq||pr)&&real)o.push('HQ Real');else if(hq)o.push('HQ');else if(pr)o.push('Premium');else if(real)o.push('Real');else if(/\bmix(ed)?\b/i.test(t))o.push('Mix');else if(/\bbots?\b|low.?quality|\blq\b|lowq/i.test(t))o.push('LowQ');
@@ -244,6 +257,7 @@ function niceTags(t,flag,max){const o=[];let m;
   if(m)o.push(m[1].replace(/\s+/g,'').toUpperCase()+(/^d/i.test(m[2])?'/D':'/Hr'));
   if(/instant/i.test(t))o.push('⚡Instant');
   else if(m=t.match(/(?:start(?:s|ing)?(?:\s*time)?|begins?)\W{0,4}(\d+(?:\s?[-–]\s?\d+)?)\s*(min|hour|hr)/i)||t.match(/⚡\s*(\d+(?:\s?[-–]\s?\d+)?)\s*(min|hour|hr)/i))o.push('⚡'+m[1].replace(/\s+/g,'')+(/^m/i.test(m[2])?'Min':'Hr'));
+  else if(/\bfast\b/i.test(t))o.push('Fast');
   max=+max||0;if(max>0)o.push('Max'+kfmt(max));
   return o}
 function nice(r){
@@ -251,8 +265,9 @@ function nice(r){
   const P=pick(NP,c0)||pick(NP,n0),T=pick(NT,c0)||pick(NT,n0);if(!T)return null;
   const base=P&&P[0]==='Website Traffic'?'Traffic':T[0];
   const flag=r.refill===undefined||r.refill===null||r.refill===''?null:String(r.refill)==='1'||r.refill===true;
-  let tg=niceTags(all,flag,r.max),nm;
-  do{nm=base+(tg.length?' – '+tg.join(' · '):'');if(nm.length<=64)break;tg.pop()}while(tg.length);
+  let tg=niceTags(all,flag,r.max),nm;const em=emoOn();if(em)tg=tg.map(emTag);
+  const pre=em&&TE[base]?TE[base]+' ':'';
+  do{nm=pre+base+(tg.length?' – '+tg.join(' · '):'');if(nm.length<=(em?100:64))break;tg.pop()}while(tg.length);
   return nm.substring(0,120)}
 
 /* ---------- প্ল্যাটফর্ম হাব ---------- */
@@ -310,37 +325,37 @@ function mrow(r){
   c.querySelector('[data-h]').onclick=async ev=>{if(busy)return;const on=r.state==='off',b=ev.currentTarget;busy=true;b.disabled=true;
     try{await api('svc_site_hide',{codes:[r.code],on});r.state=on?'on':'off';b.setAttribute('aria-checked',on);c.classList.toggle('dim',!on);toast(on?'চালু হয়েছে':'বন্ধ হয়েছে')}catch(e){if(!authFail(e))toast(e.message)}b.disabled=false;busy=false};
   return c}
-function editSheet(r){
+function editSheet(r,after){
   let dlg=$('#esh');if(!dlg){dlg=document.createElement('dialog');dlg.id='esh';document.body.appendChild(dlg)}
   const pls=[...new Set([r.platform,...PLAT.map(p=>p[0])].filter(Boolean))];
   dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 8px">সম্পাদনা · ID ${esc(r.code)}</h3><label for="enm">সার্ভিসের নাম</label><input id="enm" maxlength="120" value="${esc(r.name)}"><label for="epl">প্ল্যাটফর্ম</label><select id="epl">${pls.map(p=>`<option${p===r.platform?' selected':''}>${esc(p)}</option>`).join('')}</select><label for="ect">ক্যাটেগরি</label><input id="ect" list="ects" value="${esc(r.category)}"><datalist id="ects">${(window._mc||[]).map(c=>`<option value="${esc(c)}">`).join('')}</datalist><p id="eer" class="err" role="alert"></p><div class="acts"><button class="sm" value="cancel" formnovalidate>বাতিল</button><button class="sm" id="etd" type="button">অটো সাজান</button><button class="btn" value="ok">সংরক্ষণ</button></div></form>`;
   $('#etd').onclick=()=>{const t=r.tidy||{},nn=nice(r)||t.name;if(nn)$('#enm').value=nn;if(t.cat)$('#ect').value=t.cat};
   dlg.querySelector('form').onsubmit=e=>{if(e.submitter&&e.submitter.value==='ok'&&!$('#enm').value.trim()){e.preventDefault();$('#eer').textContent='নাম দিন'}};
   dlg.onclose=async()=>{if(dlg.returnValue!=='ok')return;
-    try{await api('svc_site_edit',{code:r.code,name:$('#enm').value,platform:$('#epl').value,category:$('#ect').value});toast('সংরক্ষিত ✔');mload()}catch(e){if(!authFail(e))toast(e.message)}};
-  dlg.showModal()}
+    try{await api('svc_site_edit',{code:r.code,name:$('#enm').value,platform:$('#epl').value,category:$('#ect').value});toast('সংরক্ষিত ✔');SC=null;(after||mload)()}catch(e){if(!authFail(e))toast(e.message)}};
+  dlg.returnValue='';dlg.showModal()}
 async function catCodes(cat,state){const out=[];let off=0,tot=1;
   while(off<tot){const d=await api('svc_site_list',{q:'',platform:'',category:cat,state,offset:off,limit:100});tot=d.total;if(!d.rows.length)break;d.rows.forEach(r=>out.push(r.code));off+=d.rows.length}
   return out}
 const chunks=(a,n)=>{const o=[];for(let i=0;i<a.length;i+=n)o.push(a.slice(i,i+n));return o};
-async function catRename(cat){
-  if(busy)return;const nn=(prompt('ক্যাটেগরির নতুন নাম',cat)||'').trim();if(!nn||nn===cat)return;
+async function catRename(cat,after){
+  if(busy)return;const nn=((await askText('ক্যাটেগরির নতুন নাম',cat,true))||'').trim();if(!nn||nn===cat)return;
   if(nn.length>80){toast('নাম ৮০ অক্ষরের বেশি হবে না');return}
   busy=true;toast('দেখা হচ্ছে…');
   try{const codes=await catCodes(cat,'all');
     if(!codes.length){toast('এই ক্যাটেগরিতে কিছু নেই');busy=false;return}
     if(!confirm('"'+cat+'" ক্যাটেগরির '+bn(codes.length)+'টি সার্ভিসের ক্যাটেগরি বদলে "'+nn+'" হবে।'+(d_has(nn)?'\n(এই নামে আগে থেকেই ক্যাটেগরি আছে — দুটো মিশে যাবে)':'')+'\nচালিয়ে যাবেন?')){busy=false;return}
     let done=0;for(const c of chunks(codes,200)){const r=await api('svc_site_bulk',{codes:c,category:nn});done+=r.done}
-    toast(bn(done)+'টির ক্যাটেগরি বদলেছে ✔');ms.cat=nn;ms.type=typeOf(nn);busy=false;mload()}
+    SC=null;toast(bn(done)+'টির ক্যাটেগরি বদলেছে ✔');busy=false;if(after)after(nn);else{ms.cat=nn;ms.type=typeOf(nn);mload()}}
   catch(e){busy=false;if(!authFail(e))toast(e.message)}}
 const d_has=n=>(window._mc||[]).indexOf(n)>=0;
-async function catDelete(cat){
+async function catDelete(cat,after){
   if(busy)return;busy=true;toast('দেখা হচ্ছে…');
   try{const codes=await catCodes(cat,'on');
     if(!codes.length){toast('এই ক্যাটেগরিতে চালু সার্ভিস নেই');busy=false;return}
     if(!confirm('"'+cat+'" ক্যাটেগরির চালু '+bn(codes.length)+'টি সার্ভিস সাইট থেকে মুছে/লুকানো হবে।\n(পুরনোগুলো "লুকানো" ফিল্টার থেকে আবার ফেরানো যাবে)\nনিশ্চিত?')){busy=false;return}
     let done=0;for(const c of chunks(codes,200)){const r=await api('svc_site_hide',{codes:c,on:false,del:true});done+=r.done}
-    toast(bn(done)+'টি সার্ভিস সরানো হয়েছে');ms.cat='';busy=false;mload()}
+    SC=null;toast(bn(done)+'টি সার্ভিস সরানো হয়েছে');busy=false;if(after)after();else{ms.cat='';mload()}}
   catch(e){busy=false;if(!authFail(e))toast(e.message)}}
 function msBar(){let b=$('#bulk');if(!b){b=document.createElement('div');b.id='bulk';b.className='bulk';document.body.appendChild(b)}
   b.hidden=!ssel.size;b.innerHTML=`<b>${bn(ssel.size)}টি</b><button class="sm" data-a="show">চালু</button><button class="sm" data-a="hide">বন্ধ</button><button class="sm" data-a="del">মুছুন</button><button class="sm" data-a="cat">ক্যাটেগরি</button><button class="sm" data-a="tidy">সাজান</button><button class="sm" data-a="x" aria-label="বাতিল">✕</button>`;
@@ -354,6 +369,138 @@ async function mact(k){
   else{act='svc_site_bulk';if(k==='tidy'){if(!confirm(bn(codes.length)+'টির নাম ও ক্যাটেগরি অটো সাজানো হবে?'))return;a.tidy=true}else{const c=prompt('নতুন ক্যাটেগরি (সবগুলোর জন্য)','');if(!c)return;a.category=c}}
   busy=true;try{const r=await api(act,a);toast(bn(r.done)+'টি হয়েছে');mload()}catch(e){if(!authFail(e))toast(e.message)}busy=false}
 
+/* ---------- ক্যাটেগরি: তালিকা · নতুন তৈরি · ভেতরে সার্ভিসের নাম এডিট ---------- */
+const catUrl=c=>'#cat='+encodeURIComponent(c);
+async function siteRows(force){if(SC&&!force)return SC;SC=await scanSite({state:'all'});return SC}
+const matchCat=c=>{const k=stripEmo(c).toLowerCase(),f=(window._sc||[]).find(x=>stripEmo(x).toLowerCase()===k);return f||c};
+function askText(title,val,emo){return new Promise(res=>{let d=$('#ask');if(!d){d=document.createElement('dialog');d.id='ask';document.body.appendChild(d)}
+  d.innerHTML=`<form method="dialog"><h3 style="margin:0 0 8px">${esc(title)}</h3><div class="knm"><input id="askv" maxlength="80" value="${esc(val)}" aria-label="${esc(title)}">${emo?'<button type="button" class="ib" id="aske" aria-label="ইমুজি যোগ করুন" title="ইমুজি যোগ করুন">✨</button>':''}</div><div class="acts"><button class="btn" value="ok" style="order:2">ঠিক আছে</button><button class="sm" value="cancel" formnovalidate style="order:1">বাতিল</button></div></form>`;
+  const inp=d.querySelector('#askv'),eb=d.querySelector('#aske');if(eb)eb.onclick=()=>{inp.value=catNice(inp.value);inp.focus()};
+  d.addEventListener('close',()=>res(d.returnValue==='ok'?inp.value:null),{once:true});d.returnValue='';d.showModal();inp.focus();inp.select()})}
+
+async function catsPage(){
+  cur=null;$('#title').textContent='ক্যাটেগরি';$('#back').hidden=true;const el=$('#main');
+  el.innerHTML=nav('cats')+'<div class="sk"></div><div class="sk" style="margin-top:12px"></div>';
+  try{const rows=await siteRows(true),G={},all=new Set();
+    rows.forEach(r=>{if(!r.category)return;all.add(r.category);const p=r.platform_label||'other',g=G[p]||(G[p]={}),c=g[r.category]||(g[r.category]={n:0,on:0});c.n++;if(r.state!=='off')c.on++});
+    const pls=Object.keys(G).sort((a,b)=>Object.keys(G[b]).length-Object.keys(G[a]).length);
+    el.innerHTML=nav('cats')+`<div class="bar"><button class="btn" id="cnew">➕ নতুন ক্যাটেগরি</button></div><div class="bar"><button class="sm" id="cemo" style="flex:1">✨ সব ক্যাটেগরিতে ইমুজি দিন</button><button class="chip" id="cemt" aria-pressed="${emoOn()}" title="ইমুজি দিয়ে সাজানো চালু/বন্ধ">🙂 ইমুজি ${emoOn()?'চালু':'বন্ধ'}</button></div><div class="bar"><input id="cqs" type="search" placeholder="ক্যাটেগরি খুঁজুন" aria-label="ক্যাটেগরি খুঁজুন"></div><p class="sub" id="ccn">মোট ${bn(all.size)}টি ক্যাটেগরি · ${bn(rows.length)}টি সার্ভিস</p><p class="sub" id="cprog" role="status"></p><div id="cgl"></div>`;
+    const draw=q=>{q=q.trim().toLowerCase();let h='';
+      pls.forEach(p=>{const cs=Object.keys(G[p]).filter(c=>!q||c.toLowerCase().indexOf(q)>=0).sort((a,b)=>a.localeCompare(b));if(!cs.length)return;
+        h+=`<h3 class="sec pc">${logo(p,24)} ${esc(p)} <span class="sub">· ${bn(cs.length)}টি</span></h3><div class="list">`+cs.map(c=>`<a class="card cat" href="${esc(catUrl(c))}"><span><b>${esc(c)}</b><span class="sub" style="display:block">${bn(G[p][c].n)}টি সার্ভিস · চালু ${bn(G[p][c].on)}</span></span><span aria-hidden="true">›</span></a>`).join('')+'</div>'});
+      $('#cgl').innerHTML=h||'<div class="card empty">কিছু পাওয়া যায়নি</div>'};
+    draw('');$('#cqs').oninput=e=>draw(e.target.value);
+    $('#cnew').onclick=()=>catSheet({mode:'new'});
+    $('#cemt').onclick=()=>{ls.set('pb_emo',emoOn()?'0':'1');catsPage()};
+    $('#cemo').onclick=()=>catsEmoji(rows)}
+  catch(e){if(!authFail(e))el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p><button class="btn" id="rt" style="max-width:220px">আবার চেষ্টা করুন</button></div>`,$('#rt').onclick=catsPage}}
+/* পুরনো নাম → নতুন নাম: প্রতিটা ক্যাটেগরির সব সার্ভিসের ক্যাটেগরি বদলায় (একাধিক মিশে গেলে একসাথে হয়ে যায়) */
+async function catsEmojiDo(pairs,prog){let done=0,i=0;
+  for(const pr of pairs){i++;if(prog)prog(`${bn(i)}/${bn(pairs.length)} — ${pr[0]}`);const codes=await catCodes(pr[0],'all');
+    for(const c of chunks(codes,200)){const r=await api('svc_site_bulk',{codes:c,category:pr[1]});done+=r.done}}
+  SC=null;return done}
+function emojiPairs(names){const out=[];[...new Set(names)].filter(Boolean).forEach(c=>{const n=catNice(c);if(n&&n!==c)out.push([c,n])});return out}
+async function catsEmoji(rows){
+  if(busy)return;const names=rows.map(r=>r.category),pairs=emojiPairs(names);
+  if(!pairs.length){toast(emoOn()?'সব ক্যাটেগরিতে আগে থেকেই ইমুজি আছে ✔':'বদলানোর কিছু নেই');return}
+  const tgt=new Set(names);const merge=pairs.filter(p=>tgt.has(p[1])).length;
+  if(!confirm(bn(pairs.length)+'টি ক্যাটেগরির নাম বদলাবে। যেমন:\n'+pairs.slice(0,4).map(p=>p[0]+'\n→ '+p[1]).join('\n\n')+(merge?'\n\n('+bn(merge)+'টি আগে থেকে থাকা নামের সাথে মিশে যাবে)':'')+'\n\nচালিয়ে যাবেন?'))return;
+  busy=true;const pg=$('#cprog');
+  try{const d=await catsEmojiDo(pairs,t=>{if(pg)pg.textContent=t});toast(bn(d)+'টি সার্ভিসের ক্যাটেগরি সাজানো হয়েছে ✔');busy=false;catsPage()}
+  catch(e){busy=false;if(!authFail(e))toast(e.message)}}
+
+async function catPage(name){
+  cur=null;$('#title').textContent=name;$('#back').hidden=false;const el=$('#main');
+  el.innerHTML='<div class="sk"></div><div class="sk" style="margin-top:12px"></div>';
+  try{const rows=await scanSite({category:name,state:'all'}),on=rows.filter(r=>r.state!=='off').length;window._sc=window._sc||[];
+    el.innerHTML=`<div class="card catbar"><div><b style="font-size:18px;word-break:break-word">${esc(name)}</b><div class="sub">${bn(rows.length)}টি সার্ভিস · চালু ${bn(on)}</div></div><div class="acts"><button class="sm" id="kr">✎ নাম বদলান</button><button class="sm" id="ke">✨ ইমুজি</button><button class="sm" id="ka">➕ সার্ভিস যোগ</button><button class="sm" id="kt">🧹 সার্ভিসের নাম সাজান</button><button class="sm dng" id="kd">🗑 মুছুন</button></div></div><div class="bar"><input id="kq" type="search" placeholder="এই ক্যাটেগরির সার্ভিস খুঁজুন (নাম বা আইডি)" aria-label="খুঁজুন"></div><p class="sub">নামের ঘরে সরাসরি লিখুন → 💾 চাপুন। ✨ চাপলে অটো নাম (ইমুজিসহ) বসবে।</p><div class="list" id="kl"></div><div id="kmore"></div>`;
+    let q='',shown=0;const reload=()=>route();
+    const list=()=>rows.filter(r=>!q||(r.name+' '+r.code).toLowerCase().indexOf(q)>=0);
+    const more=()=>{const L=list();L.slice(shown,shown+60).forEach(r=>$('#kl').appendChild(krow(r,reload)));shown=Math.min(L.length,shown+60);
+      $('#kmore').innerHTML=shown<L.length?`<button class="sm" id="kmb" style="width:100%;margin-top:8px">আরও দেখান (${bn(L.length-shown)}টি বাকি)</button>`:'';const m=$('#kmb');if(m)m.onclick=more};
+    const fresh=()=>{$('#kl').innerHTML='';shown=0;more();if(!list().length)$('#kl').innerHTML='<div class="card empty">কিছু পাওয়া যায়নি</div>'};
+    fresh();$('#kq').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{q=e.target.value.trim().toLowerCase();fresh()},250)};
+    $('#kr').onclick=()=>catRename(name,nn=>{location.hash=catUrl(nn)});
+    $('#ke').onclick=async()=>{if(busy)return;const nn=catNice(name);if(!nn||nn===name){toast('আগে থেকেই এই নামে সাজানো আছে');return}
+      if(!confirm('ক্যাটেগরির নাম বদলাবে:\n'+name+'\n→ '+nn+'\n\n'+bn(rows.length)+'টি সার্ভিসের ক্যাটেগরি বদলাবে। চালিয়ে যাবেন?'))return;
+      busy=true;try{await catsEmojiDo([[name,nn]]);toast('ক্যাটেগরির নাম সাজানো হয়েছে ✔');busy=false;location.hash=catUrl(nn)}catch(e){busy=false;if(!authFail(e))toast(e.message)}};
+    $('#ka').onclick=()=>catSheet({mode:'add',name,after:reload});
+    $('#kt').onclick=async()=>{if(busy)return;busy=true;const b=$('#kt');b.disabled=true;
+      try{const t=await tidyItems({category:name,state:'all'});
+        if(!t.it.length){toast('সব সার্ভিস আগেই সাজানো ✔');busy=false;b.disabled=false;return}
+        if(!confirm(bn(t.it.length)+'টি সার্ভিসের নাম বদলাবে। যেমন:\n'+t.it.slice(0,3).map(x=>x.cn+'\n→ '+x.nn).join('\n\n')+'\n\nচালিয়ে যাবেন?')){busy=false;b.disabled=false;return}
+        const n=await tidyDo(t.it);SC=null;toast(bn(n)+'টির নাম সাজানো হয়েছে ✔');busy=false;reload()}
+      catch(e){busy=false;b.disabled=false;if(!authFail(e))toast(e.message)}};
+    $('#kd').onclick=()=>catDelete(name,()=>{location.hash='cats'})
+  }catch(e){if(!authFail(e))el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p><button class="btn" id="rt" style="max-width:220px">আবার চেষ্টা করুন</button></div>`,$('#rt').onclick=()=>catPage(name)}}
+/* ক্যাটেগরির ভেতরের একটা সার্ভিস: নাম সরাসরি এডিট */
+function krow(r,reload){
+  const c=document.createElement('div');c.className='card krow'+(r.state==='off'?' dim':'');
+  c.innerHTML=`<div class="khd"><span class="sub">${logo(r.platform_label,18)} ID <b>${esc(r.code)}</b> · খরচ <b>$${esc(r.cost)}</b> · সাইটে ≈ <b>৳${bn(r.sell)}</b> · ${bn(r.min)}–${bn(r.max)}${r.state==='off'?' · লুকানো':''}</span><div class="acts2"><button class="sw" role="switch" aria-checked="${r.state!=='off'}" aria-label="সাইটে চালু/বন্ধ" data-h></button></div></div><div class="knm"><input class="nm" maxlength="120" value="${esc(r.name)}" aria-label="সার্ভিসের নাম (ID ${esc(r.code)})"><button class="ib" type="button" data-a title="অটো সাজান (ইমুজিসহ)" aria-label="অটো সাজান">✨</button><button class="ib sv" type="button" data-s hidden title="সংরক্ষণ" aria-label="সংরক্ষণ">💾</button></div><div class="row2"><button class="sm" type="button" data-e>✎ বিস্তারিত এডিট (ক্যাটেগরি/প্ল্যাটফর্ম)</button></div>`;
+  const inp=c.querySelector('.nm'),sv=c.querySelector('[data-s]'),chk=()=>{sv.hidden=!(inp.value.trim()&&inp.value.trim()!==r.name)};
+  inp.oninput=chk;
+  const save=async()=>{const nm=inp.value.trim();if(!nm||nm===r.name||busy)return;busy=true;sv.disabled=true;
+    try{await api('svc_site_edit',{code:r.code,name:nm,platform:r.platform,category:r.category});r.name=nm;SC=null;chk();toast('সংরক্ষিত ✔')}catch(e){if(!authFail(e))toast(e.message)}
+    busy=false;sv.disabled=false};
+  sv.onclick=save;inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();save()}};
+  c.querySelector('[data-a]').onclick=()=>{const nn=nice(r)||(r.tidy&&r.tidy.name);if(!nn){toast('অটো নাম বানানোর মতো তথ্য নেই');return}inp.value=nn;chk();inp.focus()};
+  c.querySelector('[data-e]').onclick=()=>editSheet(r,reload);
+  c.querySelector('[data-h]').onclick=async ev=>{if(busy)return;const on=r.state==='off',b=ev.currentTarget;busy=true;b.disabled=true;
+    try{await api('svc_site_hide',{codes:[r.code],on});r.state=on?'on':'off';b.setAttribute('aria-checked',on);c.classList.toggle('dim',!on);toast(on?'চালু হয়েছে':'বন্ধ হয়েছে')}catch(e){if(!authFail(e))toast(e.message)}b.disabled=false;busy=false};
+  return c}
+/* নতুন ক্যাটেগরি (সার্ভিস বেছে) / বিদ্যমান ক্যাটেগরিতে সার্ভিস যোগ */
+function catSheet(o){
+  let dlg=$('#ncs');if(!dlg){dlg=document.createElement('dialog');dlg.id='ncs';document.body.appendChild(dlg)}
+  const add=o.mode==='add',chosen=new Map();let qt2=null;
+  dlg.innerHTML=`<form method="dialog" id="ncf"><h3 style="margin:0 0 8px">${add?'➕ সার্ভিস যোগ — '+esc(o.name):'➕ নতুন ক্যাটেগরি'}</h3>${add?'':`<label for="ncn">ক্যাটেগরির নাম</label><div class="knm"><input id="ncn" maxlength="80" placeholder="যেমন: Instagram Followers" autocomplete="off"><button type="button" class="ib" id="ncemo" title="ইমুজি যোগ করুন" aria-label="ইমুজি যোগ করুন">✨</button></div><label for="ncp">প্ল্যাটফর্ম (ঐচ্ছিক)</label><select id="ncp"><option value="">সার্ভিসের যেমন আছে তেমনই</option>${PLAT.slice(0,7).map(p=>`<option>${p[0]}</option>`).join('')}</select>`}<label for="ncq">সার্ভিস বাছুন — নাম বা আইডি লিখে খুঁজুন</label><input id="ncq" type="search" autocomplete="off" placeholder="যেমন: followers"><p class="sub" id="ncc"></p><div class="ncl" id="ncl"></div><p id="ncerr" class="err" role="alert"></p><div class="acts"><button class="btn" value="ok" id="ncok" style="order:2">${add?'যোগ করুন':'তৈরি করুন'}</button><button class="sm" value="cancel" formnovalidate style="order:1">বাতিল</button></div></form>`;
+  const ok=$('#ncok'),cnt=()=>{ok.textContent=(add?'যোগ করুন':'তৈরি করুন')+(chosen.size?` (${bn(chosen.size)}টি)`:'')};
+  const load=async()=>{const box=$('#ncl'),q=$('#ncq').value.trim();box.innerHTML='<div class="sk"></div>';
+    try{const d=await api('svc_site_list',{q,platform:'',category:'',state:'all',offset:0,limit:100});let rows=d.rows;if(add)rows=rows.filter(r=>r.category!==o.name);
+      $('#ncc').textContent=`মোট ${bn(d.total)}টি${d.total>d.rows.length?' · প্রথম '+bn(d.rows.length)+'টি দেখানো হচ্ছে — খুঁজে সীমিত করুন':''}`;box.innerHTML='';
+      if(!rows.length)box.innerHTML='<div class="empty">কিছু পাওয়া যায়নি</div>';
+      rows.forEach(r=>{const l=document.createElement('label');l.className='card tdy';l.innerHTML=`<input type="checkbox" class="sel" ${chosen.has(r.code)?'checked':''}><div><h4>${esc(r.name)}</h4><div class="sub">ID ${esc(r.code)} · ${esc(r.platform_label)} · ${esc(r.category||'—')}${r.state==='off'?' · লুকানো':''}</div></div>`;
+        l.querySelector('input').onchange=e=>{e.target.checked?chosen.set(r.code,r):chosen.delete(r.code);cnt()};box.appendChild(l)})}
+    catch(e){if(!authFail(e))box.innerHTML=`<div class="err">${esc(e.message)}</div>`}};
+  $('#ncq').oninput=()=>{clearTimeout(qt2);qt2=setTimeout(load,350)};
+  const eb=$('#ncemo');if(eb)eb.onclick=()=>{const n=$('#ncn');n.value=catNice(n.value);n.focus()};
+  $('#ncf').onsubmit=async e=>{if(!(e.submitter&&e.submitter.value==='ok'))return;e.preventDefault();if(busy)return;
+    const er=$('#ncerr'),name=(add?o.name:$('#ncn').value).trim();er.textContent='';
+    if(!name){er.textContent='ক্যাটেগরির নাম দিন';return}if(name.length>80){er.textContent='নাম ৮০ অক্ষরের বেশি হবে না';return}
+    if(!chosen.size){er.textContent='অন্তত একটা সার্ভিস বাছুন';return}
+    busy=true;ok.disabled=true;
+    try{if(!add){const ex=await api('svc_site_list',{q:'',platform:'',category:name,state:'all',offset:0,limit:1});
+        if(ex.total&&!confirm('"'+name+'" নামে ক্যাটেগরি আগে থেকেই আছে ('+bn(ex.total)+'টি সার্ভিস)। বাছাই করা সার্ভিসগুলো তাতেই যোগ হবে। চালিয়ে যাবেন?')){busy=false;ok.disabled=false;return}}
+      const codes=[...chosen.keys()],pl=add?'':$('#ncp').value;let done=0,k=0;
+      for(const c of chunks(codes,200)){er.textContent=`সরানো হচ্ছে… ${bn(Math.min(codes.length,(++k)*200))}/${bn(codes.length)}`;const x=await api('svc_site_bulk',Object.assign({codes:c,category:name},pl?{platform:pl}:{}));done+=x.done}
+      SC=null;busy=false;dlg.close('ok');toast(add?bn(done)+'টি সার্ভিস যোগ হয়েছে ✔':'ক্যাটেগরি তৈরি হয়েছে ✔ ('+bn(done)+'টি সার্ভিস)');
+      if(o.after)o.after(name);else location.hash=catUrl(name)}
+    catch(x){busy=false;ok.disabled=false;if(!authFail(x))er.textContent=x.message}};
+  cnt();load();dlg.returnValue='';dlg.showModal();setTimeout(()=>{const n=$('#ncn');if(n)n.focus()},50)}
+
+/* ---------- AI বাটন: রোবট আইকন, টেনে সরানো যায়, সবসময় সব স্তরের উপরে (top layer) ---------- */
+const ROBOT='<svg class="robot" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true" focusable="false"><path d="M16 8V4.6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="16" cy="3.4" r="1.9" fill="currentColor"/><rect x="5" y="8" width="22" height="17" rx="6" fill="currentColor"/><rect x="1.6" y="13" width="3" height="7" rx="1.5" fill="currentColor"/><rect x="27.4" y="13" width="3" height="7" rx="1.5" fill="currentColor"/><circle class="rb-e" cx="11.5" cy="15.5" r="2.6"/><circle class="rb-e" cx="20.5" cy="15.5" r="2.6"/><rect class="rb-m" x="11" y="20.3" width="10" height="2" rx="1"/></svg>';
+function topLayer(el){if(!el||!el.showPopover)return;try{if(el.matches(':popover-open'))el.hidePopover();el.showPopover()}catch(e){}}
+/* কোনো মডাল ডায়ালগ খুললে বাটন/প্যানেল সেটার ভেতরে ঢুকে যায় (নইলে ডায়ালগের বাইরের সবকিছু ক্লিক-অযোগ্য হয়ে যায়); বন্ধ হলে ফিরে আসে */
+function aiDock(host){const F=$('#aiFab'),P=$('#ai');if(!F||!P)return;try{host.appendChild(P);host.appendChild(F);topLayer(P);topLayer(F)}catch(e){}}
+(function(){const sm=HTMLDialogElement.prototype.showModal;HTMLDialogElement.prototype.showModal=function(){sm.call(this);try{aiDock(this);this.addEventListener('close',()=>aiDock(document.body),{once:true})}catch(e){}}})();
+const FS=58,FM=8,FK='pb_fab';
+function fabPos(){try{const v=JSON.parse(ls.get(FK));if(v&&isFinite(v.fx)&&isFinite(v.fy))return v}catch(e){}return{fx:1,fy:.82}}
+function fabPut(F,x,y){const W=innerWidth,H=innerHeight,tp=FM;x=Math.min(Math.max(FM,x),Math.max(FM,W-FS-FM));y=Math.min(Math.max(tp,y),Math.max(tp,H-FS-FM));F.style.left=x+'px';F.style.top=y+'px';return{x,y}}
+function fabFit(){const F=$('#aiFab');if(!F)return;const v=fabPos();fabPut(F,v.fx*(innerWidth-FS),v.fy*(innerHeight-FS))}
+function fabSave(F){const r=F.getBoundingClientRect(),W=Math.max(1,innerWidth-FS),H=Math.max(1,innerHeight-FS);ls.set(FK,JSON.stringify({fx:Math.min(1,Math.max(0,r.left/W)),fy:Math.min(1,Math.max(0,r.top/H))}))}
+let fabDown=false;document.addEventListener('dragstart',e=>{if(fabDown)e.preventDefault()},true);
+function aiFabInit(F){let dr=null;
+  fabFit();addEventListener('resize',fabFit);addEventListener('orientationchange',()=>setTimeout(fabFit,200));
+  F.addEventListener('pointerdown',e=>{if(e.button>0)return;const r=F.getBoundingClientRect();dr={id:e.pointerId,sx:e.clientX,sy:e.clientY,ox:r.left,oy:r.top,m:false};fabDown=true;try{F.setPointerCapture(e.pointerId)}catch(x){}});
+  F.addEventListener('pointermove',e=>{if(!dr||e.pointerId!==dr.id)return;const dx=e.clientX-dr.sx,dy=e.clientY-dr.sy;
+    if(!dr.m&&Math.hypot(dx,dy)>6){dr.m=true;F.classList.add('drag');F.style.transition='none'}
+    if(dr.m){fabPut(F,dr.ox+dx,dr.oy+dy);e.preventDefault()}});
+  const end=e=>{if(!dr||e.pointerId!==dr.id)return;const was=dr.m;dr=null;fabDown=false;F.classList.remove('drag');try{F.releasePointerCapture(e.pointerId)}catch(x){}
+    if(was){fabMoved=true;setTimeout(()=>{fabMoved=false},80);const r=F.getBoundingClientRect(),left=r.left+FS/2<innerWidth/2;F.style.transition='left .18s ease';fabPut(F,left?FM:innerWidth-FS-FM,r.top);setTimeout(()=>{F.style.transition='';fabSave(F)},200)}};
+  F.addEventListener('pointerup',end);F.addEventListener('pointercancel',end);
+  ['dragstart','contextmenu','selectstart'].forEach(t=>F.addEventListener(t,e=>e.preventDefault()));
+  F.addEventListener('keydown',e=>{const k={ArrowLeft:[-24,0],ArrowRight:[24,0],ArrowUp:[0,-24],ArrowDown:[0,24]}[e.key];if(!k)return;e.preventDefault();const r=F.getBoundingClientRect();fabPut(F,r.left+k[0],r.top+k[1]);fabSave(F)})}
+
 /* ---------- AI সহকারী (Gemini) — key শুধু এই ডিভাইসের ব্রাউজারে থাকে ---------- */
 const GK='pb_gem_key',GM='pb_gem_model',GOK='pb_gem_ok';let gh=[],gbusy=false;
 const SYS=`তুমি "boostplus সার্ভিস স্টুডিও"-র AI সহকারী। সবসময় বাংলায়, ছোট ও পরিষ্কার উত্তর দাও।
@@ -362,7 +509,7 @@ const SYS=`তুমি "boostplus সার্ভিস স্টুডিও"-
 ১) কোয়ালিটি/ট্যাগ শুধু প্রভাইডারের নিজের নামে যা আছে তা-ই; নিজে কিছু বানাবে না। কিছু না পেলে স্পষ্ট বলো।
 ২) যেকোনো পরিবর্তনের টুল ব্যবহারকারীর কাছে নিশ্চিতকরণ চায়। তবু টুল ডাকার আগে এক লাইনে বলো কী করছ।
 ৩) নাম সাজাতে tidy_preview/tidy_apply ব্যবহার করো। ব্যবহারকারী নির্দিষ্ট নাম না বললে set_service দিয়ে নিজে নাম বানিয়ো না।
-৪) সাইটের নামের ছাঁচ: "ধরন – কোয়ালিটি · দেশ · ড্রপ · ♻রিফিল · স্পিড · ⚡স্টার্ট · Max" (যেমন Followers – HQ Real · NoDrop · ♻30D · 50K/D · Max1M)।
+৪) সাইটের নামের ছাঁচ: "ধরন – কোয়ালিটি · দেশ · ড্রপ · ♻রিফিল · স্পিড · ⚡স্টার্ট · Max", ইমুজিসহ (যেমন 👥 Followers – 💎 HQ Real · 🛡️ NoDrop · ♻30D · 🚀 50K/D · 📈 Max1M)। ক্যাটেগরির নামের আগে প্ল্যাটফর্মের ইমুজি বসে (📸 Instagram Followers)। নতুন ক্যাটেগরি বানাতে create_category, ইমুজি বসাতে emoji_categories ব্যবহার করো।
 ৫) দাম ৳ প্রতি ১০০০; প্রভাইডারের রেট USD। ফল তালিকা ছোট রাখো (সর্বোচ্চ ১০টা), বাকিটা কতগুলো আছে বলো।`;
 const TOOLS=[{functionDeclarations:[
  {name:'search_site',description:'সাইটে থাকা সার্ভিস খোঁজে। মোট সংখ্যা ও কিছু সার্ভিস ফেরত দেয়।',parameters:{type:'OBJECT',properties:{q:{type:'STRING',description:'নাম/আইডি/ক্যাটেগরির অংশ'},platform:{type:'STRING',description:'যেমন Instagram, Facebook, TikTok'},category:{type:'STRING',description:'হুবহু ক্যাটেগরির নাম'},state:{type:'STRING',description:'on, off বা all (ডিফল্ট on)'},limit:{type:'INTEGER'}}}},
@@ -373,12 +520,14 @@ const TOOLS=[{functionDeclarations:[
  {name:'set_service',description:'একটা সার্ভিসের নাম বা ক্যাটেগরি বদলায় (নিশ্চিতকরণ চায়)।',parameters:{type:'OBJECT',properties:{code:{type:'STRING'},name:{type:'STRING'},category:{type:'STRING'}},required:['code']}},
  {name:'set_visibility',description:'সার্ভিস সাইটে চালু (on=true) বা বন্ধ/লুকানো (on=false) করে (নিশ্চিতকরণ চায়)।',parameters:{type:'OBJECT',properties:{codes:{type:'ARRAY',items:{type:'STRING'}},on:{type:'BOOLEAN'}},required:['codes','on']}},
  {name:'rename_category',description:'একটা ক্যাটেগরির সব সার্ভিসের ক্যাটেগরির নাম বদলায় (নিশ্চিতকরণ চায়)।',parameters:{type:'OBJECT',properties:{old:{type:'STRING'},new:{type:'STRING'}},required:['old','new']}},
+ {name:'create_category',description:'নতুন ক্যাটেগরি বানায়: আইডি দিয়ে দেওয়া সার্ভিসগুলো ওই নামের ক্যাটেগরিতে নেয় (নিশ্চিতকরণ চায়)। সার্ভিস ছাড়া ক্যাটেগরি হয় না।',parameters:{type:'OBJECT',properties:{name:{type:'STRING',description:'নতুন ক্যাটেগরির নাম'},codes:{type:'ARRAY',items:{type:'STRING'},description:'সার্ভিসের আইডি'},platform:{type:'STRING',description:'ঐচ্ছিক: instagram, facebook, tiktok, youtube, telegram, twitter, whatsapp'}},required:['name','codes']}},
+ {name:'emoji_categories',description:'ক্যাটেগরির নামের আগে প্ল্যাটফর্মের ইমুজি বসায় — category দিলে শুধু ওটা, না দিলে সব (নিশ্চিতকরণ চায়)।',parameters:{type:'OBJECT',properties:{category:{type:'STRING'}}}},
  {name:'delete_category',description:'একটা ক্যাটেগরির সব চালু সার্ভিস সাইট থেকে সরায় (নিশ্চিতকরণ চায়, পরে ফেরানো যায়)।',parameters:{type:'OBJECT',properties:{category:{type:'STRING'}},required:['category']}}
 ]}];
-const LBL={search_site:'🔎 সাইটে খুঁজছি…',search_providers:'🔎 ১০ প্রভাইডারে খুঁজছি…',list_categories:'🗂 ক্যাটেগরি দেখছি…',tidy_preview:'🧹 নাম পরীক্ষা করছি…',tidy_apply:'🧹 নাম সাজাচ্ছি…',set_service:'✎ সার্ভিস বদলাচ্ছি…',set_visibility:'👁 চালু/বন্ধ করছি…',rename_category:'✎ ক্যাটেগরির নাম বদলাচ্ছি…',delete_category:'🗑 ক্যাটেগরি সরাচ্ছি…'};
-const glim=n=>Math.max(1,Math.min(+n||12,30)),gref=()=>{if(location.hash==='#mng')mload()};
+const LBL={search_site:'🔎 সাইটে খুঁজছি…',search_providers:'🔎 ১০ প্রভাইডারে খুঁজছি…',list_categories:'🗂 ক্যাটেগরি দেখছি…',tidy_preview:'🧹 নাম পরীক্ষা করছি…',tidy_apply:'🧹 নাম সাজাচ্ছি…',set_service:'✎ সার্ভিস বদলাচ্ছি…',set_visibility:'👁 চালু/বন্ধ করছি…',rename_category:'✎ ক্যাটেগরির নাম বদলাচ্ছি…',delete_category:'🗑 ক্যাটেগরি সরাচ্ছি…',create_category:'➕ ক্যাটেগরি বানাচ্ছি…',emoji_categories:'✨ ইমুজি বসাচ্ছি…'};
+const glim=n=>Math.max(1,Math.min(+n||12,30)),gref=()=>{SC=null;const h=location.hash;if(h==='#mng')mload();else if(h==='#cats'||h.indexOf('#cat=')===0)route()};
 const gslim=r=>({code:r.code,name:r.name,category:r.category,platform:r.platform_label,cost_usd:r.cost,sell_bdt:r.sell,min:r.min,max:r.max,state:r.state});
-async function scanSite(f){const R=[];let off=0,tot=1;while(off<tot){const d=await api('svc_site_list',{q:f.q||'',platform:f.platform||'',category:f.category||'',state:'on',offset:off,limit:100});tot=d.total;if(!d.rows.length)break;R.push(...d.rows);off+=d.rows.length}return R}
+async function scanSite(f){const R=[];let off=0,tot=1;while(off<tot){const d=await api('svc_site_list',{q:f.q||'',platform:f.platform||'',category:f.category||'',state:f.state||'on',offset:off,limit:100});tot=d.total;if(!d.rows.length)break;R.push(...d.rows);off+=d.rows.length}return R}
 async function tidyItems(f){const rows=await scanSite(f||{}),it=[];rows.forEach(r=>{const nm=nice(r);if(nm&&nm!==r.name)it.push({code:r.code,cn:r.name,nn:nm,category:r.category,src:r.src,ov:r.ov})});return{n:rows.length,it}}
 async function tidyDo(it){const need=it.filter(r=>r.src==='static'&&!r.ov).map(r=>r.code);for(const c of chunks(need,200))await api('svc_site_bulk',{codes:c});
   let done=0;for(const c of chunks(it.map(r=>({code:r.code,name:r.nn,cat:r.category})),300)){const x=await api('svc_tidy_apply',{items:c});done+=x.done}return done}
@@ -397,7 +546,7 @@ const TOOLFN={
  async tidy_apply(a){const t=await tidyItems(a);if(!t.it.length)return{message:'সব সার্ভিস আগেই সাজানো',scanned:t.n};
   if(!confirm(bn(t.it.length)+'টি সার্ভিসের নাম সাইটের ছাঁচে বদলানো হবে। যেমন:\n'+t.it.slice(0,3).map(x=>x.cn+'\n→ '+x.nn).join('\n\n')+'\n\nচালিয়ে যাবেন?'))return{cancelled:true};
   const done=await tidyDo(t.it);gref();return{done}},
- async set_service(a){const code=String(a.code||'').trim();if(!code)return{error:'আইডি দিন'};const d=await api('svc_site_list',{q:code,state:'all',offset:0,limit:30}),r=d.rows.find(x=>String(x.code)===code);if(!r)return{error:'এই আইডি সাইটে নেই'};
+ async set_service(a){const code=String(a.code||'').trim();if(!code)return{error:'আইডি দিন'};const rs=await scanSite({q:code,state:'all'}),r=rs.find(x=>String(x.code)===code);if(!r)return{error:'এই আইডি সাইটে নেই'};
   const name=String(a.name||r.name).trim(),cat=String(a.category||r.category).trim();
   if(!confirm('ID '+code+'\nনাম: '+name+'\nক্যাটেগরি: '+cat+'\n\nসংরক্ষণ করবেন?'))return{cancelled:true};
   await api('svc_site_edit',{code,name,platform:r.platform,category:cat});gref();return{ok:true,name,category:cat}},
@@ -405,6 +554,13 @@ const TOOLFN={
   if(!confirm(bn(codes.length)+'টি সার্ভিস সাইটে '+(a.on?'চালু':'বন্ধ')+' করা হবে। আইডি: '+codes.slice(0,8).join(', ')+(codes.length>8?'…':'')))return{cancelled:true};
   let done=0;for(const c of chunks(codes,200)){const r=await api('svc_site_hide',{codes:c,on:!!a.on});done+=r.done}gref();return{done}},
  rename_category(a){return catRenameCore(a.old,a.new)},
+ async create_category(a){const name=String(a.name||'').trim(),codes=(a.codes||[]).map(String).slice(0,400);if(!name||name.length>80)return{error:'ক্যাটেগরির নাম ঠিক নয় (১–৮০ অক্ষর)'};if(!codes.length)return{error:'কোনো সার্ভিস আইডি নেই'};
+  const pl=PLAT.slice(0,7).some(p=>p[0]===String(a.platform||'').toLowerCase())?String(a.platform).toLowerCase():'';
+  if(!confirm('নতুন ক্যাটেগরি: "'+name+'"\n'+bn(codes.length)+'টি সার্ভিস এতে আসবে। আইডি: '+codes.slice(0,8).join(', ')+(codes.length>8?'…':'')+'\nচালিয়ে যাবেন?'))return{cancelled:true};
+  let done=0;for(const c of chunks(codes,200)){const r=await api('svc_site_bulk',Object.assign({codes:c,category:name},pl?{platform:pl}:{}));done+=r.done}gref();return{done,category:name}},
+ async emoji_categories(a){const rows=await siteRows(true),names=a.category?[String(a.category)]:rows.map(r=>r.category),pairs=emojiPairs(names);if(!pairs.length)return{message:'বদলানোর কিছু নেই — আগেই ইমুজি আছে বা ক্যাটেগরি পাওয়া যায়নি'};
+  if(!confirm(bn(pairs.length)+'টি ক্যাটেগরির নাম বদলাবে। যেমন:\n'+pairs.slice(0,4).map(p=>p[0]+'\n→ '+p[1]).join('\n\n')+'\n\nচালিয়ে যাবেন?'))return{cancelled:true};
+  const done=await catsEmojiDo(pairs);gref();return{renamed:pairs.length,services:done}},
  delete_category(a){return catDeleteCore(a.category)}};
 const gmd=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
 function addMsg(k,t){const b=$('#aiMsgs');if(!b)return null;const d=document.createElement('div');d.className='am '+k;if(k==='ai')d.innerHTML=gmd(t);else d.textContent=t;b.appendChild(d);b.scrollTop=b.scrollHeight;return d}
@@ -425,14 +581,14 @@ async function agent(text){gtrim();gh.push({role:'user',parts:[{text}]});
 const gerr=e=>e.status===429?'ফ্রি কোটা শেষ বা অনেক দ্রুত পাঠানো হয়েছে — একটু পরে চেষ্টা করুন':e.status===400&&/key/i.test(e.message)||e.status===403?'API key ঠিক নয় বা অনুমতি নেই — ⚙ থেকে দেখুন':e.status===404?'মডেলের নাম পাওয়া যায়নি — ⚙ থেকে মডেল বদলান':e.name==='TypeError'?'ইন্টারনেট/নেটওয়ার্ক সমস্যা':e.message;
 function aiStatus(){const k=ls.get(GK);$('#aiSt').textContent=k?(ls.get(GOK)?'● সংযুক্ত':'● key আছে'):'○ সংযুক্ত নয়';$('#aiSt').className='sub'+(k&&ls.get(GOK)?' ok':'')}
 function aiInit(){if($('#aiFab'))return;
-  document.body.insertAdjacentHTML('beforeend',`<button id="aiFab" class="aifab" aria-label="AI সহকারী" hidden>✨</button><section id="ai" class="aipanel" role="dialog" aria-label="AI সহকারী" hidden><header><b>✨ AI সহকারী</b><span id="aiSt" class="sub"></span><span class="aihs"><button class="ib" id="aiSet" aria-label="সেটিং">⚙</button><button class="ib" id="aiNew" aria-label="নতুন চ্যাট" title="নতুন চ্যাট">↺</button><button class="ib" id="aiX" aria-label="বন্ধ">✕</button></span></header>
+  document.body.insertAdjacentHTML('beforeend',`<button id="aiFab" class="aifab" popover="manual" aria-label="AI সহকারী — টেনে সরানো যায়" title="AI সহকারী (টেনে সরান)" hidden>${ROBOT}</button><section id="ai" class="aipanel" popover="manual" role="dialog" aria-label="AI সহকারী" hidden><header><b class="aiti">${ROBOT.replace('width="30" height="30"','width="22" height="22"')} AI সহকারী</b><span id="aiSt" class="sub"></span><span class="aihs"><button class="ib" id="aiSet" aria-label="সেটিং">⚙</button><button class="ib" id="aiNew" aria-label="নতুন চ্যাট" title="নতুন চ্যাট">↺</button><button class="ib" id="aiX" aria-label="বন্ধ">✕</button></span></header>
 <div id="aiKey" class="aikey" hidden><label for="aiK">Gemini API key</label><input id="aiK" type="password" autocomplete="off" placeholder="AIza…"><label for="aiM">মডেল</label><input id="aiM" autocomplete="off"><p class="sub">key শুধু এই ফোনের ব্রাউজারে থাকে। Google AI Studio-তে key-তে সীমা (restriction) বেঁধে রাখুন।</p><p class="err" id="aiKe" role="alert"></p><div class="acts"><button class="sm" id="aiDel" type="button">key মুছুন</button><button class="btn" id="aiSave" type="button">সংরক্ষণ ও পরীক্ষা</button></div></div>
 <div id="aiMsgs" class="aimsgs" aria-live="polite"></div><div id="aiChips" class="chips"></div><form id="aiForm"><input id="aiIn" placeholder="যা করাতে চান লিখুন…" autocomplete="off" aria-label="বার্তা"><button class="btn" id="aiGo">পাঠান</button></form></section>`);
-  const P=$('#ai'),F=$('#aiFab');
-  const open=()=>{P.hidden=false;F.hidden=true;aiStatus();if(!ls.get(GK))keyBox(true);else $('#aiIn').focus()};
-  const close=()=>{P.hidden=true;F.hidden=!token};
+  const P=$('#ai'),F=$('#aiFab');aiFabInit(F);topLayer(P);topLayer(F);
+  const open=()=>{P.hidden=false;F.hidden=true;topLayer(P);aiStatus();if(!ls.get(GK))keyBox(true);else $('#aiIn').focus()};
+  const close=()=>{P.hidden=true;F.hidden=!token;topLayer(F)};
   const keyBox=v=>{$('#aiKey').hidden=!v;if(v){$('#aiK').value=ls.get(GK)||'';$('#aiM').value=ls.get(GM)||'gemini-2.5-flash';$('#aiKe').textContent=''}};
-  F.onclick=open;$('#aiX').onclick=close;$('#aiSet').onclick=()=>keyBox($('#aiKey').hidden);
+  F.onclick=()=>{if(fabMoved){fabMoved=false;return}open()};$('#aiX').onclick=close;$('#aiSet').onclick=()=>keyBox($('#aiKey').hidden);
   $('#aiNew').onclick=()=>{gh=[];$('#aiMsgs').innerHTML='';hello()};
   $('#aiDel').onclick=()=>{ls.del(GK);ls.del(GOK);gh=[];$('#aiK').value='';aiStatus();$('#aiKe').textContent='key মোছা হয়েছে'};
   $('#aiSave').onclick=async()=>{const k=$('#aiK').value.trim(),m=$('#aiM').value.trim()||'gemini-2.5-flash',b=$('#aiSave');if(!k){$('#aiKe').textContent='key দিন';return}
@@ -449,19 +605,46 @@ function aiInit(){if($('#aiFab'))return;
     $('#aiChips').innerHTML=['TikTok Followers-এর সবচেয়ে সস্তা ৫টা (সব প্রভাইডার)','ফেসবুকের ক্যাটেগরিগুলো দেখাও','কতগুলো সার্ভিসের নাম সাজানো বাকি?','Instagram Followers-এর নাম সাজাও'].map(x=>`<button class="chip" type="button">${esc(x)}</button>`).join('');
     $('#aiChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>send(b.textContent))};
   hello();aiStatus();window._aiClose=close}
-function aiShow(a){aiInit();const F=$('#aiFab'),P=$('#ai');if(!a){P.hidden=true;F.hidden=true}else F.hidden=!P.hidden?true:false}
+function aiShow(a){aiInit();const F=$('#aiFab'),P=$('#ai');if(!a){P.hidden=true;F.hidden=true}else{F.hidden=!P.hidden?true:false;topLayer(F);fabFit()}}
 
 /* ---------- রাউটার, লগইন, ইনস্টল ---------- */
-function route(){rid++;const h=decodeURIComponent(location.hash.replace('#',''));const bb=$('#bulk');if(bb)bb.hidden=true;sel.clear();ssel.clear();if(h==='cmp')cmp();else if(h==='chg')chg();else if(h==='tidy')tidy();else if(h==='plat')plat();else if(h==='mng')mng();else if(h.indexOf('pl=')===0)platPage(h.slice(3));else if(h.indexOf('p=')===0){st={q:'',state:'all',cat:'',off:0};provider(h.slice(2))}else home();$('#main').focus({preventScroll:true})}
+function route(){rid++;const h=decodeURIComponent(location.hash.replace('#',''));const bb=$('#bulk');if(bb)bb.hidden=true;sel.clear();ssel.clear();if(h==='cmp')cmp();else if(h==='chg')chg();else if(h==='tidy')tidy();else if(h==='plat')plat();else if(h==='mng')mng();else if(h==='cats')catsPage();else if(h.indexOf('cat=')===0)catPage(h.slice(4));else if(h.indexOf('pl=')===0)platPage(h.slice(3));else if(h.indexOf('p=')===0){st={q:'',state:'all',cat:'',off:0};provider(h.slice(2))}else home();$('#main').focus({preventScroll:true})}
 function show(a){$('#login').hidden=a;$('#app').hidden=!a;aiShow(a)}
 function logout(m){token='';wipe();ls.del('pb_studio_token');show(false);$('#loginErr').textContent=m||'';$('#tok').value=''}
 $('#loginForm').onsubmit=async e=>{e.preventDefault();token=$('#tok').value.trim();const b=e.target.querySelector('button');b.disabled=true;$('#loginErr').textContent='';
   try{await api('svc_providers');ls.set('pb_studio_token',token);show(true);route()}catch(x){$('#loginErr').textContent=ERR[x.code]||('সংযোগ করা যায়নি — '+x.message)}b.disabled=false};
-$('#logout').onclick=()=>logout();$('#back').onclick=()=>{location.hash=location.hash.indexOf('#pl=')===0?'plat':''};
+$('#logout').onclick=()=>logout();$('#back').onclick=()=>{const h=location.hash;location.hash=h.indexOf('#pl=')===0?'plat':h.indexOf('#cat=')===0?'cats':''};
 addEventListener('hashchange',()=>token&&route());
-let dip=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e;$('#install').hidden=false});
-$('#install').onclick=async()=>{if(!dip)return;dip.prompt();await dip.userChoice;dip=null;$('#install').hidden=true};
+/* ---------- PWA ইনস্টল + সমস্যা পরীক্ষা ---------- */
+let dip=null;const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();dip=e;$('#install').hidden=standalone()});
+addEventListener('appinstalled',()=>{dip=null;$('#install').hidden=true;toast('অ্যাপ ইনস্টল হয়েছে ✔')});
+$('#install').hidden=standalone();
+$('#install').onclick=async()=>{if(dip){dip.prompt();try{await dip.userChoice}catch(e){}dip=null;return}pwaCheck()};
+async function pwaCheck(){
+  let d=$('#pwd');if(!d){d=document.createElement('dialog');d.id='pwd';document.body.appendChild(d)}
+  d.innerHTML='<form method="dialog"><h3 style="margin:0 0 8px">📲 ইনস্টল পরীক্ষা</h3><div id="pwr" class="pwr"><div class="sk"></div></div><div class="acts"><button class="btn" value="ok">ঠিক আছে</button></div></form>';d.returnValue='';d.showModal();
+  const out=[],add=(g,t,x)=>out.push(`<div class="pwl ${g?'ok':'bad'}"><b>${g?'✔':'✖'}</b> <span>${esc(t)}${x?`<small>${esc(x)}</small>`:''}</span></div>`);
+  add(isSecureContext||location.hostname==='localhost','HTTPS',location.protocol+'//'+location.host);
+  add(/\/$/.test(location.pathname)||/\.[a-z0-9]+$/i.test(location.pathname),'ঠিকানার শেষে স্ল্যাশ (/)',location.pathname);
+  const lk=document.querySelector('link[rel=manifest]');let m=null;
+  if(!lk)add(false,'<link rel="manifest"> নেই');
+  else{try{const r=await fetch(lk.href,{cache:'reload'});const ct=r.headers.get('content-type')||'';add(r.ok,'manifest ফাইল পাওয়া যায়','HTTP '+r.status+' · '+ct+' · '+lk.href);
+      try{m=await r.json();add(true,'manifest JSON ঠিক',(m.name||'')+' · id: '+(m.id||'—'))}catch(e){add(false,'manifest JSON পড়া যায়নি — সম্ভবত অন্য পাতা (HTML) আসছে',e.message)}}
+    catch(e){add(false,'manifest আনা যায়নি',e.message)}}
+  if(m){const base=new URL(lk.href),st=new URL(m.start_url||'./',base),sc=new URL(m.scope||'./',base);
+    add(st.origin===location.origin&&st.pathname.indexOf(sc.pathname)===0,'start_url scope-এর ভেতরে',st.pathname+' ⊂ '+sc.pathname);
+    add(['standalone','fullscreen','minimal-ui'].indexOf(m.display)>=0,'display: '+(m.display||'—'));
+    const ic=m.icons||[];
+    for(const i of ic){try{const u=new URL(i.src,base);const img=new Image();const ok=await new Promise(res=>{img.onload=()=>res(true);img.onerror=()=>res(false);img.src=u.href});
+        const want=String(i.sizes||'').split('x')[0];add(ok&&(!want||+want===img.naturalWidth),'আইকন '+(i.sizes||'')+(i.purpose?' ('+i.purpose+')':''),ok?('লোড হয়েছে '+img.naturalWidth+'×'+img.naturalHeight):'লোড হয়নি: '+u.pathname)}catch(e){add(false,'আইকন ঠিক নয়',String(i.src))}}
+    add(ic.some(i=>/192/.test(i.sizes))&&ic.some(i=>/512/.test(i.sizes)),'১৯২ ও ৫১২ আইকন আছে')}
+  try{const reg=await navigator.serviceWorker.getRegistration('./');add(!!(reg&&reg.active),'service worker সক্রিয়',reg?reg.scope:'নিবন্ধিত হয়নি');add(!!navigator.serviceWorker.controller,'পাতা service worker-এর নিয়ন্ত্রণে','না হলে একবার রিলোড করুন')}
+  catch(e){add(false,'service worker পাওয়া যায়নি',e.message)}
+  add(!standalone(),'অ্যাপ হিসেবে খোলা নয় (ব্রাউজারে আছে)');
+  const r=$('#pwr');if(r)r.innerHTML=out.join('')+'<p class="sub" style="margin-top:10px">সব ✔ হলেও ইনস্টল না দেখালে: Chrome মেনু (⋮) → <b>Install app</b> / <b>Add to Home screen</b>। আগে ইনস্টল ও আনইনস্টল করা থাকলে: ঠিকানার পাশের 🔒 → Site settings → Clear data করে আবার খুলুন।</p>'}
+
 const net=()=>{$('#net').hidden=navigator.onLine};addEventListener('online',net);addEventListener('offline',net);net();
-if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js',{scope:'./',updateViaCache:'none'}).then(r=>{try{r.update()}catch(e){}}).catch(()=>{}));
 token?(show(true),route()):show(false);
 })();
