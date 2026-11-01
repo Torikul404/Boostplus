@@ -1,4 +1,4 @@
-boostplus সার্ভিস স্টুডিও (আলাদা PWA) — সংস্করণ studio-v17
+boostplus সার্ভিস স্টুডিও (আলাদা PWA) — সংস্করণ studio-v19
 ১) service-studio/ ফোল্ডারের সব ফাইল আগের জায়গায় (যেমন /studio/) বদলে আপলোড করুন (icons/ ও fonts/ সহ)।
 ২) Apps Script বদলাতে হবে: PtServices.gs.txt-এর সবটা কপি করে আপনার PtServices.gs-এ বসান (নতুন svc_light ও svc_enrich), তারপর Deploy → Manage deployments → ✎ → New version → Deploy (URL একই থাকবে)।
 ৩) আপলোডের পর সাইট একবার রিলোড করুন (দুইবার করলে ভালো — নতুন service worker চালু হয়)।

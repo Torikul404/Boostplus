@@ -194,7 +194,7 @@ async function toggle(r,btn){
 }
 function openSheet(r,btn,force){
   const sh=$('#sheet');$('#shN').textContent=`ID ${r.service_id} · রেট ${r.rate} · মূল: ${r.name} | ${r.category}`;
-  const t=r.tidy||{};$('#shName').value=nice(r)||t.name||r.name;$('#shCat').value=matchCat(t.cat||r.category);
+  const t=r.tidy||{};$('#shName').value=nice(r)||t.name||r.name;$('#shCat').value=matchCat(t.cat||r.category);{const sc=$('#shCat');sc.placeholder='ক্যাটেগরি বাছুন বা লিখুন';sc.onfocus=()=>{sc.dataset.prev=sc.value;sc.placeholder=sc.value||sc.placeholder;sc.value=''};sc.onblur=()=>{if(!sc.value.trim())sc.value=sc.dataset.prev||''}}
   $('#shPlat').innerHTML=PLAT.map(p=>`<option>${p[0]}</option>`).join('');$('#shPlat').value=t.plat||guess(r.category+' '+r.name);
   $('#shCats').innerHTML=(window._sc||[]).map(c=>`<option value="${esc(c)}">`).join('');
   $('#shPriceBdt').hidden=true;$('#shPriceUsd').hidden=true;$('#shUsd').value=r.rate;
@@ -658,9 +658,16 @@ const TOOLFN={
  delete_category(a){return catDeleteCore(a.category)}};
 const gmd=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
 function addMsg(k,t){const b=$('#aiMsgs');if(!b)return null;const d=document.createElement('div');d.className='am '+k;if(k==='ai')d.innerHTML=gmd(t);else d.textContent=t;b.appendChild(d);b.scrollTop=b.scrollHeight;return d}
+let gViaSrv=false,gSrvKey=false;
+function aiPing(){return api('ai_gemini',{ping:1}).then(r=>{if(r&&r.has_key){gSrvKey=true;aiStatus()}}).catch(()=>{})}
 async function gcall(){const key=ls.get(GK),model=ls.get(GM)||'gemini-2.5-flash';
-  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({systemInstruction:{parts:[{text:SYS}]},contents:gh,tools:TOOLS,generationConfig:{temperature:.3}})});
-  const d=await r.json().catch(()=>({}));if(!r.ok){const e=new Error((d.error&&d.error.message)||('HTTP '+r.status));e.status=r.status;throw e}return d}
+  const body={systemInstruction:{parts:[{text:SYS}]},contents:gh,tools:TOOLS,generationConfig:{temperature:.3}};let d,status;
+  if(!key){if(!gSrvKey)throw new Error('key দেওয়া নেই');gViaSrv=true}
+  if(!gViaSrv){try{const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body)});d=await r.json().catch(()=>({}));status=r.status}
+    catch(e){if(e.name!=='TypeError'||navigator.onLine===false)throw e;gViaSrv=true}}
+  if(gViaSrv){try{const x=await api('ai_gemini',{key,model,body});d=x.data||{};status=x.status}
+    catch(e){if(e.code==='unknown_action'){gViaSrv=false;const m=new Error('ফোন থেকে সরাসরি Google-এ যাওয়া যাচ্ছে না। Apps Script-এ PtServices.gs আপডেট করলে সার্ভারের মাধ্যমে চলবে।');m.name='TypeError';throw m}throw e}}
+  if(status<200||status>=300){const e=new Error((d.error&&d.error.message)||('HTTP '+status));e.status=status;throw e}return d}
 function gtrim(){if(gh.length<=40)return;let i=gh.length-14;while(i<gh.length&&!(gh[i].role==='user'&&gh[i].parts&&gh[i].parts[0]&&gh[i].parts[0].text!==undefined))i++;gh=i<gh.length?gh.slice(i):gh.slice(-2)}
 async function agent(text){gtrim();gh.push({role:'user',parts:[{text}]});
   for(let i=0;i<8;i++){const d=await gcall(),c=d.candidates&&d.candidates[0];
@@ -681,13 +688,13 @@ const gerr=e=>{const m=String(e&&e.message||'');
     if(/header|ISO-8859|Invalid value|non ISO/i.test(m))return'key-তে অবৈধ অক্ষর আছে (বাংলা/লুকানো অক্ষর) — AI Studio থেকে আবার কপি করে বসান';
     return'Google সার্ভারে পৌঁছানো যায়নি (VPN, Private DNS, অ্যাড-ব্লকার, ডেটা সেভার বা ফায়ারওয়াল আটকাতে পারে) — ব্রাউজারের ত্রুটি: '+m}
   return(e.status?'['+e.status+'] ':'')+m};
-function aiStatus(){const k=ls.get(GK);$('#aiSt').textContent=k?(ls.get(GOK)?'● সংযুক্ত':'● key আছে'):'○ সংযুক্ত নয়';$('#aiSt').className='sub'+(k&&ls.get(GOK)?' ok':'')}
+function aiStatus(){const k=ls.get(GK);if(!k&&gSrvKey){$('#aiSt').textContent='● সংযুক্ত (সার্ভারের key)';$('#aiSt').className='sub ok';return}$('#aiSt').textContent=k?(ls.get(GOK)?'● সংযুক্ত':'● key আছে'):'○ সংযুক্ত নয়';$('#aiSt').className='sub'+(k&&ls.get(GOK)?' ok':'')}
 function aiInit(){if($('#aiFab'))return;
   document.body.insertAdjacentHTML('beforeend',`<button id="aiFab" class="aifab" popover="manual" aria-label="AI সহকারী — টেনে সরানো যায়" title="AI সহকারী (টেনে সরান)" hidden>${ROBOT}</button><section id="ai" class="aipanel" popover="manual" role="dialog" aria-label="AI সহকারী" hidden><header><b class="aiti">${ROBOT.replace('width="30" height="30"','width="22" height="22"')} AI সহকারী</b><span id="aiSt" class="sub"></span><span class="aihs"><button class="ib" id="aiSet" aria-label="সেটিং">⚙</button><button class="ib" id="aiNew" aria-label="নতুন চ্যাট" title="নতুন চ্যাট">↺</button><button class="ib" id="aiX" aria-label="বন্ধ">✕</button></span></header>
 <div id="aiKey" class="aikey" hidden><label for="aiK">Gemini API key</label><input id="aiK" type="password" autocomplete="off" placeholder="AIza…"><label for="aiM">মডেল</label><input id="aiM" autocomplete="off"><p class="sub">key শুধু এই ফোনের ব্রাউজারে থাকে। Google AI Studio-তে key-তে সীমা (restriction) বেঁধে রাখুন।</p><p class="err" id="aiKe" role="alert"></p><div class="acts"><button class="sm" id="aiDel" type="button">key মুছুন</button><button class="btn" id="aiSave" type="button">সংরক্ষণ ও পরীক্ষা</button></div></div>
 <div id="aiMsgs" class="aimsgs" aria-live="polite"></div><div id="aiChips" class="chips"></div><form id="aiForm"><input id="aiIn" placeholder="যা করাতে চান লিখুন…" autocomplete="off" aria-label="বার্তা"><button class="btn" id="aiGo">পাঠান</button></form></section>`);
   const P=$('#ai'),F=$('#aiFab');aiFabInit(F);topLayer(P);topLayer(F);
-  const open=()=>{P.hidden=false;F.hidden=true;topLayer(P);aiStatus();if(!ls.get(GK))keyBox(true);else $('#aiIn').focus()};
+  const open=()=>{P.hidden=false;F.hidden=true;topLayer(P);aiStatus();aiPing().then(()=>{if(gSrvKey&&!$('#aiKey').hidden&&!ls.get(GK))keyBox(false)});if(!ls.get(GK)&&!gSrvKey)keyBox(true);else $('#aiIn').focus()};
   const close=()=>{P.hidden=true;F.hidden=!token;topLayer(F)};
   const keyBox=v=>{$('#aiKey').hidden=!v;if(v){$('#aiK').value=ls.get(GK)||'';$('#aiM').value=ls.get(GM)||'gemini-2.5-flash';$('#aiKe').textContent=''}};
   F.onclick=()=>{if(fabMoved){fabMoved=false;return}open()};$('#aiX').onclick=close;$('#aiSet').onclick=()=>keyBox($('#aiKey').hidden);
@@ -699,7 +706,7 @@ function aiInit(){if($('#aiFab'))return;
     try{await gcall();ls.set(GOK,'1');gh=old;$('#aiKe').textContent='';keyBox(false);aiStatus();if(!$('#aiMsgs').children.length)hello();$('#aiIn').focus()}
     catch(e){gh=old;ls.del(GOK);if(ok[0]==null)ls.del(GK);else ls.set(GK,ok[0]);if(ok[1]==null)ls.del(GM);else ls.set(GM,ok[1]);$('#aiKe').textContent=gerr(e)}
     b.disabled=false;aiStatus()};
-  const send=async t=>{t=(t||'').trim();if(!t||gbusy)return;if(!ls.get(GK)){keyBox(true);return}
+  const send=async t=>{t=(t||'').trim();if(!t||gbusy)return;if(!ls.get(GK)&&!gSrvKey){keyBox(true);return}
     gbusy=true;$('#aiGo').disabled=true;$('#aiIn').value='';addMsg('me',t);const w=addMsg('tool','⏳ ভাবছি…');
     try{await agent(t);ls.set(GOK,'1')}catch(e){addMsg('err',gerr(e))}
     if(w)w.remove();gbusy=false;$('#aiGo').disabled=false;aiStatus();$('#aiIn').focus()};
@@ -707,7 +714,7 @@ function aiInit(){if($('#aiFab'))return;
   const hello=()=>{addMsg('ai','আমি সাইটের সার্ভিস খুঁজতে, ক্যাটেগরি/নাম সাজাতে, চালু-বন্ধ করতে পারি। কী করাতে চান?');
     $('#aiChips').innerHTML=['TikTok Followers-এর সবচেয়ে সস্তা ৫টা (সব প্রভাইডার)','ফেসবুকের ক্যাটেগরিগুলো দেখাও','কতগুলো সার্ভিসের নাম সাজানো বাকি?','Instagram Followers-এর নাম সাজাও'].map(x=>`<button class="chip" type="button">${esc(x)}</button>`).join('');
     $('#aiChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>send(b.textContent))};
-  hello();aiStatus();window._aiClose=close}
+  hello();aiStatus();aiPing();window._aiClose=close}
 function aiShow(a){aiInit();const F=$('#aiFab'),P=$('#ai');if(!a){P.hidden=true;F.hidden=true}else{F.hidden=!P.hidden?true:false;topLayer(F);fabFit()}}
 
 /* ---------- রাউটার, লগইন, ইনস্টল ---------- */

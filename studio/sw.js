@@ -1,5 +1,5 @@
 /* boostplus স্টুডিও — অ্যাপ-শেল ক্যাশ (API কখনো ক্যাশ হয় না)। সংস্করণ বদলালে পুরনো ক্যাশ মুছে যায়। */
-const V='studio-v17',SHELL=['./','index.html','app.css','app.js','manifest.webmanifest','icons/admin-192.png','icons/admin-512.png','fonts/InterVariable.woff2','fonts/hind-siliguri-v14-bengali_latin-regular.woff2','fonts/hind-siliguri-v14-bengali_latin-600.woff2'];
+const V='studio-v19',SHELL=['./','index.html','app.css','app.js','manifest.webmanifest','icons/admin-192.png','icons/admin-512.png','fonts/InterVariable.woff2','fonts/hind-siliguri-v14-bengali_latin-regular.woff2','fonts/hind-siliguri-v14-bengali_latin-600.woff2'];
 /* রিডাইরেক্ট-করা রেসপন্স নেভিগেশনে দেখানো যায় না (Cloudflare index.html → ./ রিডাইরেক্ট করে) — তাই পরিষ্কার কপি রাখা হয় */
 async function clean(res){if(!res.redirected)return res;const b=await res.blob();return new Response(b,{status:res.status,statusText:res.statusText,headers:res.headers})}
 self.addEventListener('install',e=>{e.waitUntil((async()=>{const c=await caches.open(V);

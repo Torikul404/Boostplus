@@ -25,6 +25,7 @@ function ptSvcRoute_(d) {
       case "svc_list":      return svcList_(d);
       case "svc_light":     return svcLight_(d);
       case "svc_enrich":    return svcEnrich_(d);
+      case "ai_gemini":     return aiGemini_(d);
       case "svc_csv":       return svcCsvText_(String(d.provider || ""));
       case "svc_toggle":    return svcToggle_(d);
       case "svc_changes":   return svcChanges_();
@@ -589,4 +590,19 @@ function svcEnrich_(d) {
       tidy: svcTidy_({ provider: provider, name: r.name, category: r.category, refill: r.refill }, cmap) };
   });
   return { ok: true, items: items };
+}
+
+// ফোন থেকে সরাসরি Google Gemini-তে যাওয়া না গেলে অ্যাপ এই পথে (ফোন → Apps Script → Gemini) কাজ চালায়।
+// সার্ভারের নিজস্ব Gemini key (শুধু আপনার Apps Script-এ থাকে, সাইটের ফাইলে নয়)।
+// চাইলে Project Settings → Script properties-এ GEMINI_KEY নামে রেখে নিচের লাইনটা ফাঁকা করুন।
+var GEMINI_KEY_DEFAULT = "AQ.Ab8RN6Jor_nayV21cGZ8HEGAM4nfpd9R5GnxPapNOrFx-b2TMQ";
+function aiKey_() { return String(PropertiesService.getScriptProperties().getProperty("GEMINI_KEY") || GEMINI_KEY_DEFAULT || ""); }
+function aiGemini_(d) {
+  if (d.ping) return { ok: true, has_key: !!aiKey_() };
+  var key = String(d.key || aiKey_()), model = String(d.model || "gemini-2.5-flash");
+  if (!/^[\x21-\x7E]{20,}$/.test(key)) return { ok: false, error: "key ঠিক নয়" };
+  var res = UrlFetchApp.fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent",
+    { method: "post", contentType: "application/json", headers: { "x-goog-api-key": key }, payload: JSON.stringify(d.body || {}), muteHttpExceptions: true });
+  var data; try { data = JSON.parse(res.getContentText()); } catch (e) { data = {}; }
+  return { ok: true, status: res.getResponseCode(), data: data };
 }
