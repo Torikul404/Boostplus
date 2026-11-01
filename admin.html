@@ -307,12 +307,14 @@ $('#btnRef').addEventListener('click',refresh);
 
 /* অর্ডার */
 function renderChips(){$('#stChips').innerHTML=Object.keys(ST).map(function(k){return '<button class="chip" aria-pressed="'+(filt===k)+'" data-f="'+k+'">'+ST[k][1]+' <b class="num">'+(counts[k]==null?'–':counts[k])+'</b></button>'}).join('')}
-function failed(o){return /FAILED|not enough funds|Auto-forward error|place manually/i.test(String(o.note||''))||(o.status==='Processing'&&!o.provider_order_id&&!o.live_provider_status)}
+function lastNote(o){var p=String(o.note||'').split(' | ');return (p[p.length-1]||'').trim()}
+function fwd(o){return !!(o.provider_order_id||o.live_provider_status||(o.live_start_count!=null&&o.live_start_count!==''))||/forwarded|provider order added/i.test(lastNote(o))}
+function failed(o){return o.status==='Processing'&&!fwd(o)}
 function renderOrders(){
   var h=orders.map(function(o){
     var p=ST[o.status]||ST.Pending,acts='',why='';
     if(o.status==='Pending')acts='<span class="btn sm" data-a="ap" data-id="'+esc(o.order_id)+'" role="button" tabindex="0">Approve</span><span class="btn sm line" data-a="rj" data-id="'+esc(o.order_id)+'" role="button" tabindex="0">বাতিল ও রিফান্ড</span>';
-    else if(o.status==='Processing'&&failed(o)){why=o.note||'প্রোভাইডারে যায়নি';acts='<span class="btn sm" data-a="rt" data-id="'+esc(o.order_id)+'" role="button" tabindex="0">আবার পাঠান</span><span class="btn sm line" data-a="rj" data-id="'+esc(o.order_id)+'" role="button" tabindex="0">বাতিল ও রিফান্ড</span>'}
+    else if(o.status==='Processing'&&failed(o)){why=lastNote(o)||'প্রোভাইডারে যায়নি';acts='<span class="btn sm" data-a="rt" data-id="'+esc(o.order_id)+'" role="button" tabindex="0">আবার পাঠান</span><span class="btn sm line" data-a="rj" data-id="'+esc(o.order_id)+'" role="button" tabindex="0">বাতিল ও রিফান্ড</span>'}
     return '<div class="oc" data-o="'+esc(o.order_id)+'" tabindex="0" role="button"><div class="row"><span class="t num">'+esc(o.order_id)+'</span><span class="pill '+p[0]+'">'+p[1]+'</span><span class="sp"></span><span class="muted sm">'+esc(tm(o.created_at))+'</span></div><div class="ell">'+esc(o.service_name)+'</div><div class="meta"><span class="num">'+(Number(o.quantity)||0).toLocaleString('en-US')+' টি</span><span class="num">'+tk(o.amount)+'</span><span class="num">'+esc(o.whatsapp||o.mobile||'')+'</span></div>'+(why?'<div class="why">'+esc(why)+'</div>':'')+(acts?'<div class="acts">'+acts+'</div>':'')+'</div>';
   }).join('');
   $('#orderList').innerHTML=h||empty('কোনো অর্ডার নেই','অন্য অবস্থা বেছে নিন বা খোঁজা বদলান।');
@@ -466,11 +468,11 @@ $('#mBody').addEventListener('click',function(e){
 /* আরও */
 function renderMore(){
   function it(ic,t,s,a){return '<button class="rowc" data-m="'+a+'"><span class="ic">'+ICON(ic)+'</span><div class="sp"><div class="t">'+t+'</div>'+(s?'<div class="muted sm">'+s+'</div>':'')+'</div>'+ICON('chev')+'</button>'}
-  $('#moreBody').innerHTML='<h3 class="grp" style="margin-top:0">প্রোভাইডার</h3>'+it('sat','Provider টিকেট','Refill, Cancel, Speed up পাঠান','prov')+'<h3 class="grp">অ্যাকাউন্ট</h3>'+it('bolt','স্পিড টেস্ট','কোন সার্ভিস কত সময়ে শেষ হয়','speed')+it('pal','সাইট থিম','কাস্টমার সাইট কেমন দেখাবে','theme')+it('tool','ডেভেলপার টুল','শুধু সেটআপের জন্য','dev')+it('x','লগআউট','এই ডিভাইস থেকে টোকেন মুছুন','out');
+  $('#moreBody').innerHTML='<h3 class="grp" style="margin-top:0">প্রোভাইডার</h3>'+it('sat','Provider টিকেট','Refill, Cancel, Speed up পাঠান','prov')+it('grid','সার্ভিস স্টুডিও','প্রোভাইডারের তালিকা থেকে সাইটে সার্ভিস যোগ','studio')+'<h3 class="grp">অ্যাকাউন্ট</h3>'+it('bolt','স্পিড টেস্ট','কোন সার্ভিস কত সময়ে শেষ হয়','speed')+it('pal','সাইট থিম','কাস্টমার সাইট কেমন দেখাবে','theme')+it('tool','ডেভেলপার টুল','শুধু সেটআপের জন্য','dev')+it('x','লগআউট','এই ডিভাইস থেকে টোকেন মুছুন','out');
 }
 $('#moreBody').addEventListener('click',function(e){
   var b=e.target.closest('[data-m]');if(!b)return;var m=b.dataset.m;
-  if(m==='speed')speedSheet();else if(m==='theme')themeSheet();else if(m==='out'){if(confirm('লগআউট করবেন?'))logout('')}
+  if(m==='studio')location.href='service-studio.html';else if(m==='speed')speedSheet();else if(m==='theme')themeSheet();else if(m==='out'){if(confirm('লগআউট করবেন?'))logout('')}
   else if(m==='dev')sheet('ডেভেলপার টুল','<div class="warnbox">সেটআপের সময় একবার চালানোর জন্য, দৈনিক কাজে লাগে না।</div><button class="btn line wide" id="initBtn">Init sheets</button>');
   else sheet('Provider টিকেট','<div class="seg" id="ptType"><button aria-pressed="true" data-t="Refill">Refill</button><button aria-pressed="false" data-t="Cancel">Cancel</button><button aria-pressed="false" data-t="Speed up">Speed up</button></div><div class="field"><label for="ptIds">সাইটের অর্ডার আইডি</label><input id="ptIds" placeholder="BP1030, BP1031"></div>','<button class="btn" id="ptGo" data-a="pt" data-type="Refill">'+ICON('send')+'পাঠান</button>');
 });
