@@ -24,6 +24,9 @@ function ptSvcRoute_(d) {
       case "svc_collect":   return svcCollect_(String(d.provider || ""));
       case "svc_list":      return svcList_(d);
       case "svc_csv":       return svcCsvText_(String(d.provider || ""));
+      case "svc_snapshot":  return svcSnapshot_(d);
+      case "svc_gh_push":   return svcGhPushAll();
+      case "svc_fx":        return svcFxAct_(d);
       case "svc_toggle":    return svcToggle_(d);
       case "svc_changes":   return svcChanges_();
       case "svc_auto":      return svcAutoSet_(d);
@@ -108,7 +111,8 @@ function svcCollect_(provider) {
   try { var sx = svcStatsLoad_(); sx[provider] = svcStatCalc_(arr.filter(function (z) { return z && z.service != null; }).map(function (z) { return { name: z.name, category: z.category }; })); svcStatsSave_(sx); } catch (e) {}
   var df = null;
   if (oldRows) { try { df = svcDiff_(oldRows, arr); var ch = svcChgLoad_(); ch[provider] = { at: at, c: df.c, items: df.items }; svcChgSave_(ch); } catch (e) {} }
-  return { ok: true, provider: provider, count: lines.length - 1, collected_at: at, changes: df ? df.c : null };
+  var gh = false; try { gh = svcGhPublish_(provider); } catch (e) {}
+  return { ok: true, provider: provider, count: lines.length - 1, collected_at: at, changes: df ? df.c : null, github: gh };
 }
 
 function svcRead_(provider) {
@@ -120,7 +124,7 @@ function svcRead_(provider) {
 function svcCsvText_(provider) { var f = svcFindFile_(svcFileName_(provider)); return f ? { ok: true, csv: f.getBlob().getDataAsString("UTF-8"), name: svcFileName_(provider) } : { ok: false, error: "not_collected" }; }
 
 // ---------- দাম প্রস্তাব (ঐচ্ছিক) ----------
-function svcFx_() { var v = Number(PropertiesService.getScriptProperties().getProperty("USD_BDT_RATE")); return v > 0 ? v : (typeof SVC_USD_BDT_ !== "undefined" ? SVC_USD_BDT_ : 0); }
+function svcFx_() { var v = Number(PropertiesService.getScriptProperties().getProperty("USD_BDT_RATE")); return v > 0 ? v : (typeof SVC_USD_BDT_ !== "undefined" && SVC_USD_BDT_ > 0 ? SVC_USD_BDT_ : 131); }
 function svcSuggest_(rateUsd) {   // সাইটে বিক্রয়মূল্য ≈ প্রভাইডার রেট + সাইটের মার্কআপ নিয়ম (শুধু দেখানোর জন্য; সাইট নিজেই মার্কআপ বসায়)
   if (!(rateUsd >= 0)) return null;
   return { bdt: Math.round(svcSellBdt_(rateUsd) * 100) / 100, usd: rateUsd, auto: true };
@@ -247,10 +251,10 @@ function svcAutoRun() {
   var st = svcState_(), t0 = Date.now(), due = [], done = [];
   SVC_ALLOWED_.forEach(function (p) {
     var at = st[p] && st[p].at, age = at ? (t0 - new Date(String(at).replace(" ", "T") + "+06:00").getTime()) / 864e5 : 99;
-    if (!(age < 7)) due.push({ p: p, age: age });
+    if (!(age < 3)) due.push({ p: p, age: age });
   });
   due.sort(function (a, b) { return b.age - a.age; });
-  due.slice(0, 3).forEach(function (x) {
+  due.slice(0, 10).forEach(function (x) {
     if (Date.now() - t0 > 240000) return;
     try { if (svcCollect_(x.p).ok) done.push(x.p); } catch (e) {}
   });
@@ -325,7 +329,7 @@ function svcBulk_(d) {
 // সার্ভিসের নাম = "প্ল্যাটফর্ম ধরন – ট্যাগ · ট্যাগ" (যেমন Instagram Followers – Real · Non-Drop · 30D Refill)
 // নতুন প্ল্যাটফর্ম/ধরন যোগ করতে নিচের দুই তালিকায় লাইন বাড়ান: [দেখানোর নাম, সাইটের platform কী, regex]
 var SVC_PLAT_ = [
-  ["Instagram", "instagram", /insta|\big\b/i], ["Facebook", "facebook", /facebook|\bfb\b/i], ["TikTok", "tiktok", /tik.?tok/i],
+  ["Instagram", "instagram", /insta(?!nt)|\big\b/i], ["Facebook", "facebook", /facebook|\bfb\b/i], ["TikTok", "tiktok", /tik.?tok/i],
   ["YouTube", "youtube", /youtube|\byt\b/i], ["Telegram", "telegram", /telegram|\btg\b/i], ["Twitter / X", "twitter", /twitter|\bx\b|tweet/i],
   ["WhatsApp", "whatsapp", /whatsapp/i], ["Threads", "other", /threads/i], ["Spotify", "other", /spotify/i], ["LinkedIn", "other", /linkedin/i],
   ["Snapchat", "other", /snap/i], ["Pinterest", "other", /pinterest/i], ["Discord", "other", /discord/i], ["Twitch", "other", /twitch/i],
@@ -350,7 +354,9 @@ function svcClean_(t, keep) {
 }
 function svcTags_(t, refillFlag) {
   var o = [], m;
-  if (/\bhq\b|high.?quality|premium/i.test(t)) o.push("HQ"); else if (/\breal\b|organic/i.test(t)) o.push("Real");
+  var hq = /\bhq\b|high.?quality/i.test(t), rl = /\breal\b|organic/i.test(t);
+  if (hq && rl) o.push("Real HQ"); else if (/premium/i.test(t)) o.push("Premium"); else if (hq) o.push("HQ"); else if (rl) o.push("Real");
+  else if (/low.?quality|\blq\b|cheap|\bbots?\b/i.test(t)) o.push("Budget"); else if (/\bmix(ed)?\b/i.test(t)) o.push("Mixed");
   m = t.match(/\b(usa|uk|india|indian|bangladesh|bd|turkey|brazil|arab|global|worldwide)\b/i);
   if (m) o.push(m[1].length <= 3 ? m[1].toUpperCase() : m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase());
   if (/non.?drop|no.?drop|\bnd\b/i.test(t)) o.push("Non-Drop");
@@ -358,7 +364,7 @@ function svcTags_(t, refillFlag) {
   if (/refill|♻|lifetime|\blt\b|\br\d{2,3}\b/i.test(tr) || refillFlag) {
     m = tr.match(/(\d{2,3})\s*(?:d|days?)\b|\br(\d{2,3})\b/i);
     o.push((m ? (m[1] || m[2]) + "D " : (/lifetime|\blt\b/i.test(tr) ? "Lifetime " : "")) + "Refill");
-  }
+  } else if (/\b(no|non)[\s\-]?refill\b/i.test(t)) o.push("No Refill");
   m = t.match(/(\d+)\s*(minutes?|mins?|hours?|hrs?)\b/i);
   if (m) o.push(m[1] + (/^m/i.test(m[2]) ? " Min" : " Hr"));
   if (/instant|super.?fast|\bfast\b/i.test(t)) o.push("Fast");
@@ -479,7 +485,23 @@ function svcByPlatform_(d) {
 // সাইটের তালিকা = packages-full.json (পুরনো) + স্টুডিও/বটে যোগ করা (custom)। একই কোডের custom এন্ট্রি পুরনোটার ওপর বসে (সাইট এভাবেই মেশায়),
 // তাই পুরনো সার্ভিসের নাম বদলাতে {code, name, ov:1} এন্ট্রি বসানো হয়।
 function svcSitePkgs_() {
-  try { var r = UrlFetchApp.fetch(PACKAGES_JSON_URL, { muteHttpExceptions: true, followRedirects: true }); return r.getResponseCode() < 300 ? (parsePkgs_(r.getContentText()) || []) : []; } catch (e) { return []; }
+  var C = CacheService.getScriptCache(), n = Number(C.get("svc_pk_n")) || 0;
+  if (n > 0) {
+    var keys = []; for (var i = 0; i < n; i++) keys.push("svc_pk_" + i);
+    var got = C.getAll(keys), parts = [];
+    for (var k = 0; k < n; k++) { if (got[keys[k]] == null) { parts = null; break; } parts.push(got[keys[k]]); }
+    if (parts) { try { return JSON.parse(parts.join("")); } catch (e) {} }
+  }
+  var out = [];
+  try { var r = UrlFetchApp.fetch(PACKAGES_JSON_URL, { muteHttpExceptions: true, followRedirects: true }); if (r.getResponseCode() < 300) out = parsePkgs_(r.getContentText()) || []; } catch (e) {}
+  try {
+    if (out.length) {
+      var s = JSON.stringify(out), SZ = 20000, put = {}, c = 0;
+      for (; c * SZ < s.length; c++) put["svc_pk_" + c] = s.substr(c * SZ, SZ);
+      put.svc_pk_n = String(c); C.putAll(put, 300);
+    }
+  } catch (e) {}
+  return out;
 }
 function svcSiteAll_() {
   var meta = getServiceMeta_(), hid = {}, cust = {}, seen = {}, out = [];
@@ -507,7 +529,7 @@ function svcSiteListAct_(d) {
   var f = base.filter(function (r) { return !pl || r.platform_label === pl; });
   f.forEach(function (r) { if (r.category) cats[r.category] = 1; });
   if (cat) f = f.filter(function (r) { return r.category === cat; });
-  var off = Math.max(0, Number(d.offset) || 0), lim = Math.min(100, Number(d.limit) || 40), cmap = svcCatMap_(), rows = f.slice(off, off + lim);
+  var off = Math.max(0, Number(d.offset) || 0), lim = d.all ? 5000 : Math.min(100, Number(d.limit) || 40), cmap = svcCatMap_(), rows = f.slice(off, off + lim);
   rows.forEach(function (r) { r.tidy = svcTidy_({ provider: "", name: r.name, category: r.category, refill: 0 }, cmap); });
   return { ok: true, total: f.length, rows: rows, categories: Object.keys(cats).sort(),
     platforms: Object.keys(plc).map(function (k) { return { label: k, n: plc[k] }; }).sort(function (a, b) { return b.n - a.n; }) };
@@ -564,4 +586,63 @@ function svcProvPlats_(provider) {
   var st = svcStatsLoad_(), c = st[provider];
   if (!c) { var rows = svcRead_(provider); if (rows) { c = st[provider] = svcStatCalc_(rows); try { svcStatsSave_(st); } catch (e) {} } }
   return Object.keys(c || {}).map(function (k) { return { label: k, n: c[k] }; }).sort(function (a, b) { return b.n - a.n; });
+}
+
+// ---------- সব প্রভাইডারের ডাউনলোড-করা ফাইল একবারে (স্টুডিও ১টা কলে সব নেয়) ----------
+// known = { প্রভাইডার: আগের collected_at }; বদলায়নি এমনটার CSV আর পাঠানো হয় না।
+function svcSnapshot_(d) {
+  var cfg = getProviderConfig_(), st = svcState_(), known = d.known || {}, out = [];
+  SVC_ALLOWED_.filter(function (p) { return cfg[p] && st[p] && st[p].at; }).forEach(function (p) {
+    if (known[p] === st[p].at) { out.push({ provider: p, same: true }); return; }
+    var r = svcCsvText_(p); if (r.ok) out.push({ provider: p, at: st[p].at, name: r.name, csv: r.csv });
+  });
+  return { ok: true, providers: out, at: Utilities.formatDate(new Date(), "Asia/Dhaka", "yyyy-MM-dd HH:mm") };
+}
+
+// ---------- GitHub-এ স্ট্যাটিক ফাইল (পড়া দ্রুত, Apps Script-এ কল লাগে না) ----------
+// Script Properties: GH_TOKEN (fine-grained token, শুধু ওই repo-র Contents: Read and write), GH_REPO ("মালিক/repo"),
+// ঐচ্ছিক GH_BRANCH (ডিফল্ট main), GH_DIR (ডিফল্ট studio/data — স্টুডিও /studio/ হলে এটাই ঠিক)
+function svcGhCfg_() {
+  var P = PropertiesService.getScriptProperties(), t = P.getProperty("GH_TOKEN"), r = P.getProperty("GH_REPO");
+  if (!t || !r) return null;
+  return { t: t, r: r, b: P.getProperty("GH_BRANCH") || "main", d: (P.getProperty("GH_DIR") || "studio/data").replace(/^\/+|\/+$/g, "") };
+}
+function svcGhPut_(c, name, text, msg) {
+  var url = "https://api.github.com/repos/" + c.r + "/contents/" + c.d + "/" + name,
+      h = { Authorization: "Bearer " + c.t, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+  var g = UrlFetchApp.fetch(url + "?ref=" + encodeURIComponent(c.b), { headers: h, muteHttpExceptions: true });
+  var body = { message: msg, content: Utilities.base64Encode(Utilities.newBlob(text).getBytes()), branch: c.b };
+  if (g.getResponseCode() === 200) body.sha = JSON.parse(g.getContentText()).sha;
+  var r = UrlFetchApp.fetch(url, { method: "put", contentType: "application/json", headers: h, payload: JSON.stringify(body), muteHttpExceptions: true });
+  return r.getResponseCode() < 300;
+}
+function svcGhIndex_() {
+  var st = svcState_(), ix = { v: 1, at: Utilities.formatDate(new Date(), "Asia/Dhaka", "yyyy-MM-dd HH:mm"), providers: {} };
+  SVC_ALLOWED_.forEach(function (p) { if (st[p] && st[p].at) ix.providers[p] = { at: st[p].at, count: st[p].count, file: svcFileName_(p) }; });
+  return JSON.stringify(ix);
+}
+function svcGhPublish_(provider) {
+  var c = svcGhCfg_(); if (!c) return false;
+  var f = svcFindFile_(svcFileName_(provider)); if (!f) return false;
+  var ok = svcGhPut_(c, svcFileName_(provider), f.getBlob().getDataAsString("UTF-8"), "সার্ভিস ডেটা: " + provider);
+  return ok && svcGhPut_(c, "index.json", svcGhIndex_(), "সার্ভিস ডেটা: তালিকা");
+}
+// প্রথমবার (বা হাতে) সব প্রভাইডারের বর্তমান ফাইল GitHub-এ পাঠান — এডিটরে এই ফাংশন Run করুন
+function svcGhPushAll() {
+  var c = svcGhCfg_(); if (!c) return { ok: false, error: "gh_not_configured" };
+  var st = svcState_(), n = 0, t0 = Date.now();
+  SVC_ALLOWED_.forEach(function (p) {
+    if (!(st[p] && st[p].at) || Date.now() - t0 > 270000) return;
+    var f = svcFindFile_(svcFileName_(p)); if (!f) return;
+    if (svcGhPut_(c, svcFileName_(p), f.getBlob().getDataAsString("UTF-8"), "সার্ভিস ডেটা: " + p)) n++;
+  });
+  svcGhPut_(c, "index.json", svcGhIndex_(), "সার্ভিস ডেটা: তালিকা");
+  return { ok: true, pushed: n };
+}
+
+// ---------- BDT ⇄ USDT রেট (১ USDT = ১ USD ধরা; ডিফল্ট ১৩১) ----------
+function svcFxAct_(d) {
+  var P = PropertiesService.getScriptProperties();
+  if (d.rate !== undefined) { var v = Number(d.rate); if (!(v > 0 && v < 10000)) return { ok: false, error: "bad_rate" }; P.setProperty("USD_BDT_RATE", String(v)); }
+  return { ok: true, rate: svcFx_() };
 }

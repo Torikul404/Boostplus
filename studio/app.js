@@ -31,7 +31,8 @@ const idb={open(){return new Promise((res,rej)=>{const r=indexedDB.open('pb_stud
 async function catLoad(){CAT=await idb.get(CATK);Q=(await idb.get(QK))||[];(await idb.get('rc_keys')||[]).forEach(k=>RK.add(k));EXC=(await idb.get(EXK))||{items:[]};qFlush();if(token&&(!CAT||Date.now()-CAT.at>30*60000))catSyncNow().catch(()=>{})}
 function catSyncNow(prog){if(catSync)return catSync;
   catSync=(async()=>{const rows=[];let off=0,tot=1;
-    while(off<tot){const d=await apiNet('svc_site_list',{q:'',platform:'',category:'',state:'all',offset:off,limit:100});tot=d.total;if(!d.rows.length)break;rows.push.apply(rows,d.rows);off+=d.rows.length;if(prog)prog(off,tot)}
+    let one=0;try{const d=await apiNet('svc_site_list',{q:'',platform:'',category:'',state:'all',offset:0,limit:5000,all:1});if(d.rows&&d.rows.length>=d.total&&d.total>0){rows.push.apply(rows,d.rows);one=1;if(prog)prog(d.total,d.total)}}catch(_){}
+    while(!one&&off<tot){const d=await apiNet('svc_site_list',{q:'',platform:'',category:'',state:'all',offset:off,limit:100});tot=d.total;if(!d.rows.length)break;rows.push.apply(rows,d.rows);off+=d.rows.length;if(prog)prog(off,tot)}
     excDiff(CAT&&CAT.rows,rows);CAT={rows,at:Date.now()};await idb.set(CATK,CAT)})().finally(()=>{catSync=null});return catSync}
 /* ---------- ব্যতিক্রম: আগের ক্যাটালগের সাথে মিলিয়ে নতুন / হারানো / দাম-বদল ---------- */
 function excDiff(o,n){if(!o||!o.length)return;const om={},nm={},now=Date.now(),it=[];o.forEach(r=>{om[r.code]=r});n.forEach(r=>{nm[r.code]=r});
@@ -53,6 +54,21 @@ async function qFlush(){if(qBusy||!Q.length||!token||!navigator.onLine)return;qB
   finally{qBusy=false}
   if(did&&!Q.length)toast('সার্ভারে সেভ হয়েছে ✔')}
 addEventListener('online',()=>qFlush());setInterval(qFlush,15000);
+const SNAP_P=['smmxpanel.com','getmyfollow.com','smmsun.com','smmstarpro.com','smmgen.com','socialpanel.pro','smmrx.com','bdsmmpanel.com','amarboost.com','growfollows.com'];let snapBusy=0;
+/* ডেটা আগে সাইটের স্ট্যাটিক ফাইল (data/ — GitHub Pages) থেকে; না পেলে ১টা API কলে (svc_snapshot) */
+async function snapStatic(){const r=await fetch('data/index.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw 0;const ix=await r.json();if(!ix.providers)throw 0;
+  await Promise.all(SNAP_P.map(async p=>{const m=ix.providers[p];if(!m)return;const c=await idb.get('csv_'+p);if(c&&c.sat===m.at)return;
+    const f=await fetch('data/'+m.file+'?v='+encodeURIComponent(m.at),{cache:'no-store'});if(!f.ok)return;const csv=await f.text();
+    await idb.set('csv_'+p,{csv,name:m.file,at:Date.now(),sat:m.at});delete PC[p]}))}
+async function snapSync(force){if(snapBusy||!navigator.onLine)return;
+  const last=await idb.get('snap_at');if(!force&&last&&Date.now()-last<600000)return;snapBusy=1;
+  try{await snapStatic();await idb.set('snap_at',Date.now())}catch(_){
+    if(ls.get('pb_studio_token'))try{const known={};for(const p of SNAP_P){const c=await idb.get('csv_'+p);if(c&&c.sat)known[p]=c.sat}
+      const d=await apiNet('svc_snapshot',{known});
+      for(const x of d.providers||[]){if(x.same||!x.csv)continue;await idb.set('csv_'+x.provider,{csv:x.csv,name:x.name,at:Date.now(),sat:x.at});delete PC[x.provider]}
+      await idb.set('snap_at',Date.now())}catch(e){}}
+  snapBusy=0}
+addEventListener('online',()=>snapSync(true));setTimeout(snapSync,1200);setInterval(snapSync,600000);
 /* পড়ার কাজ (তুলনা/প্ল্যাটফর্ম/পরিবর্তন/প্রভাইডার তালিকা): ৫ মিনিটের মধ্যে ও বদল না হলে ফোনের কপি তাৎক্ষণিক; অফলাইনে/সার্ভার না পেলে শেষ কপি */
 let mutTs=0,RCm={},RK=new Set();const RD=/^svc_(providers|by_platform|compare|changes|cat_suggest)$/;
 async function readCached(a,x){const k='rc_'+a+JSON.stringify(x||{});let c=RCm[k]||(RCm[k]=await idb.get(k));
@@ -150,7 +166,7 @@ async function collect(p,btn){
 }
 
 /* ---------- প্রভাইডারের সার্ভিস + সুইচ ---------- */
-const PLAT=[['instagram',/insta|\big\b/i],['facebook',/facebook|\bfb\b/i],['tiktok',/tik.?tok/i],['youtube',/youtube|\byt\b/i],['telegram',/telegram|\btg\b/i],['twitter',/twitter|\bx\b/i],['whatsapp',/whatsapp/i],['other',/./]];
+const PLAT=[['instagram',/insta(?!nt)|\big\b/i],['facebook',/facebook|\bfb\b/i],['tiktok',/tik.?tok/i],['youtube',/youtube|\byt\b/i],['telegram',/telegram|\btg\b/i],['twitter',/twitter|\bx\b/i],['whatsapp',/whatsapp/i],['other',/./]];
 const guess=s=>(PLAT.find(p=>p[1].test(s))||PLAT[7])[0];
 let provTok=0;
 async function provider(p,more){
@@ -343,7 +359,7 @@ async function pageRows(act,base,off,lim,type){let rows=[],raw=off,d;const L=typ
 /* ---------- সাইটের নিজস্ব নামের ছাঁচ ----------
    নাম = "ধরন – কোয়ালিটি · দেশ · ড্রপ · রিফিল · স্পিড · স্টার্ট · Max" (প্ল্যাটফর্ম ক্যাটেগরিতেই থাকে, তাই নামে নেই)
    সব ট্যাগ শুধু প্রভাইডারের নিজের নাম/ক্যাটেগরি/ফিল্ড থেকে নেওয়া — নিজে থেকে কিছু বানানো হয় না। */
-const NP=[['Instagram',/insta|\big\b/i],['Facebook',/facebook|\bfb\b/i],['TikTok',/tik.?tok/i],['YouTube',/youtube|\byt\b/i],['Telegram',/telegram|\btg\b/i],['Twitter / X',/twitter|\bx\b|tweet/i],['WhatsApp',/whatsapp/i],['Threads',/threads/i],['Spotify',/spotify/i],['LinkedIn',/linkedin/i],['Snapchat',/snap/i],['Pinterest',/pinterest/i],['Discord',/discord/i],['Twitch',/twitch/i],['Website Traffic',/traffic|website|web ?visit/i]];
+const NP=[['Instagram',/insta(?!nt)|\big\b/i],['Facebook',/facebook|\bfb\b/i],['TikTok',/tik.?tok/i],['YouTube',/youtube|\byt\b/i],['Telegram',/telegram|\btg\b/i],['Twitter / X',/twitter|\bx\b|tweet/i],['WhatsApp',/whatsapp/i],['Threads',/threads/i],['Spotify',/spotify/i],['LinkedIn',/linkedin/i],['Snapchat',/snap/i],['Pinterest',/pinterest/i],['Discord',/discord/i],['Twitch',/twitch/i],['Website Traffic',/traffic|website|web ?visit/i]];
 const NT=[['Story Views',/story|stories/i],['Live Views',/\blive\b/i],['Watch Time',/watch.?(time|hour)/i],['Subscribers',/subscri/i],['Members',/member|joiner/i],['Comments',/comment/i],['Shares',/share|repost|retweet/i],['Saves',/\bsave|bookmark/i],['Reactions',/reaction|\blove\b|haha|\bwow\b/i],['Likes',/like|heart/i],['Views',/view|impression|\breach\b|\bplays?\b|stream|listen/i],['Followers',/follow/i],['Traffic',/traffic|visit/i]];
 const pick=(L,t)=>L.find(x=>x[1].test(t));
 const CTRY={usa:'USA',uk:'UK',india:'India',indian:'India',bangladesh:'BD',bd:'BD',turkey:'Turkey',turkish:'Turkey',brazil:'Brazil',brazilian:'Brazil',arab:'Arab',arabic:'Arab',indonesia:'Indonesia',pakistan:'Pakistan',russia:'Russia',germany:'Germany',france:'France',spain:'Spain',italy:'Italy',global:'Worldwide',worldwide:'Worldwide'};
@@ -823,3 +839,11 @@ $('#shPlat').addEventListener('change',ngDraw);
 addEventListener('visibilitychange',()=>{if(!document.hidden&&token&&CAT&&Date.now()-CAT.at>30*60000)catSyncNow().catch(()=>{})});
 token?(show(true),catLoad().then(route,route)):show(false);
 })();
+
+/* BDT ⇄ USDT কনভার্টার — ডিফল্ট রেট ১৩১; রেট সার্ভারে সেভ হয় */
+(function(){let rate=+ls.get('pb_fx')||131;const R=$('#fxR'),U=$('#fxU'),B=$('#fxB'),D=$('#fxd');
+const upd=f=>{const r=+R.value||rate;if(f==='u'&&U.value!=='')B.value=(+U.value*r).toFixed(2);else if(f==='b'&&B.value!=='')U.value=(+B.value/r).toFixed(4)};
+$('#fx').onclick=async()=>{try{const d=await api('svc_fx');if(d&&d.rate>0){rate=d.rate;ls.set('pb_fx',rate)}}catch(_){}R.value=rate;U.value='1';B.value=(+rate).toFixed(2);$('#fxE').textContent='';D.showModal()};
+U.oninput=()=>upd('u');B.oninput=()=>upd('b');R.oninput=()=>upd('u');
+$('#fxS').onclick=async e=>{e.preventDefault();const v=+R.value;if(!(v>0)){$('#fxE').textContent='সঠিক রেট দিন';return}
+  try{const d=await api('svc_fx',{rate:v});rate=d.rate;ls.set('pb_fx',rate);toast('রেট সেভ: ১ USDT = ৳'+rate);D.close()}catch(x){$('#fxE').textContent='সেভ হয়নি — অনলাইনে আবার চেষ্টা করুন'}}})();
