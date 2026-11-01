@@ -11,7 +11,7 @@ const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:
 let token=ls.get('pb_studio_token')||'',busy=false,st={q:'',state:'all',cat:'',off:0},cur=null,lastList=null,qt=null,SC=null,fabMoved=false;
 const ERR={unauthorized:'টোকেন ঠিক নয়',locked_out:'অনেকবার ভুল হয়েছে — কিছুক্ষণ পরে চেষ্টা করুন',no_config:'এই প্রভাইডারের API সেট করা নেই',bad_json:'প্রভাইডার সঠিক উত্তর দেয়নি',provider_error:'প্রভাইডার ত্রুটি দিয়েছে',not_collected:'আগে "সংগ্রহ করুন" চাপুন',code_conflict:'এই আইডি সাইটে অন্য প্রভাইডারের সার্ভিস হিসেবে আছে',previously_removed:'এই সার্ভিস আগে সাইট থেকে বাদ দেওয়া হয়েছিল',category_required:'ক্যাটেগরি দিন',price_required:'দাম দিন',svc_failed:'সার্ভারে সমস্যা হয়েছে'};
 const mem={};let rid=0;
-function wipe(){for(const k in mem)delete mem[k];for(const k in LSX)delete LSX[k];try{Object.keys(localStorage).filter(k=>k.indexOf('pbc_')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}}
+function wipe(){for(const k in mem)delete mem[k];try{Object.keys(localStorage).filter(k=>k.indexOf('pbc_')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}}
 async function api(action,x){
   let r,txt,d;if(/^svc_(toggle|bulk|collect|site_edit|site_hide|site_bulk|tidy_apply|auto)$/.test(action))wipe();
   const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),60000);
@@ -34,100 +34,6 @@ const sel=new Set();let cq={q:'',refill:false},cn=0;
 const fmtT=s=>s<90?bn(Math.round(s))+' সে.':s<5400?bn(Math.round(s/60))+' মি.':bn(Math.round(s/360)/10)+' ঘণ্টা';
 const spdTag=r=>r.spd?`<div class="sub ${r.spd.m<=1800?'ok':r.spd.m>=21600?'hi':''}">⚡ গড় ${fmtT(r.spd.m)} · ${bn(r.spd.n)}টি অর্ডার${r.spd.f?' · ব্যর্থ '+bn(r.spd.f):''}</div>`:'';
 const nav=a=>`<div class="chips" role="navigation">${[['','প্রভাইডার'],['plat','প্ল্যাটফর্ম'],['mng','ম্যানেজ'],['cats','ক্যাটেগরি'],['cmp','তুলনা'],['chg','পরিবর্তন'],['tidy','সাজান']].map(x=>`<a class="chip" href="#${x[0]}" aria-current="${a===x[0]}">${x[1]}</a>`).join('')}</div>`;
-/* ---------- ফোনে CSV (IndexedDB): প্রভাইডারের সব সার্ভিস ফাইল নেমে গেলে তালিকা/খোঁজা/ফিল্টার সেখান থেকেই চলে ---------- */
-const svPLAT = [
-  ["Instagram", "instagram", /insta|\big\b/i], ["Facebook", "facebook", /facebook|\bfb\b/i], ["TikTok", "tiktok", /tik.?tok/i],
-  ["YouTube", "youtube", /youtube|\byt\b/i], ["Telegram", "telegram", /telegram|\btg\b/i], ["Twitter / X", "twitter", /twitter|\bx\b|tweet/i],
-  ["WhatsApp", "whatsapp", /whatsapp/i], ["Threads", "other", /threads/i], ["Spotify", "other", /spotify/i], ["LinkedIn", "other", /linkedin/i],
-  ["Snapchat", "other", /snap/i], ["Pinterest", "other", /pinterest/i], ["Discord", "other", /discord/i], ["Twitch", "other", /twitch/i],
-  ["Website Traffic", "other", /traffic|website|web ?visit/i]
-];
-const svTYPE = [
-  ["Story Views", /story|stories/i], ["Live Views", /\blive\b/i], ["Watch Time", /watch.?(time|hour)/i], ["Subscribers", /subscri/i],
-  ["Members", /member|joiner/i], ["Comments", /comment/i], ["Shares", /share|repost|retweet/i], ["Saves", /\bsave|bookmark/i],
-  ["Reactions", /reaction|\blove\b|haha|\bwow\b/i], ["Likes", /like|heart/i], ["Views", /view|impression|\breach\b|\bplays?\b|stream|listen/i],
-  ["Followers", /follow/i], ["Traffic", /traffic|visit/i]
-];
-const svSTOP = /^(cheap|cheapest|best|premium|new|special|bulk|hq|vip|server|services?|offer|promo|speed|fast|instant|real|non|usa|global|top|mix|other|others|smm|panel|packages?|all|any|old|updated|hot|sale|quality|high|low|slow|stable|exclusive|limited|test|custom|auto|manual|\d+)$/i;
-function svClean(t, keep) {
-  var s = String(t || "").replace(/[\u{1F000}-\u{1FFFF}\u{2190}-\u{2BFF}\uFE0F\u200D\u20E3]/gu, " ");
-  s = s.replace(/[\[\(\{]([^\]\)\}]*)[\]\)\}]/g, function (m, i) {
-    return keep && /\d/.test(i) && /min|hour|hr|day|%|\d\s?[kKmMdDhH]\b/i.test(i) && !/refill|drop/i.test(i) ? " (" + i.trim() + ") " : " ";
-  });
-  return s.replace(/[|•~*_=#>]+/g, " ").replace(/\s+/g, " ").replace(/^[\s\-–—:.]+|[\s\-–—:.]+$/g, "");
-}
-function svPick(list, text) {
-  for (var i = 0; i < list.length; i++) { var re = list[i][list[i].length - 1]; if (re.test(text)) return list[i]; }
-  return null;
-}
-function svPlatOf(r) {
-  var c = String(r.category || ""), n = String(r.name || ""), P = svPick(svPLAT, c) || svPick(svPLAT, n);
-  if (P) return P[0];
-  var seg = svClean(c).split(/\s[-–—|:\/>»]+\s|[|:»]/)[0].trim(), w = seg.split(/\s+/);
-  if (seg.length >= 2 && seg.length <= 24 && w.length <= 2 && !svSTOP.test(w[0]) && !svPick(svTYPE, seg)) return seg.replace(/\b\w/g, function (x) { return x.toUpperCase(); });
-  return "Other";
-}
-function csvParse(t){if(t.charCodeAt(0)===65279)t=t.slice(1);const out=[],n=t.length;let i=0,row=[];
-  while(i<n){let f;
-    if(t.charCodeAt(i)===34){let j=i+1,s='';for(;;){const k=t.indexOf('"',j);if(k<0){s+=t.slice(j);j=n;break}s+=t.slice(j,k);if(t.charCodeAt(k+1)===34){s+='"';j=k+2}else{j=k+1;break}}f=s;i=j}
-    else{let j=i;while(j<n){const x=t.charCodeAt(j);if(x===44||x===10||x===13)break;j++}f=t.slice(i,j);i=j}
-    row.push(f);const x=t.charCodeAt(i);
-    if(x===44){i++;if(i>=n){row.push('');out.push(row);row=[]}}
-    else{if(x===13&&t.charCodeAt(i+1)===10)i++;i++;out.push(row);row=[]}}
-  if(row.length)out.push(row);return out}
-const IDB={p:null,open(){if(!this.p)this.p=new Promise((ok,no)=>{try{const q=indexedDB.open('pb_studio_csv',1);q.onupgradeneeded=()=>q.result.createObjectStore('csv');q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error)}catch(e){no(e)}});return this.p},
-  async get(k){try{const db=await this.open();return await new Promise((ok,no)=>{const r=db.transaction('csv').objectStore('csv').get(k);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}catch(e){return null}},
-  async set(k,v){try{const db=await this.open();return await new Promise((ok,no)=>{const t=db.transaction('csv','readwrite');t.objectStore('csv').put(v,k);t.oncomplete=()=>ok(true);t.onerror=()=>no(t.error);t.onabort=()=>no(t.error)})}catch(e){return false}}};
-const LC={},LSX={};let syncing=false,syncP=null,noEnrich=false;
-async function lcMeta(){return(await IDB.get('meta'))||{}}
-function lcBuild(p,csv,at){const T=csvParse(csv),h=T.shift()||[],rows=[],cats={},pc={};
-  for(const r of T){if(r.length<3)continue;const o={};for(let i=0;i<h.length;i++)o[h[i]]=r[i];if(o.service_id==null||o.service_id==='')continue;
-    o._pl=svPlatOf(o);o._s=(o.name+' '+o.service_id+' '+o.category).toLowerCase();rows.push(o);cats[o.category]=(cats[o.category]||0)+1;pc[o._pl]=(pc[o._pl]||0)+1}
-  return{provider:p,at,count:rows.length,rows,cats,plats:Object.keys(pc).map(k=>({label:k,n:pc[k]})).sort((a,b)=>b.n-a.n)}}
-async function lcLoad(p){if(LC[p])return LC[p];const m=(await lcMeta())[p],v=m&&await IDB.get(p);if(v&&v.csv){LC[p]=lcBuild(p,v.csv,m.at);return LC[p]}return null}
-async function lcFetch(p,at){if(at==null){const ps=await api('svc_providers'),q=(ps.providers||[]).find(x=>x.provider===p);at=q?q.collected_at:''}
-  const d=await api('svc_csv',{provider:p}),x=lcBuild(p,d.csv,at);LC[p]=x;
-  x.saved=await IDB.set(p,{csv:d.csv});if(x.saved){const m=await lcMeta();m[p]={at,count:x.count};await IDB.set('meta',m)}return x}
-async function lcEnsure(p){const L=await lcLoad(p);if(L)return L;
-  const mn=$('#main');if(mn)mn.innerHTML='<div class="card"><div class="sub" role="status">📥 CSV ফাইল ফোনে নামছে… (প্রথমবার শুধু)</div></div>';
-  try{return await lcFetch(p)}catch(e){if(authFail(e))throw e;toast('CSV নামেনি — '+e.message);return null}}
-function lcTag(name,text,cls){document.querySelectorAll('[data-lc]').forEach(el=>{if(el.dataset.lc===name){el.textContent=text;el.className='sub'+(cls?' '+cls:'')}})}
-const tried={};
-async function lcSync(P){syncP=P;if(syncing)return;syncing=true;let refresh=false;
-  try{try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
-    let snap,got=0,bad=0;do{snap=syncP;const meta=await lcMeta(),L=snap.filter(p=>p.count>0||p.has_api);
-      L.forEach(p=>{const m=meta[p.provider];if(p.count>0&&m&&m.at===p.collected_at)lcTag(p.provider,'📥 ফোনে আছে · '+bn(m.count)+'টি','ok')});
-      for(let i=0;i<L.length;i++){const p=L[i],m=meta[p.provider];let at=p.collected_at;
-        if(p.count>0&&m&&m.at===at)continue;
-        const pg=$('#prog');if(pg)pg.textContent=`📥 ${bn(i+1)}/${bn(L.length)} — ${p.provider}`;
-        try{
-          if(!(p.count>0)){if(tried[p.provider])continue;tried[p.provider]=1;lcTag(p.provider,'⏳ প্রথমবার সংগ্রহ হচ্ছে…');const r=await api('svc_collect',{provider:p.provider});at=r.collected_at;refresh=true}
-          lcTag(p.provider,'⏳ CSV নামছে…');
-          const x=await lcFetch(p.provider,at);got++;
-          if(x.saved===false)lcTag(p.provider,'⚠ ফোনে সেভ হয়নি — এখন চলবে, অ্যাপ বন্ধ করলে আবার নামবে','hi');
-          else lcTag(p.provider,'📥 ফোনে আছে · '+bn(x.count)+'টি','ok')}
-        catch(e){if(authFail(e))return;bad++;lcTag(p.provider,'⚠ '+e.message+' — "সংগ্রহ" চেপে আবার চেষ্টা করুন','hi')}}
-    }while(snap!==syncP);
-    const pg=$('#prog');if(pg)pg.textContent=bad?`⚠ ${bn(bad)}টি নামেনি`:'';
-    if(got&&!bad)toast(`${bn(got)}টি CSV ফোনে সেভ হয়েছে ✔`)}
-  finally{syncing=false}
-  if(refresh&&cur===null)home()}
-async function lcState(p){const k=LSX[p];if(k&&Date.now()-k.t<120000)return k;
-  const d=await api('svc_light',{provider:p}),o={t:Date.now(),on:{},cf:d.cf||{},fx:d.fx,sc:d.site_categories||[]};(d.on||[]).forEach(id=>{o.on[id]=1});LSX[p]=o;return o}
-async function lcEnrich(p,rows){if(noEnrich)return;const need=rows.filter(r=>!r._en);if(!need.length)return;
-  try{const d=await api('svc_enrich',{provider:p,rows:need.map(r=>({service_id:r.service_id,name:r.name,category:r.category,rate:r.rate,refill:r.refill}))});
-    need.forEach(r=>{const x=d.items&&d.items[r.service_id];if(x){r.suggest=x.suggest;r.spd=x.spd;r.tidy=x.tidy}r._en=1})}
-  catch(e){if(authFail(e))throw e;if(e.code==='unknown_action')noEnrich=true}}
-async function localList(L,p){const S=await lcState(p);
-  for(const r of L.rows){const id=r.service_id;if(S.on[id]){r.state='on'}else if(S.cf[id]){r.state='conflict';r.conflict_with=S.cf[id]}else r.state='off'}
-  const q=(st.q||'').toLowerCase().trim(),cat=st.cat||'',pf=st.plat||'',fl=st.state||'all',ty=cat?'':(st.type||'');
-  const out=L.rows.filter(r=>(!cat||r.category===cat)&&(!pf||r._pl===pf)&&(fl==='all'||r.state===fl)&&(!q||r._s.indexOf(q)>=0)&&(!ty||(r._t||(r._t=typeOf(r.category)))===ty));
-  const off=st.off||0,page=out.slice(off,off+50);await lcEnrich(p,page);
-  return{ok:true,total:out.length,rows:page,categories:L.cats,site_categories:S.sc,fx:S.fx,platforms:L.plats,next:off+page.length}}
-async function getList(p){const L=await lcEnsure(p);
-  if(L){try{return await localList(L,p)}catch(e){if(e.code!=='unknown_action')throw e;toast('Apps Script আপডেট করুন (PtServices.gs) — আপাতত সার্ভার থেকে চলছে')}}
-  return pageRows('svc_list',{provider:p,q:st.q,state:st.state,category:st.cat,platform:st.plat||''},st.off,50,st.cat?'':(st.type||''))}
-
 /* ---------- হোম: প্রভাইডার তালিকা ---------- */
 async function home(){
   $('#title').textContent='সার্ভিস স্টুডিও';$('#back').hidden=true;cur=null;
@@ -135,9 +41,9 @@ async function home(){
   try{
     await swr('svc_providers',{},d=>{const P=d.providers||[];
     el.innerHTML=nav('')+'<div class="bar"><button class="btn" id="all" style="max-width:260px">সব প্রভাইডার সংগ্রহ করুন</button><span id="prog" class="mut" role="status"></span></div><div class="list">'+
-    (P.length?P.map(p=>`<div class="card pv"><div class="top"><div><b>${esc(p.provider)}</b><div class="sub">${p.collected_at?'সংগ্রহ: '+esc(p.collected_at)+' · '+bn(p.count)+'টি':'এখনো সংগ্রহ হয়নি'}</div><div class="sub" data-lc="${esc(p.provider)}"></div></div>${p.has_api?'':'<span class="tag hi">API নেই</span>'}</div><div class="acts"><button class="sm" data-c="${esc(p.provider)}" ${p.has_api?'':'disabled'}>সংগ্রহ</button><button class="sm" data-o="${esc(p.provider)}" ${p.count?'':'disabled'}>সার্ভিস দেখুন</button></div></div>`).join(''):'<div class="card empty">কোনো প্রভাইডার কনফিগার করা নেই</div>')+'</div>';
+    (P.length?P.map(p=>`<div class="card pv"><div class="top"><div><b>${esc(p.provider)}</b><div class="sub">${p.collected_at?'সংগ্রহ: '+esc(p.collected_at)+' · '+bn(p.count)+'টি':'এখনো সংগ্রহ হয়নি'}</div></div>${p.has_api?'':'<span class="tag hi">API নেই</span>'}</div><div class="acts"><button class="sm" data-c="${esc(p.provider)}" ${p.has_api?'':'disabled'}>সংগ্রহ</button><button class="sm" data-o="${esc(p.provider)}" ${p.count?'':'disabled'}>সার্ভিস দেখুন</button></div></div>`).join(''):'<div class="card empty">কোনো প্রভাইডার কনফিগার করা নেই</div>')+'</div>';
     el.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>collect(b.dataset.c,b));
-    el.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{location.hash='p='+encodeURIComponent(b.dataset.o)});lcSync(P);
+    el.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{location.hash='p='+encodeURIComponent(b.dataset.o)});
     const all=$('#all');if(all)all.onclick=async()=>{all.disabled=true;let ok=0,bad=0;const L=P.filter(p=>p.has_api);for(let i=0;i<L.length;i++){$('#prog').textContent=`${bn(i+1)}/${bn(L.length)} — ${L[i].provider}`;try{await api('svc_collect',{provider:L[i].provider});ok++}catch(e){if(authFail(e))return;bad++}}toast(`সংগ্রহ শেষ: ${bn(ok)} সফল, ${bn(bad)} ব্যর্থ`);home()};
     });}catch(e){if(!authFail(e))el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p><button class="btn" id="rt" style="max-width:220px">আবার চেষ্টা করুন</button></div>`,$('#rt').onclick=home}
 }
@@ -154,7 +60,7 @@ async function provider(p,more){
   cur=p;$('#title').textContent=p;$('#back').hidden=false;const el=$('#main');
   if(!more){st.off=0;sel.clear();bulkBar();el.innerHTML='<div class="sk"></div>'}
   try{
-    const d=await getList(p);
+    const d=await pageRows('svc_list',{provider:p,q:st.q,state:st.state,category:st.cat,platform:st.plat||''},st.off,50,st.cat?'':(st.type||''));
     if(!more){lastList=d;
       el.innerHTML=tiles(d.platforms||[],st.plat||'')+`<div class="bar"><input id="q" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি খুঁজুন" value="${esc(st.q)}" aria-label="খুঁজুন"></div><div id="cats">${catUI(catsFor(d.categories,st.plat),st)}</div>
       <div class="chips" role="group" aria-label="অবস্থা">${[['all','সব'],['on','চালু'],['off','বন্ধ'],['conflict','জট']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${st.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="sa">সব বাছুন</button><button class="chip" id="csv">⤓ CSV</button></div>
@@ -194,9 +100,10 @@ async function toggle(r,btn){
 }
 function openSheet(r,btn,force){
   const sh=$('#sheet');$('#shN').textContent=`ID ${r.service_id} · রেট ${r.rate} · মূল: ${r.name} | ${r.category}`;
-  const t=r.tidy||{};$('#shName').value=nice(r)||t.name||r.name;$('#shCat').value=matchCat(t.cat||r.category);{const sc=$('#shCat');sc.placeholder='ক্যাটেগরি বাছুন বা লিখুন';sc.onfocus=()=>{sc.dataset.prev=sc.value;sc.placeholder=sc.value||sc.placeholder;sc.value=''};sc.onblur=()=>{if(!sc.value.trim())sc.value=sc.dataset.prev||''}}
+  const t=r.tidy||{};$('#shName').value=nice(r)||t.name||r.name;$('#shCat').value=matchCat(t.cat||r.category);
   $('#shPlat').innerHTML=PLAT.map(p=>`<option>${p[0]}</option>`).join('');$('#shPlat').value=t.plat||guess(r.category+' '+r.name);
-  $('#shCats').innerHTML=(window._sc||[]).map(c=>`<option value="${esc(c)}">`).join('');
+  
+  catSuggest($('#shCat'),$('#shPlat'),$('#shSg'),()=>[t.cat,r.category]);
   $('#shPriceBdt').hidden=true;$('#shPriceUsd').hidden=true;$('#shUsd').value=r.rate;
   $('#shInfo').textContent=`দাম অটো: প্রভাইডার $${r.rate}/1K → সাইটে ≈ ৳${r.suggest?bn(r.suggest.bdt):'?'}/1K (সাইটের মার্কআপ নিয়মে)`;$('#shErr').textContent='';
   sh.onclose=async()=>{
@@ -211,7 +118,7 @@ function openSheet(r,btn,force){
   sh.returnValue='';sh.showModal();
 }
 async function dl(p){
-  try{let csv,name='svc_'+p.replace(/[^a-z0-9.-]/gi,'_')+'.csv';const v=await IDB.get(p);if(v&&v.csv)csv=v.csv;else{const d=await api('svc_csv',{provider:p});csv=d.csv;name=d.name}const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
+  try{const d=await api('svc_csv',{provider:p});const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([d.csv],{type:'text/csv;charset=utf-8'}));a.download=d.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
   catch(e){if(!authFail(e))toast(e.message)}
 }
 
@@ -245,7 +152,7 @@ async function cmp(){
 async function chg(){
   cur=null;$('#title').textContent='পরিবর্তন';$('#back').hidden=true;const el=$('#main');el.innerHTML=nav('chg')+'<div class="sk"></div>';
   try{const d=await api('svc_changes'),a=d.auto||{},T={rm:'বাদ',up:'দাম ↑',down:'দাম ↓','new':'নতুন'};
-    el.innerHTML=nav('chg')+`<div class="card"><b>সাপ্তাহিক অটো-সংগ্রহ</b><div class="sub">${a.on===null?'অবস্থা জানা যায়নি':a.on?'চালু':'বন্ধ'}${a.last?' · শেষ: '+esc(a.last):''}</div><button class="sm" id="au" style="margin-top:8px">${a.on?'বন্ধ করুন':'চালু করুন'}</button></div>`+
+    el.innerHTML=nav('chg')+`<div class="card"><b>অটো-সংগ্রহ: সপ্তাহে ২ বার</b><div class="sub">${a.on===null?'অবস্থা জানা যায়নি':a.on?'চালু':'বন্ধ'}${a.last?' · শেষ: '+esc(a.last):''}</div><div class="sub">প্রতি ৩.৫ দিনে নতুন করে ডাউনলোড; বাকি সময় সবকিছু ডাউনলোড করা সার্ভিস থেকেই আসে, প্রভাইডারের API কল হয় না।</div><button class="sm" id="au" style="margin-top:8px">${a.on?'বন্ধ করুন':'চালু করুন'}</button></div>`+
     (d.providers.length?d.providers.map(p=>`<div class="card"><b>${esc(p.provider)}</b> <span class="sub">${esc(p.at)}</span><div class="sub">বাদ ${bn(p.c.rm)} · দাম↑ ${bn(p.c.up)} · দাম↓ ${bn(p.c.down)} · নতুন ${bn(p.c.nw)}</div>${p.live_rm||p.live_up?`<div class="sub hi">⚠ চালু সার্ভিসে: বাদ ${bn(p.live_rm)}, দাম↑ ${bn(p.live_up)}</div>`:''}<details><summary>বিস্তারিত</summary>${p.items.map(i=>`<div class="sub ${i.live?'hi':''}">${i.live?'● ':''}<b>${T[i.t]}</b> ${esc(i.id)} · ${esc(i.nm)}${i.t==='up'||i.t==='down'?` · ${i.o} → ${i.n}`:i.t==='new'?` · ${i.n}`:''}</div>`).join('')}</details></div>`).join(''):'<div class="card empty">তুলনার ডেটা নেই — একই প্রভাইডার দুইবার সংগ্রহ করলে পরিবর্তন দেখা যাবে</div>');
     $('#au').onclick=async e=>{e.target.disabled=true;try{await api('svc_auto',{on:!a.on});toast('হয়েছে');chg()}catch(x){if(!authFail(x))toast(x.message);e.target.disabled=false}}
   }catch(e){if(!authFail(e))el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`}}
@@ -422,7 +329,8 @@ function mrow(r){
 function editSheet(r,after){
   let dlg=$('#esh');if(!dlg){dlg=document.createElement('dialog');dlg.id='esh';document.body.appendChild(dlg)}
   const pls=[...new Set([r.platform,...PLAT.map(p=>p[0])].filter(Boolean))];
-  dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 8px">সম্পাদনা · ID ${esc(r.code)}</h3><label for="enm">সার্ভিসের নাম</label><input id="enm" maxlength="120" value="${esc(r.name)}"><label for="epl">প্ল্যাটফর্ম</label><select id="epl">${pls.map(p=>`<option${p===r.platform?' selected':''}>${esc(p)}</option>`).join('')}</select><label for="ect">ক্যাটেগরি</label><input id="ect" list="ects" value="${esc(r.category)}"><datalist id="ects">${(window._mc||[]).map(c=>`<option value="${esc(c)}">`).join('')}</datalist><p id="eer" class="err" role="alert"></p><div class="acts"><button class="sm" value="cancel" formnovalidate>বাতিল</button><button class="sm" id="etd" type="button">অটো সাজান</button><button class="btn" value="ok">সংরক্ষণ</button></div></form>`;
+  dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 8px">সম্পাদনা · ID ${esc(r.code)}</h3><label for="enm">সার্ভিসের নাম</label><input id="enm" maxlength="120" value="${esc(r.name)}"><label for="epl">প্ল্যাটফর্ম</label><select id="epl">${pls.map(p=>`<option${p===r.platform?' selected':''}>${esc(p)}</option>`).join('')}</select><label for="ect">ক্যাটেগরি</label><input id="ect" autocomplete="off" value="${esc(r.category)}"><div id="esg" class="csg"></div><p id="eer" class="err" role="alert"></p><div class="acts"><button class="sm" value="cancel" formnovalidate>বাতিল</button><button class="sm" id="etd" type="button">অটো সাজান</button><button class="btn" value="ok">সংরক্ষণ</button></div></form>`;
+  catSuggest($('#ect'),$('#epl'),$('#esg'),()=>[r.category,(r.tidy||{}).cat]);
   $('#etd').onclick=()=>{const t=r.tidy||{},nn=nice(r)||t.name;if(nn)$('#enm').value=nn;if(t.cat)$('#ect').value=t.cat};
   dlg.querySelector('form').onsubmit=e=>{if(e.submitter&&e.submitter.value==='ok'&&!$('#enm').value.trim()){e.preventDefault();$('#eer').textContent='নাম দিন'}};
   dlg.onclose=async()=>{if(dlg.returnValue!=='ok')return;
@@ -462,6 +370,22 @@ async function mact(k){
   else if(k==='del'){if(!confirm(bn(codes.length)+'টি সার্ভিস সাইট থেকে মুছে ফেলা হবে?\n(স্টুডিও/বটে যোগ করাগুলো তালিকা থেকেও যাবে; পুরনোগুলো লুকানো থাকবে — "লুকানো" ফিল্টার থেকে ফেরানো যাবে)'))return;a.on=false;a.del=true}
   else{act='svc_site_bulk';if(k==='tidy'){if(!confirm(bn(codes.length)+'টির নাম ও ক্যাটেগরি অটো সাজানো হবে?'))return;a.tidy=true}else{const c=prompt('নতুন ক্যাটেগরি (সবগুলোর জন্য)','');if(!c)return;a.category=c}}
   busy=true;try{const r=await api(act,a);toast(bn(r.done)+'টি হয়েছে');mload()}catch(e){if(!authFail(e))toast(e.message)}busy=false}
+
+/* ---------- ক্যাটেগরি-প্রস্তাব: প্ল্যাটফর্ম অনুযায়ী ১০ প্যানেল + সাইটের ক্যাটেগরি থেকে ট্যাপ করে বাছা ---------- */
+const PLB={instagram:'Instagram',facebook:'Facebook',tiktok:'TikTok',youtube:'YouTube',telegram:'Telegram',twitter:'Twitter / X',whatsapp:'WhatsApp'},CSG={};
+function catSuggest(inp,sel,box,seed){let L=null,tok=0,typed=false;
+  const draw=()=>{const lab=PLB[sel.value],q=typed?stripEmo(inp.value).toLowerCase():'';
+    if(!lab){box.innerHTML='<p class="sub">প্ল্যাটফর্ম বাছলে ওই প্ল্যাটফর্মের ক্যাটেগরি প্রস্তাব আসবে।</p>';return}
+    if(!L){box.innerHTML='<p class="sub">ক্যাটেগরি প্রস্তাব আনা হচ্ছে…</p>';return}
+    const f=a=>a.filter(x=>!q||x.c.toLowerCase().indexOf(q)>=0).slice(0,14),
+      sec=(t,a)=>a.length?`<div class="sub">${t}</div><div class="csgc">${a.map(x=>`<button type="button" class="chip cs" data-c="${esc(x.c)}">${esc(x.c)}${x.n?` <small>${bn(x.n)}</small>`:''}</button>`).join('')}</div>`:'';
+    box.innerHTML=sec('⭐ প্রস্তাবিত',f((seed()||[]).filter(Boolean).map(c=>({c,n:0}))))+sec('সাইটে আছে',f(L.site))+sec('অন্য প্যানেলের ক্যাটেগরি (কয়টা সার্ভিসে)',f(L.providers))||'<p class="sub">কিছু মেলেনি — নিজে লিখুন</p>';
+    box.querySelectorAll('.cs').forEach(b=>b.onclick=()=>{inp.value=b.dataset.c;typed=false;draw()})};
+  const load=async()=>{const lab=PLB[sel.value];L=null;if(!lab){draw();return}if(CSG[lab]){L=CSG[lab];draw();return}const my=++tok;draw();
+    try{const d=await api('svc_cat_suggest',{label:lab});if(my!==tok)return;L=CSG[lab]={site:d.site||[],providers:d.providers||[]}}
+    catch(e){if(my!==tok)return;if(authFail(e))return;L={site:(window._sc||[]).filter(c=>platMatch(lab,c)).map(c=>({c,n:0})),providers:[]}}
+    draw()};
+  sel.onchange=load;inp.oninput=()=>{typed=true;draw()};load()}
 
 /* ---------- ক্যাটেগরি: তালিকা · নতুন তৈরি · ভেতরে সার্ভিসের নাম এডিট ---------- */
 const catUrl=c=>'#cat='+encodeURIComponent(c);
@@ -546,7 +470,7 @@ function krow(r,reload){
 function catSheet(o){
   let dlg=$('#ncs');if(!dlg){dlg=document.createElement('dialog');dlg.id='ncs';document.body.appendChild(dlg)}
   const add=o.mode==='add',chosen=new Map();let qt2=null;
-  dlg.innerHTML=`<form method="dialog" id="ncf"><h3 style="margin:0 0 8px">${add?'➕ সার্ভিস যোগ — '+esc(o.name):'➕ নতুন ক্যাটেগরি'}</h3>${add?'':`<label for="ncn">ক্যাটেগরির নাম</label><div class="knm"><input id="ncn" maxlength="80" placeholder="যেমন: Instagram Followers" autocomplete="off"><button type="button" class="ib" id="ncemo" title="ইমুজি যোগ করুন" aria-label="ইমুজি যোগ করুন">✨</button></div><label for="ncp">প্ল্যাটফর্ম (ঐচ্ছিক)</label><select id="ncp"><option value="">সার্ভিসের যেমন আছে তেমনই</option>${PLAT.slice(0,7).map(p=>`<option>${p[0]}</option>`).join('')}</select>`}<label for="ncq">সার্ভিস বাছুন — নাম বা আইডি লিখে খুঁজুন</label><input id="ncq" type="search" autocomplete="off" placeholder="যেমন: followers"><p class="sub" id="ncc"></p><div class="ncl" id="ncl"></div><p id="ncerr" class="err" role="alert"></p><div class="acts"><button class="btn" value="ok" id="ncok" style="order:2">${add?'যোগ করুন':'তৈরি করুন'}</button><button class="sm" value="cancel" formnovalidate style="order:1">বাতিল</button></div></form>`;
+  dlg.innerHTML=`<form method="dialog" id="ncf"><h3 style="margin:0 0 8px">${add?'➕ সার্ভিস যোগ — '+esc(o.name):'➕ নতুন ক্যাটেগরি'}</h3>${add?'':`<label for="ncn">ক্যাটেগরির নাম</label><div class="knm"><input id="ncn" maxlength="80" placeholder="যেমন: Instagram Followers" autocomplete="off"><button type="button" class="ib" id="ncemo" title="ইমুজি যোগ করুন" aria-label="ইমুজি যোগ করুন">✨</button></div><label for="ncp">প্ল্যাটফর্ম (ঐচ্ছিক)</label><select id="ncp"><option value="">সার্ভিসের যেমন আছে তেমনই</option>${PLAT.slice(0,7).map(p=>`<option>${p[0]}</option>`).join('')}</select><div id="ncsg" class="csg"></div>`}<label for="ncq">সার্ভিস বাছুন — নাম বা আইডি লিখে খুঁজুন</label><input id="ncq" type="search" autocomplete="off" placeholder="যেমন: followers"><p class="sub" id="ncc"></p><div class="ncl" id="ncl"></div><p id="ncerr" class="err" role="alert"></p><div class="acts"><button class="btn" value="ok" id="ncok" style="order:2">${add?'যোগ করুন':'তৈরি করুন'}</button><button class="sm" value="cancel" formnovalidate style="order:1">বাতিল</button></div></form>`;
   const ok=$('#ncok'),cnt=()=>{ok.textContent=(add?'যোগ করুন':'তৈরি করুন')+(chosen.size?` (${bn(chosen.size)}টি)`:'')};
   const load=async()=>{const box=$('#ncl'),q=$('#ncq').value.trim();box.innerHTML='<div class="sk"></div>';
     try{const d=await api('svc_site_list',{q,platform:'',category:'',state:'all',offset:0,limit:100});let rows=d.rows;if(add)rows=rows.filter(r=>r.category!==o.name);
@@ -556,6 +480,7 @@ function catSheet(o){
         l.querySelector('input').onchange=e=>{e.target.checked?chosen.set(r.code,r):chosen.delete(r.code);cnt()};box.appendChild(l)})}
     catch(e){if(!authFail(e))box.innerHTML=`<div class="err">${esc(e.message)}</div>`}};
   $('#ncq').oninput=()=>{clearTimeout(qt2);qt2=setTimeout(load,350)};
+  if(!add)catSuggest($('#ncn'),$('#ncp'),$('#ncsg'),()=>[]);
   const eb=$('#ncemo');if(eb)eb.onclick=()=>{const n=$('#ncn');n.value=catNice(n.value);n.focus()};
   $('#ncf').onsubmit=async e=>{if(!(e.submitter&&e.submitter.value==='ok'))return;e.preventDefault();if(busy)return;
     const er=$('#ncerr'),name=(add?o.name:$('#ncn').value).trim();er.textContent='';
@@ -596,7 +521,8 @@ function aiFabInit(F){let dr=null;
   F.addEventListener('keydown',e=>{const k={ArrowLeft:[-24,0],ArrowRight:[24,0],ArrowUp:[0,-24],ArrowDown:[0,24]}[e.key];if(!k)return;e.preventDefault();const r=F.getBoundingClientRect();fabPut(F,r.left+k[0],r.top+k[1]);fabSave(F)})}
 
 /* ---------- AI সহকারী (Gemini) — key শুধু এই ডিভাইসের ব্রাউজারে থাকে ---------- */
-const GK='pb_gem_key',GM='pb_gem_model',GOK='pb_gem_ok';let gh=[],gbusy=false;
+const GK='pb_gem_key',GM='pb_gem_model',GOK='pb_gem_ok',GDEF='gemini-3.6-flash';
+const gmodel=()=>{const m=(ls.get(GM)||'').trim();return m&&!/^gemini-(1|2)\./.test(m)?m:GDEF};let gh=[],gbusy=false;
 const SYS=`তুমি "boostplus সার্ভিস স্টুডিও"-র AI সহকারী। সবসময় বাংলায়, ছোট ও পরিষ্কার উত্তর দাও।
 টুল দিয়ে তুমি সাইটের সার্ভিস ও ১০ প্রভাইডারের সার্ভিস খুঁজতে, ক্যাটেগরি/নাম সাজাতে, চালু-বন্ধ করতে, ক্যাটেগরির নাম বদলাতে/মুছতে পারো।
 নিয়ম:
@@ -658,16 +584,14 @@ const TOOLFN={
  delete_category(a){return catDeleteCore(a.category)}};
 const gmd=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
 function addMsg(k,t){const b=$('#aiMsgs');if(!b)return null;const d=document.createElement('div');d.className='am '+k;if(k==='ai')d.innerHTML=gmd(t);else d.textContent=t;b.appendChild(d);b.scrollTop=b.scrollHeight;return d}
-let gViaSrv=false,gSrvKey=false;
-function aiPing(){return api('ai_gemini',{ping:1}).then(r=>{if(r&&r.has_key){gSrvKey=true;aiStatus()}}).catch(()=>{})}
-async function gcall(){const key=ls.get(GK),model=ls.get(GM)||'gemini-2.5-flash';
-  const body={systemInstruction:{parts:[{text:SYS}]},contents:gh,tools:TOOLS,generationConfig:{temperature:.3}};let d,status;
-  if(!key){if(!gSrvKey)throw new Error('key দেওয়া নেই');gViaSrv=true}
-  if(!gViaSrv){try{const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body)});d=await r.json().catch(()=>({}));status=r.status}
-    catch(e){if(e.name!=='TypeError'||navigator.onLine===false)throw e;gViaSrv=true}}
-  if(gViaSrv){try{const x=await api('ai_gemini',{key,model,body});d=x.data||{};status=x.status}
-    catch(e){if(e.code==='unknown_action'){gViaSrv=false;const m=new Error('ফোন থেকে সরাসরি Google-এ যাওয়া যাচ্ছে না। Apps Script-এ PtServices.gs আপডেট করলে সার্ভারের মাধ্যমে চলবে।');m.name='TypeError';throw m}throw e}}
-  if(status<200||status>=300){const e=new Error((d.error&&d.error.message)||('HTTP '+status));e.status=status;throw e}return d}
+async function gcall(){const key=ls.get(GK),model=gmodel(),body={systemInstruction:{parts:[{text:SYS}]},contents:gh,tools:TOOLS,generationConfig:{temperature:.3}};
+  /* ১) নিজের AIza… key থাকলে সরাসরি Google-এ; ব্যর্থ/নেটওয়ার্ক সমস্যা/মডেল নেই হলে ২) Apps Script প্রক্সি (সার্ভারের key + মডেল-ফলব্যাক) */
+  if(key&&!/^AQ\./.test(key)){
+    try{const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body)});
+      const d=await r.json().catch(()=>({}));if(r.ok)return d;if(r.status!==404&&r.status!==400&&r.status!==403&&r.status!==401){const e=new Error((d.error&&d.error.message)||('HTTP '+r.status));e.status=r.status;throw e}}
+    catch(x){if(x&&x.status)throw x}}
+  const p=await api('ai_gemini',Object.assign({model,body},key&&/^AQ\./.test(key)?{key}:{}));
+  if(p.status!==200){const e=new Error((p.data&&p.data.error&&p.data.error.message)||('HTTP '+p.status));e.status=p.status;throw e}return p.data}
 function gtrim(){if(gh.length<=40)return;let i=gh.length-14;while(i<gh.length&&!(gh[i].role==='user'&&gh[i].parts&&gh[i].parts[0]&&gh[i].parts[0].text!==undefined))i++;gh=i<gh.length?gh.slice(i):gh.slice(-2)}
 async function agent(text){gtrim();gh.push({role:'user',parts:[{text}]});
   for(let i=0;i<8;i++){const d=await gcall(),c=d.candidates&&d.candidates[0];
@@ -679,34 +603,25 @@ async function agent(text){gtrim();gh.push({role:'user',parts:[{text}]});
       resp.push({functionResponse:{name:fc.name,response:{result:out}}})}
     gh.push({role:'user',parts:resp})}
   addMsg('ai','অনেক ধাপ হয়ে গেছে — আবার বলুন, কোথায় থেমেছি সেখান থেকে চালাব।')}
-const gerr=e=>{const m=String(e&&e.message||'');
-  if(e.status===429)return'ফ্রি কোটা শেষ বা অনেক দ্রুত পাঠানো হয়েছে — একটু পরে চেষ্টা করুন';
-  if(e.status===404)return'মডেলের নাম পাওয়া যায়নি — ⚙ থেকে মডেল বদলান ('+m+')';
-  if(e.status===400&&/key/i.test(m)||e.status===403)return'API key ঠিক নয় বা অনুমতি নেই ['+e.status+'] — Google বলছে: '+m;
-  if(e.name==='TypeError'){
-    if(navigator.onLine===false)return'ফোনে ইন্টারনেট বন্ধ আছে';
-    if(/header|ISO-8859|Invalid value|non ISO/i.test(m))return'key-তে অবৈধ অক্ষর আছে (বাংলা/লুকানো অক্ষর) — AI Studio থেকে আবার কপি করে বসান';
-    return'Google সার্ভারে পৌঁছানো যায়নি (VPN, Private DNS, অ্যাড-ব্লকার, ডেটা সেভার বা ফায়ারওয়াল আটকাতে পারে) — ব্রাউজারের ত্রুটি: '+m}
-  return(e.status?'['+e.status+'] ':'')+m};
-function aiStatus(){const k=ls.get(GK);if(!k&&gSrvKey){$('#aiSt').textContent='● সংযুক্ত (সার্ভারের key)';$('#aiSt').className='sub ok';return}$('#aiSt').textContent=k?(ls.get(GOK)?'● সংযুক্ত':'● key আছে'):'○ সংযুক্ত নয়';$('#aiSt').className='sub'+(k&&ls.get(GOK)?' ok':'')}
+const gerr=e=>e.code==='unknown_action'?'Apps Script-এ নতুন PtServices.gs বসিয়ে আবার Deploy করুন (ai_gemini অ্যাকশন নেই)':e.status===429?'ফ্রি কোটা শেষ বা অনেক দ্রুত পাঠানো হয়েছে — একটু পরে চেষ্টা করুন':e.status===400&&/key/i.test(e.message)||e.status===403?'API key ঠিক নয় বা অনুমতি নেই — ⚙ থেকে দেখুন':e.status===404?'মডেল পাওয়া যায়নি — ⚙ থেকে মডেলের ঘর ফাঁকা করে সংরক্ষণ করুন (ডিফল্ট '+GDEF+')':e.name==='TypeError'?'ইন্টারনেট/নেটওয়ার্ক সমস্যা':e.message;
+function aiStatus(){const k=ls.get(GK);$('#aiSt').textContent=k?(ls.get(GOK)?'● সংযুক্ত':'● key আছে'):(ls.get(GOK)?'● সার্ভার key':'○ সার্ভার key');$('#aiSt').className='sub'+(k&&ls.get(GOK)?' ok':'')}
 function aiInit(){if($('#aiFab'))return;
   document.body.insertAdjacentHTML('beforeend',`<button id="aiFab" class="aifab" popover="manual" aria-label="AI সহকারী — টেনে সরানো যায়" title="AI সহকারী (টেনে সরান)" hidden>${ROBOT}</button><section id="ai" class="aipanel" popover="manual" role="dialog" aria-label="AI সহকারী" hidden><header><b class="aiti">${ROBOT.replace('width="30" height="30"','width="22" height="22"')} AI সহকারী</b><span id="aiSt" class="sub"></span><span class="aihs"><button class="ib" id="aiSet" aria-label="সেটিং">⚙</button><button class="ib" id="aiNew" aria-label="নতুন চ্যাট" title="নতুন চ্যাট">↺</button><button class="ib" id="aiX" aria-label="বন্ধ">✕</button></span></header>
 <div id="aiKey" class="aikey" hidden><label for="aiK">Gemini API key</label><input id="aiK" type="password" autocomplete="off" placeholder="AIza…"><label for="aiM">মডেল</label><input id="aiM" autocomplete="off"><p class="sub">key শুধু এই ফোনের ব্রাউজারে থাকে। Google AI Studio-তে key-তে সীমা (restriction) বেঁধে রাখুন।</p><p class="err" id="aiKe" role="alert"></p><div class="acts"><button class="sm" id="aiDel" type="button">key মুছুন</button><button class="btn" id="aiSave" type="button">সংরক্ষণ ও পরীক্ষা</button></div></div>
 <div id="aiMsgs" class="aimsgs" aria-live="polite"></div><div id="aiChips" class="chips"></div><form id="aiForm"><input id="aiIn" placeholder="যা করাতে চান লিখুন…" autocomplete="off" aria-label="বার্তা"><button class="btn" id="aiGo">পাঠান</button></form></section>`);
   const P=$('#ai'),F=$('#aiFab');aiFabInit(F);topLayer(P);topLayer(F);
-  const open=()=>{P.hidden=false;F.hidden=true;topLayer(P);aiStatus();aiPing().then(()=>{if(gSrvKey&&!$('#aiKey').hidden&&!ls.get(GK))keyBox(false)});if(!ls.get(GK)&&!gSrvKey)keyBox(true);else $('#aiIn').focus()};
+  const open=()=>{P.hidden=false;F.hidden=true;topLayer(P);aiStatus();$('#aiIn').focus()};
   const close=()=>{P.hidden=true;F.hidden=!token;topLayer(F)};
-  const keyBox=v=>{$('#aiKey').hidden=!v;if(v){$('#aiK').value=ls.get(GK)||'';$('#aiM').value=ls.get(GM)||'gemini-2.5-flash';$('#aiKe').textContent=''}};
+  const keyBox=v=>{$('#aiKey').hidden=!v;if(v){$('#aiK').value=ls.get(GK)||'';$('#aiM').value=gmodel();$('#aiKe').textContent=''}};
   F.onclick=()=>{if(fabMoved){fabMoved=false;return}open()};$('#aiX').onclick=close;$('#aiSet').onclick=()=>keyBox($('#aiKey').hidden);
   $('#aiNew').onclick=()=>{gh=[];$('#aiMsgs').innerHTML='';hello()};
   $('#aiDel').onclick=()=>{ls.del(GK);ls.del(GOK);gh=[];$('#aiK').value='';aiStatus();$('#aiKe').textContent='key মোছা হয়েছে'};
-  $('#aiSave').onclick=async()=>{const k=$('#aiK').value.trim(),m=$('#aiM').value.trim()||'gemini-2.5-flash',b=$('#aiSave');if(!k){$('#aiKe').textContent='key দিন';return}
-    if(!/^[\x21-\x7E]+$/.test(k)){$('#aiKe').textContent='key-তে অবৈধ অক্ষর আছে (বাংলা/স্পেস/লুকানো অক্ষর) — আবার কপি করে বসান';return}
-    b.disabled=true;$('#aiKe').textContent='পরীক্ষা হচ্ছে…';const ok=[ls.get(GK),ls.get(GM)],old=gh;ls.set(GK,k);ls.set(GM,m);gh=[{role:'user',parts:[{text:'শুধু "ok" লিখুন'}]}];
+  $('#aiSave').onclick=async()=>{const k=$('#aiK').value.trim(),m=$('#aiM').value.trim()||GDEF,b=$('#aiSave');if(!k&&!confirm('key ছাড়া সংরক্ষণ — অ্যাপ সার্ভারের (Apps Script-এর) key ব্যবহার করবে। চালিয়ে যাবেন?'))return;
+    b.disabled=true;$('#aiKe').textContent='পরীক্ষা হচ্ছে…';const ok=[ls.get(GK),ls.get(GM)],old=gh;if(k)ls.set(GK,k);else ls.del(GK);ls.set(GM,m);gh=[{role:'user',parts:[{text:'শুধু "ok" লিখুন'}]}];
     try{await gcall();ls.set(GOK,'1');gh=old;$('#aiKe').textContent='';keyBox(false);aiStatus();if(!$('#aiMsgs').children.length)hello();$('#aiIn').focus()}
     catch(e){gh=old;ls.del(GOK);if(ok[0]==null)ls.del(GK);else ls.set(GK,ok[0]);if(ok[1]==null)ls.del(GM);else ls.set(GM,ok[1]);$('#aiKe').textContent=gerr(e)}
     b.disabled=false;aiStatus()};
-  const send=async t=>{t=(t||'').trim();if(!t||gbusy)return;if(!ls.get(GK)&&!gSrvKey){keyBox(true);return}
+  const send=async t=>{t=(t||'').trim();if(!t||gbusy)return;
     gbusy=true;$('#aiGo').disabled=true;$('#aiIn').value='';addMsg('me',t);const w=addMsg('tool','⏳ ভাবছি…');
     try{await agent(t);ls.set(GOK,'1')}catch(e){addMsg('err',gerr(e))}
     if(w)w.remove();gbusy=false;$('#aiGo').disabled=false;aiStatus();$('#aiIn').focus()};
@@ -714,7 +629,7 @@ function aiInit(){if($('#aiFab'))return;
   const hello=()=>{addMsg('ai','আমি সাইটের সার্ভিস খুঁজতে, ক্যাটেগরি/নাম সাজাতে, চালু-বন্ধ করতে পারি। কী করাতে চান?');
     $('#aiChips').innerHTML=['TikTok Followers-এর সবচেয়ে সস্তা ৫টা (সব প্রভাইডার)','ফেসবুকের ক্যাটেগরিগুলো দেখাও','কতগুলো সার্ভিসের নাম সাজানো বাকি?','Instagram Followers-এর নাম সাজাও'].map(x=>`<button class="chip" type="button">${esc(x)}</button>`).join('');
     $('#aiChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>send(b.textContent))};
-  hello();aiStatus();aiPing();window._aiClose=close}
+  hello();aiStatus();window._aiClose=close}
 function aiShow(a){aiInit();const F=$('#aiFab'),P=$('#ai');if(!a){P.hidden=true;F.hidden=true}else{F.hidden=!P.hidden?true:false;topLayer(F);fabFit()}}
 
 /* ---------- রাউটার, লগইন, ইনস্টল ---------- */

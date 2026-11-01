@@ -12,7 +12,7 @@
 <dialog id="sheet" aria-labelledby="shT"><form method="dialog" id="shForm"><h3 id="shT" style="margin:0 0 8px">সাইটে চালু করুন</h3><p id="shN" class="sub"></p>
 <label for="shName">সাইটে নাম</label><input id="shName" maxlength="120">
 <label for="shPlat">প্ল্যাটফর্ম</label><select id="shPlat"></select>
-<label for="shCat">ক্যাটেগরি</label><input id="shCat" list="shCats" required><datalist id="shCats"></datalist>
+<label for="shCat">ক্যাটেগরি</label><input id="shCat" required autocomplete="off"><div id="shSg" class="csg"></div>
 <div id="shPriceBdt"><label for="shBdt">বিক্রয় দাম (৳ প্রতি ১০০০)</label><input id="shBdt" type="number" step="0.01" min="0"></div>
 <div id="shPriceUsd"><label for="shUsd">বিক্রয় দাম (USD প্রতি ১০০০)</label><input id="shUsd" type="number" step="0.0001" min="0"></div>
 <p id="shInfo" class="sub"></p><p id="shErr" class="err" role="alert"></p>
