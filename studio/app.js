@@ -1,3 +1,5 @@
+/* প্রভাইডারের নামে 𝗕𝗼𝗹𝗱 / ｆｕｌｌｗｉｄｔｈ ইউনিকোড অক্ষর থাকে — সাধারণ অক্ষরে এনে (NFKC) তারপর চেনা হয়, নইলে 'REFILL' চেনা যেত না */
+const nk=s=>{s=String(s==null?'':s);try{return s.normalize('NFKC')}catch(e){return s}};
 /* boostplus সার্ভিস স্টুডিও — প্রভাইডারের লাইভ সার্ভিস → CSV → প্রতি সার্ভিসে অন/অফ সুইচ */
 (function(){
 'use strict';
@@ -167,7 +169,7 @@ async function collect(p,btn){
 
 /* ---------- প্রভাইডারের সার্ভিস + সুইচ ---------- */
 const PLAT=[['instagram',/insta(?!nt)|\big\b/i],['facebook',/facebook|\bfb\b/i],['tiktok',/tik.?tok/i],['youtube',/youtube|\byt\b/i],['telegram',/telegram|\btg\b/i],['twitter',/twitter|\bx\b/i],['whatsapp',/whatsapp/i],['other',/./]];
-const guess=s=>(PLAT.find(p=>p[1].test(s))||PLAT[7])[0];
+const guess=s=>{s=nk(s);return (PLAT.find(p=>p[1].test(s))||PLAT[7])[0]};
 let provTok=0;
 async function provider(p,more){
   cur=p;$('#title').textContent=p;$('#back').hidden=false;const el=$('#main');
@@ -256,12 +258,38 @@ async function dl(p){
 function bulkBar(){let b=$('#bulk');if(!b){b=document.createElement('div');b.id='bulk';b.className='bulk';document.body.appendChild(b)}
   b.hidden=!sel.size;b.innerHTML=`<b>${bn(sel.size)}টি বাছাই</b><button class="sm" data-b="on">চালু</button><button class="sm" data-b="off">বন্ধ</button><button class="sm" data-b="x" aria-label="বাতিল">✕</button>`;
   b.querySelectorAll('[data-b]').forEach(x=>x.onclick=()=>bulk(x.dataset.b))}
-function addQueue(list){let i=0;const fin=()=>{const k=list.filter(x=>x.state==='on').length;toast(k?bn(k)+'টি সার্ভিস সাইটে চালু হয়েছে ✔':'কিছু চালু হয়নি');if(cur)provider(cur)};
-  const run=()=>{if(i>=list.length)return fin();openSheet(list[i],document.createElement('button'),true,{i,n:list.length,next:()=>{i++;run()},done:fin})};run()}
+function addList(list){
+  const d=$('#bsheet'),box=$('#bsl'),E=$('#bsE'),PO=PLAT.map(p=>`<option>${p[0]}</option>`).join('');let any=false;
+  $('#bsT').textContent=`সাইটে চালু করুন — ${bn(list.length)}টি (নিচে একটার পর একটা)`;box.innerHTML='';E.textContent='';$('#bsAll').value='';
+  const items=list.map(r=>{const t=r.tidy||{};return{r,on:true,k:0,name:nice(r)||t.name||r.name,plat:t.plat||guess(r.category+' '+r.name),cat:cmGet(r.category)||matchCat(t.cat||r.category)}});
+  const cnt=()=>{const k=items.filter(x=>x.on).length;$('#bsOk').textContent=`সবগুলো চালু করুন (${bn(k)}টি)`;$('#bsOk').disabled=!k};
+  items.forEach(it=>{const c=document.createElement('div');c.className='card bsi';
+    c.innerHTML=`<div class="bsh"><label class="bsk"><input type="checkbox" checked aria-label="চালু করুন"><b>#${esc(it.r.service_id)}</b></label><span class="sub">রেট $${esc(it.r.rate)}</span><button type="button" class="sm bsn" aria-label="অন্য নাম প্রস্তাব">↻ নাম</button></div><div class="sub bso"></div><input class="bn" maxlength="120" aria-label="সাইটে নাম"><div class="bsr"><select class="bp" aria-label="প্ল্যাটফর্ম">${PO}</select><input class="bc" autocomplete="off" aria-label="ক্যাটেগরি" placeholder="ক্যাটেগরি"></div>`;
+    c.querySelector('.bso').textContent='মূল: '+it.r.name;
+    const ck=c.querySelector('input[type=checkbox]'),n=c.querySelector('.bn'),p=c.querySelector('.bp'),cc=c.querySelector('.bc');
+    Object.assign(it,{c,ck,n,p,cc});p.value=it.plat;n.value=it.name;cc.value=it.cat;
+    ck.onchange=()=>{it.on=ck.checked;c.classList.toggle('off',!it.on);cnt()};n.oninput=()=>{it.name=n.value};p.onchange=()=>{it.plat=p.value};cc.oninput=()=>{it.cat=cc.value;cc.classList.remove('bad')};
+    c.querySelector('.bsn').onclick=()=>{const a=nameIdeas(it.r,PLB[p.value]||'');if(a.length){it.k=(it.k+1)%a.length;n.value=it.name=a[it.k]}};
+    box.appendChild(c)});
+  $('#bsAllB').onclick=()=>{const v=$('#bsAll').value.trim();if(!v)return;items.forEach(x=>{if(x.on&&!x.done){x.cat=v;x.cc.value=v;x.cc.classList.remove('bad')}})};
+  $('#bsX').onclick=()=>{if(!busy)d.close()};
+  d.onclose=()=>{if(any&&cur)provider(cur)};
+  $('#bsOk').onclick=async()=>{if(busy)return;const L=items.filter(x=>x.on&&!x.done);if(!L.length)return;
+    const bad=L.filter(x=>!x.cat.trim());if(bad.length){bad.forEach(x=>x.cc.classList.add('bad'));E.textContent='ক্যাটেগরি লাগবে — লাল ঘরগুলো পূরণ করুন';bad[0].cc.scrollIntoView({block:'center'});return}
+    busy=true;$('#bsOk').disabled=true;let ok=0;const er=[];
+    for(let i=0;i<L.length;i++){const x=L[i];E.textContent=`চালু হচ্ছে… ${bn(i+1)}/${bn(L.length)}`;
+      try{await api('svc_toggle',{provider:x.r.provider||cur,code:x.r.service_id,on:true,name:x.name.trim()||x.r.name,platform:x.p.value,category:x.cat.trim(),price_usd:+x.r.rate,force:true});
+        cmSet(x.r.category,x.cat.trim());x.r.state='on';x.done=true;x.on=false;x.ck.checked=false;x.ck.disabled=true;x.c.classList.add('done');ok++;any=true}
+      catch(e){if(authFail(e)){busy=false;return}er.push('#'+x.r.service_id+' '+e.message);x.c.classList.add('fail')}}
+    busy=false;cnt();
+    if(!er.length){d.close();toast(bn(ok)+'টি সার্ভিস সাইটে চালু হয়েছে ✔')}
+    else E.textContent=`${bn(ok)}টি হয়েছে, ${bn(er.length)}টি হয়নি — ${er.slice(0,3).join(' · ')}। লাল কার্ডগুলো ঠিক করে আবার চাপুন।`};
+  cnt();d.showModal();box.scrollTop=0}
+function addQueue(list){addList(list)}
 async function bulk(k){
   if(k==='x'){sel.clear();document.querySelectorAll('.sel').forEach(x=>x.checked=false);return bulkBar()}
   if(busy)return;const on=k==='on';
-  /* চালু: অটো সাজানো নেই — প্রতিটা সার্ভিস একে একে সাজানোর শিটে আসে (নাম/প্ল্যাটফর্ম/ক্যাটেগরি নিজে ঠিক করে চালু) */
+  /* চালু: অটো সাজানো নেই — বাছাই করা সব সার্ভিস একটা পাতায় একটার নিচে একটা আসে; নাম/প্ল্যাটফর্ম/ক্যাটেগরি নিজে ঠিক করে একসাথে চালু */
   if(on){const its=[...sel].filter(x=>x.state!=='on');if(!its.length)return toast('বাছাই করা সবই আগে থেকে সাইটে চালু আছে');sel.clear();document.querySelectorAll('.sel').forEach(x=>x.checked=false);bulkBar();return addQueue(its)}
   const codes=[...sel].map(r=>r.service_id);if(!confirm(bn(codes.length)+'টি সার্ভিস সাইট থেকে লুকানো হবে?'))return;
   busy=true;try{const r={done:0,skipped:0};for(const c of chunks(codes,100)){const q=await api('svc_bulk',{provider:cur,codes:c,on:false,category:'',markup:'',force:true});r.done+=q.done||0;r.skipped+=q.skipped||0}
@@ -369,7 +397,7 @@ async function pageRows(act,base,off,lim,type){let rows=[],raw=off,d;const L=typ
    সব ট্যাগ শুধু প্রভাইডারের নিজের নাম/ক্যাটেগরি/ফিল্ড থেকে নেওয়া — নিজে থেকে কিছু বানানো হয় না। */
 const NP=[['Instagram',/insta(?!nt)|\big\b/i],['Facebook',/facebook|\bfb\b/i],['TikTok',/tik.?tok/i],['YouTube',/youtube|\byt\b/i],['Telegram',/telegram|\btg\b/i],['Twitter / X',/twitter|\bx\b|tweet/i],['WhatsApp',/whatsapp/i],['Threads',/threads/i],['Spotify',/spotify/i],['LinkedIn',/linkedin/i],['Snapchat',/snap/i],['Pinterest',/pinterest/i],['Discord',/discord/i],['Twitch',/twitch/i],['Website Traffic',/traffic|website|web ?visit/i]];
 const NT=[['Story Views',/story|stories/i],['Live Views',/\blive\b/i],['Watch Time',/watch.?(time|hour)/i],['Subscribers',/subscri/i],['Members',/member|joiner/i],['Comments',/comment/i],['Shares',/share|repost|retweet/i],['Saves',/\bsave|bookmark/i],['Reactions',/reaction|\blove\b|haha|\bwow\b/i],['Likes',/like|heart/i],['Views',/view|impression|\breach\b|\bplays?\b|stream|listen/i],['Followers',/follow/i],['Traffic',/traffic|visit/i]];
-const pick=(L,t)=>L.find(x=>x[1].test(t));
+const pick=(L,t)=>{t=nk(t);return L.find(x=>x[1].test(t))};
 const CTRY={usa:'USA',uk:'UK',india:'India',indian:'India',bangladesh:'BD',bd:'BD',turkey:'Turkey',turkish:'Turkey',brazil:'Brazil',brazilian:'Brazil',arab:'Arab',arabic:'Arab',indonesia:'Indonesia',pakistan:'Pakistan',russia:'Russia',germany:'Germany',france:'France',spain:'Spain',italy:'Italy',global:'Worldwide',worldwide:'Worldwide'};
 const kfmt=n=>n>=1e6?(+(n/1e6).toFixed(2))+'M':n>=1e3?(+(n/1e3).toFixed(1))+'K':String(n);
 
@@ -384,8 +412,8 @@ const stripEmo=s=>String(s==null?'':s).replace(/^[\p{Extended_Pictographic}\p{Re
 /* ক্যাটেগরির নাম: প্ল্যাটফর্মের ইমুজি + নাম (আগের ইমুজি সরিয়ে একবারই বসে — বারবার চালালে একই থাকে) */
 function catNice(cat){const c=stripEmo(cat);if(!c||!emoOn())return c;const P=pick(NP,c),T=pick(NT,c),e=P?PE[P[0]]:(T?TE[T[0]]:'📦');return (e+' '+c).substring(0,80)}
 const RF_NEG=/\b(no|non|without)[\s\-]?refill\b/i,RF_NEGG=/\b(no|non|without)[\s\-]?refill\b/ig,RF_POS=/refill|♻|lifetime|\blt\b|\br\d{2,3}\b/i;
-function refState(n,c,flag){for(const t of [n,c]){const s=String(t||'');if(RF_NEG.test(s))return 'no';if(RF_POS.test(s.replace(RF_NEGG,' ')))return 'yes'}return flag===true?'yes':flag===false?'no':null}
-function niceTags(t,flag,max,rf){const o=[];let m;if(rf===undefined)rf=refState(t,'',flag);
+function refState(n,c,flag){for(const t of [n,c]){const s=nk(t);if(RF_NEG.test(s))return 'no';if(RF_POS.test(s.replace(RF_NEGG,' ')))return 'yes'}return flag===true?'yes':flag===false?'no':null}
+function niceTags(t,flag,max,rf){t=nk(t);const o=[];let m;if(rf===undefined)rf=refState(t,'',flag);
   const hq=/\bhq\b|high.?quality/i.test(t),pr=/premium/i.test(t),real=/\breal\b|organic|authentic/i.test(t);
   if((hq||pr)&&real)o.push('HQ Real');else if(hq)o.push('HQ');else if(pr)o.push('Premium');else if(real)o.push('Real');else if(/\bmix(ed)?\b/i.test(t))o.push('Mix');else if(/\bbots?\b|low.?quality|\blq\b|lowq/i.test(t))o.push('LowQ');
   m=t.match(/\b(usa|uk|india|indian|bangladesh|bd|turkey|turkish|brazil|brazilian|arab|arabic|indonesia|pakistan|russia|germany|france|spain|italy|global|worldwide)\b/i);if(m)o.push(CTRY[m[1].toLowerCase()]);
@@ -400,7 +428,7 @@ function niceTags(t,flag,max,rf){const o=[];let m;if(rf===undefined)rf=refState(
   else if(/\bfast\b/i.test(t))o.push('Fast');
   max=+max||0;if(max>0)o.push('Max'+kfmt(max));
   return o}
-function nameCtx(r){if(!r)return null;const c0=String(r.category||''),n0=String(r.name||''),all=c0+' '+n0;
+function nameCtx(r){if(!r)return null;const c0=nk(r.category),n0=nk(r.name),all=c0+' '+n0;
   const P=pick(NP,c0)||pick(NP,n0),T=pick(NT,c0)||pick(NT,n0);if(!T)return null;
   const flag=r.refill===undefined||r.refill===null||r.refill===''?null:/^(1|true|yes|y)$/i.test(String(r.refill));
   return{base:P&&P[0]==='Website Traffic'?'Traffic':T[0],plat:P?(P[0]==='Website Traffic'?'Website':P[0]):'',raw:niceTags(all,flag,r.max,refState(n0,c0,flag)),key:r.code||r.service_id||n0}}
