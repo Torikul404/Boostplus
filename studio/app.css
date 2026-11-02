@@ -141,3 +141,9 @@ a,img,svg{-webkit-user-drag:none}
 .bsh{display:flex;align-items:center;gap:10px}.bsh .sub{flex:1}.bsk{display:flex;align-items:center;gap:6px}
 .bso{overflow-wrap:anywhere;font-size:12px}.bsr{display:grid;grid-template-columns:minmax(0,38%) minmax(0,1fr);gap:8px}
 .bsi input.bad{outline:2px solid #E5484D}
+
+/* একসাথে-চালু: নাম/ক্যাটেগরি ঘর কাটে না (বড় হয়), সাইটের ক্যাটেগরি বাছার তালিকা */
+#bsheet textarea{width:100%;box-sizing:border-box;font:inherit;line-height:1.45;padding:10px 14px;border:1px solid var(--bd);border-radius:12px;background:var(--bg);color:inherit;resize:none;overflow:hidden;min-height:48px;display:block}
+#bsheet select{min-height:44px;padding:0 12px;border:1px solid var(--bd);border-radius:12px;background:var(--bg);color:inherit;font:inherit}
+.bsi textarea.bad{outline:2px solid #E5484D}
+.bsi .bcs{font-size:13px}

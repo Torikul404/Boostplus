@@ -265,24 +265,56 @@ async function dl(p){
 function bulkBar(){let b=$('#bulk');if(!b){b=document.createElement('div');b.id='bulk';b.className='bulk';document.body.appendChild(b)}
   b.hidden=!sel.size;b.innerHTML=`<b>${bn(sel.size)}টি বাছাই</b><button class="sm" data-b="on">চালু</button><button class="sm" data-b="off">বন্ধ</button><button class="sm" data-b="x" aria-label="বাতিল">✕</button>`;
   b.querySelectorAll('[data-b]').forEach(x=>x.onclick=()=>bulk(x.dataset.b))}
+/* সাইটে থাকা ক্যাটেগরি: সার্ভারের প্রস্তাব + ফোনের কপি + সাইটের তালিকা মিলিয়ে, প্ল্যাটফর্ম ধরে */
+const autoH=e=>{if(!e)return;e.style.height='auto';e.style.height=(e.scrollHeight+2)+'px'};
+function siteCatsFor(pv){const lab=PLB[pv];if(!lab)return[];const m=new Map(),add=(c,n)=>{if(!c)return;const k=stripEmo(c).toLowerCase();const o=m.get(k);if(o)o.n=Math.max(o.n,n||0);else m.set(k,{c,n:n||0})};
+  ((CSG[lab]&&CSG[lab].site)||[]).forEach(x=>add(x.c,x.n));
+  const cnt={};((CAT&&CAT.rows)||[]).forEach(r=>{if(r.category&&String(r.platform_label||'').toLowerCase()===lab.toLowerCase())cnt[r.category]=(cnt[r.category]||0)+1});Object.keys(cnt).forEach(c=>add(c,cnt[c]));
+  (window._sc||[]).filter(c=>platMatch(lab,c)).forEach(c=>add(c,0));
+  return [...m.values()].sort((a,b)=>b.n-a.n||a.c.localeCompare(b.c))}
+async function loadSiteCats(pv){const lab=PLB[pv];if(!lab||CSG[lab])return;try{const d=await api('svc_cat_suggest',{label:lab});CSG[lab]={site:d.site||[],providers:d.providers||[]}}catch(e){}}
+function fillCatSel(sel,pv,val){const L=siteCatsFor(pv),k=stripEmo(val||'').toLowerCase();
+  sel.innerHTML='<option value="">'+(L.length?'সাইটে থাকা ক্যাটেগরি থেকে বাছুন ▾':'এই প্ল্যাটফর্মে সাইটে ক্যাটেগরি নেই — নিজে লিখুন')+'</option>'+L.map(x=>`<option value="${esc(x.c)}">${esc(x.c)}${x.n?' ('+bn(x.n)+')':''}</option>`).join('');
+  const f=L.find(x=>stripEmo(x.c).toLowerCase()===k);sel.value=f?f.c:''}
+function allIdeas(r,plat){const a=nameIdeas(r,plat),out=[],seen=new Set(),add=x=>{x=x.substring(0,120);const k=x.toLowerCase();if(x&&!seen.has(k)){seen.add(k);out.push(x)}};
+  a.forEach(add);
+  const V=[x=>x.replace(/ \| /g,' ✦ '),x=>x.replace(/ · /g,' • '),x=>x.replace(/ \| /g,' ✦ ').replace(/ · /g,' • '),x=>x.replace(/ — /g,' ⭐ '),x=>x.replace(/ \| /g,' ❘ ').replace(/ · /g,' ‧ ')];
+  V.forEach(f=>a.forEach(x=>add(f(x))));return out}
 function addList(list){
   const d=$('#bsheet'),box=$('#bsl'),E=$('#bsE'),PO=PLAT.map(p=>`<option>${p[0]}</option>`).join('');let any=false;
   $('#bsT').textContent=`সাইটে চালু করুন — ${bn(list.length)}টি (নিচে একটার পর একটা)`;box.innerHTML='';E.textContent='';$('#bsAll').value='';
   const items=list.map(r=>{const t=r.tidy||{};return{r,on:true,k:0,name:nice(r)||t.name||r.name,plat:t.plat||guess(r.category+' '+r.name),cat:cmGet(r.category)||matchCat(t.cat||r.category)}});
+  /* একই কোয়ালিটির দুটো সার্ভিসের হুবহু একই নাম হবে না: ৫টা ছাঁচ + আলাদা চিহ্নের (✦ • ❘) রূপ থেকে যেটা ফাঁকা সেটা নেয় */
+  const nk2=s=>String(s||'').trim().toLowerCase(),taken=new Set(((CAT&&CAT.rows)||[]).map(r=>nk2(r&&r.name)).filter(Boolean));
+  items.forEach(it=>{const a=allIdeas(it.r,PLB[it.plat]||''),C=nameCtx(it.r),nb=nameIdeas(it.r,PLB[it.plat]||'').length||1,st=C&&a.length?hsh(C.key)%nb%a.length:0;let nm=null;
+    for(let i=0;i<a.length&&!nm;i++){const c=a[(st+i)%a.length];if(!taken.has(nk2(c)))nm=c}
+    it.name=nm||(a.length?a[st]:it.name);taken.add(nk2(it.name))});
   const cnt=()=>{const k=items.filter(x=>x.on).length;$('#bsOk').textContent=`সবগুলো চালু করুন (${bn(k)}টি)`;$('#bsOk').disabled=!k};
   items.forEach(it=>{const c=document.createElement('div');c.className='card bsi';
-    c.innerHTML=`<div class="bsh"><label class="bsk"><input type="checkbox" checked aria-label="চালু করুন"><b>#${esc(it.r.service_id)}</b></label><span class="sub">রেট ${rateTk(it.r.rate)}</span><button type="button" class="sm bsn" aria-label="অন্য নাম প্রস্তাব">↻ নাম</button></div><div class="sub bso"></div><input class="bn" maxlength="120" aria-label="সাইটে নাম"><div class="bsr"><select class="bp" aria-label="প্ল্যাটফর্ম">${PO}</select><input class="bc" autocomplete="off" aria-label="ক্যাটেগরি" placeholder="ক্যাটেগরি"></div>`;
+    c.innerHTML=`<div class="bsh"><label class="bsk"><input type="checkbox" checked aria-label="চালু করুন"><b>#${esc(it.r.service_id)}</b></label><span class="sub">রেট ${rateTk(it.r.rate)}</span><button type="button" class="sm bsn" aria-label="অন্য নাম প্রস্তাব">↻ নাম</button></div><div class="sub bso"></div><textarea class="bn" rows="2" maxlength="120" aria-label="সাইটে নাম"></textarea><select class="bp" aria-label="প্ল্যাটফর্ম">${PO}</select><select class="bcs" aria-label="সাইটে থাকা ক্যাটেগরি থেকে বাছুন"></select><textarea class="bc" rows="1" autocomplete="off" aria-label="ক্যাটেগরি" placeholder="ক্যাটেগরি (বাছুন বা নিজে লিখুন)"></textarea>`;
     c.querySelector('.bso').textContent=(it.r.provider?it.r.provider+' · ':'')+'মূল: '+it.r.name;
     const ck=c.querySelector('input[type=checkbox]'),n=c.querySelector('.bn'),p=c.querySelector('.bp'),cc=c.querySelector('.bc');
-    Object.assign(it,{c,ck,n,p,cc});p.value=it.plat;n.value=it.name;cc.value=it.cat;
-    ck.onchange=()=>{it.on=ck.checked;c.classList.toggle('off',!it.on);cnt()};n.oninput=()=>{it.name=n.value};p.onchange=()=>{it.plat=p.value};cc.oninput=()=>{it.cat=cc.value;cc.classList.remove('bad')};
-    c.querySelector('.bsn').onclick=()=>{const a=nameIdeas(it.r,PLB[p.value]||'');if(a.length){it.k=(it.k+1)%a.length;n.value=it.name=a[it.k]}};
+    const cs=c.querySelector('.bcs');Object.assign(it,{c,ck,n,p,cc,cs});p.value=it.plat;n.value=it.name;cc.value=it.cat;
+    it.fill=()=>fillCatSel(cs,p.value,it.cat);it.fill();
+    cs.onchange=()=>{if(!cs.value)return;it.cat=cs.value;cc.value=cs.value;cc.classList.remove('bad');autoH(cc)};
+    n.onkeydown=cc.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();e.target.blur()}};
+    ck.onchange=()=>{it.on=ck.checked;c.classList.toggle('off',!it.on);cnt()};n.oninput=()=>{it.name=n.value;n.classList.remove('bad');autoH(n)};p.onchange=()=>{it.plat=p.value;it.fill();loadSiteCats(p.value).then(it.fill)};cc.oninput=()=>{it.cat=cc.value;cc.classList.remove('bad');autoH(cc);it.fill()};
+    c.querySelector('.bsn').onclick=()=>{const a=allIdeas(it.r,PLB[p.value]||'');if(!a.length)return;
+      const u=new Set(items.filter(x=>x!==it).map(x=>nk2(x.name)));for(let t=0;t<a.length;t++){it.k=(it.k+1)%a.length;if(!u.has(nk2(a[it.k])))break}
+      n.value=it.name=a[it.k];n.classList.remove('bad');autoH(n)};
     box.appendChild(c)});
-  $('#bsAllB').onclick=()=>{const v=$('#bsAll').value.trim();if(!v)return;items.forEach(x=>{if(x.on&&!x.done){x.cat=v;x.cc.value=v;x.cc.classList.remove('bad')}})};
+  const applyAll=v=>{v=(v||'').trim();if(!v)return;items.forEach(x=>{if(x.on&&!x.done){x.cat=v;x.cc.value=v;x.cc.classList.remove('bad');autoH(x.cc);x.fill()}})};
+  $('#bsAllB').onclick=()=>applyAll($('#bsAll').value);
+  const as=$('#bsAllS'),plats=[...new Set(items.map(x=>x.plat))],drawAll=()=>{as.innerHTML='<option value="">সাইটে থাকা ক্যাটেগরি থেকে বাছুন ▾</option>'+plats.map(pv=>{const L=siteCatsFor(pv);return L.length?`<optgroup label="${esc(PLB[pv]||pv)}">${L.map(x=>`<option value="${esc(x.c)}">${esc(x.c)}${x.n?' ('+bn(x.n)+')':''}</option>`).join('')}</optgroup>`:''}).join('')};
+  drawAll();Promise.all(plats.map(loadSiteCats)).then(drawAll);
+  as.onchange=()=>{if(!as.value)return;$('#bsAll').value=as.value;applyAll(as.value);as.value=''};
+  items.forEach(x=>loadSiteCats(x.p.value).then(x.fill));
   $('#bsX').onclick=()=>{if(!busy)d.close()};
   d.onclose=()=>{bulkBar();if(any&&cur)provider(cur)};
   $('#bsOk').onclick=async()=>{if(busy)return;const L=items.filter(x=>x.on&&!x.done);if(!L.length)return;
     const bad=L.filter(x=>!x.cat.trim());if(bad.length){bad.forEach(x=>x.cc.classList.add('bad'));E.textContent='ক্যাটেগরি লাগবে — লাল ঘরগুলো পূরণ করুন';bad[0].cc.scrollIntoView({block:'center'});return}
+    {const seen=new Set(items.filter(x=>x.done).map(x=>nk2(x.name))),dup=[];L.forEach(x=>{const k=nk2(x.name);if(seen.has(k))dup.push(x);seen.add(k)});
+      if(dup.length){dup.forEach(x=>x.n.classList.add('bad'));E.textContent='একই নাম একাধিক সার্ভিসে — লাল ঘরের নাম আলাদা করুন (↻ নাম চাপুন)';dup[0].n.scrollIntoView({block:'center'});return}}
     busy=true;$('#bsOk').disabled=true;let ok=0;const er=[];
     for(let i=0;i<L.length;i++){const x=L[i];E.textContent=`চালু হচ্ছে… ${bn(i+1)}/${bn(L.length)}`;
       try{await api('svc_toggle',{provider:x.r.provider||cur,code:x.r.service_id,on:true,name:x.name.trim()||x.r.name,platform:x.p.value,category:x.cat.trim(),price_usd:+x.r.rate,force:true});
@@ -291,7 +323,7 @@ function addList(list){
     busy=false;cnt();
     if(!er.length){d.close();toast(bn(ok)+'টি সার্ভিস সাইটে চালু হয়েছে ✔')}
     else E.textContent=`${bn(ok)}টি হয়েছে, ${bn(er.length)}টি হয়নি — ${er.slice(0,3).join(' · ')}। লাল কার্ডগুলো ঠিক করে আবার চাপুন।`};
-  cnt();d.showModal();box.scrollTop=0}
+  cnt();d.showModal();box.scrollTop=0;items.forEach(x=>{autoH(x.n);autoH(x.cc)})}
 function addQueue(list){addList(list)}
 async function bulk(k){
   if(k==='x'){sel.clear();document.querySelectorAll('.sel').forEach(x=>x.checked=false);return bulkBar()}
@@ -504,6 +536,19 @@ function nameIdeas(r,plat,em){const C=nameCtx(r);if(!C)return[];if(em===undefine
    (q,c,d,x)=>(c.length?c[0]+' ':'')+head+(q.length?(em?' ⭐ ':' – ')+q.join(' · '):'')+([].concat(d,x).length?' | '+[].concat(d,x).join(' · '):''),
    (q,c,d,x)=>head+' • '+[].concat(q,c,d,x).join(' • '),
    (q,c,d,x)=>(d.length?d[0]+' ':'')+head+([].concat(q,c,x).length?' | '+[].concat(q,c,x).join(' | '):'')+(d.length>1?' | '+d.slice(1).join(' | '):'')];
+  /* আরও ১০টা ছাঁচ — সব মিলিয়ে ১৫টা, যাতে নাম ঘুরেফিরে এক না হয় */
+  const A=(q,c,d,x)=>[].concat(q,c,d,x),J=(a,s)=>a.join(s),P=(pre,a,s)=>a.length?pre+J(a,s):'',sy=(a,b)=>em?a:b;
+  S.push(
+   (q,c,d,x)=>head+(A(q,c,d,x).length?' ['+J(A(q,c,d,x),' · ')+']':''),
+   (q,c,d,x)=>(q.length?q[0]+' ':'')+head+P(' — ',[].concat(c,d,q.slice(1),x),' · '),
+   (q,c,d,x)=>head+P(' '+sy('✪','~')+' ',A(q,c,d,x),' '+sy('✪','~')+' '),
+   (q,c,d,x)=>(c.length?J(c,' ')+' | ':'')+head+(q.length?' ('+J(q,' · ')+')':'')+P(' | ',[].concat(d,x),' · '),
+   (q,c,d,x)=>head+P(' '+sy('➤','>')+' ',q,' · ')+P(' '+sy('➤','>')+' ',[].concat(c,d,x),' · '),
+   (q,c,d,x)=>(q.length?'['+J(q,' · ')+'] ':'')+head+P(' | ',[].concat(c,d,x),' · '),
+   (q,c,d,x)=>head+P(' '+sy('◆','/')+' ',A(q,c,d,x),' '+sy('◆','/')+' '),
+   (q,c,d,x)=>(d.length?d[0]+' ':'')+(c.length?c[0]+' ':'')+head+P(' – ',q,' · ')+P(' | ',[].concat(d.slice(1),c.slice(1),x),' · '),
+   (q,c,d,x)=>head+P(' (',[].concat(q,c),' · ')+(q.length||c.length?')':'')+P(' — ',[].concat(d,x),' · '),
+   (q,c,d,x)=>head+P(' | ',x,' · ')+P(' | ',[].concat(q,c,d),' · '));
   const seen={},out=[];
   S.forEach(f=>{let q=qa.slice(),c=ca.slice(),d=dr.slice(),a=xr.slice(),l=xl.slice(),n=f(q,c,d,a.concat(l));
     /* লম্বা হলে আগে স্পিড/Instant/Max, তারপর দেশ, তারপর কোয়ালিটি — রিফিল ও ড্রপ সবার শেষে বাদ যায় */
