@@ -17,9 +17,9 @@ function wipe(){for(const k in mem)delete mem[k];try{Object.keys(localStorage).f
 async function apiNet(action,x){
   let r,txt,d;if(!navigator.onLine){const e=new Error('ইন্টারনেট নেই');e.code='net';throw e}
   if(/^svc_(toggle|bulk|collect|site_edit|site_bulk|tidy_apply|auto)$/.test(action))wipe();
-  const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),/^svc_(providers|by_platform|compare|changes|cat_suggest|csv|list|site_list)$/.test(action)?20000:60000);
+  const TO=/^svc_(csv|by_platform|platforms|snapshot)$/.test(action)?90000:/^svc_(providers|compare|changes|cat_suggest|list|site_list)$/.test(action)?20000:60000,ac=new AbortController(),tm=setTimeout(()=>ac.abort(),TO);
   try{r=await fetch(API,{method:'POST',mode:'cors',signal:ac.signal,headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({action,token},x||{}))});txt=await r.text();clearTimeout(tm)}
-  catch(ex){clearTimeout(tm);const e=new Error(ex&&ex.name==='AbortError'?'সার্ভার সাড়া দিচ্ছে না (৬০ সেকেন্ড) — আবার চেষ্টা করুন':'নেটওয়ার্ক/CORS ত্রুটি: '+(ex&&ex.message||ex));e.code='net';throw e}
+  catch(ex){clearTimeout(tm);const e=new Error(ex&&ex.name==='AbortError'?'সার্ভার সাড়া দিচ্ছে না ('+bn(TO/1000)+' সেকেন্ড) — আবার চেষ্টা করুন':'নেটওয়ার্ক/CORS ত্রুটি: '+(ex&&ex.message||ex));e.code='net';throw e}
   try{d=JSON.parse(txt)}
   catch(ex){const e=new Error('সার্ভার JSON দেয়নি (HTTP '+r.status+'): '+String(txt).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,140));e.code='not_json';throw e}
   if(!d||!d.ok){const e=new Error((d&&(d.message||ERR[d.error]||d.error))||'failed');e.code=d&&d.error;e.data=d;throw e}return d;
@@ -90,10 +90,36 @@ async function provEnsure(p){if(p in PC)return;
   const c=await idb.get('csv_'+p),old=await idb.get('prov_'+p),ex=(old&&old.ex)||(await idb.get('ex_'+p))||{};
   if(c&&c.csv){const rows=csvToRows(c.csv);if(old&&old.rows){const m={};old.rows.forEach(r=>{m[r.service_id]=r});rows.forEach(r=>{const o=m[r.service_id];if(o){r.suggest=o.suggest;r.spd=o.spd;r.tidy=o.tidy}})}PC[p]={rows,at:c.at,ex}}
   else PC[p]=old||null}
-function provSync(p){if(PB[p])return PB[p];
-  PB[p]=(async()=>{const d=await apiNet('svc_csv',{provider:p});await idb.set('csv_'+p,{csv:d.csv,name:d.name,at:Date.now()});
-    let ex=(PC[p]&&PC[p].ex)||{};try{const e=await apiNet('svc_list',{provider:p,q:'',state:'all',category:'',platform:'',offset:0,limit:1});ex={categories:e.categories,site_categories:e.site_categories,fx:e.fx,tiers:e.tiers,platforms:e.platforms};idb.set('ex_'+p,ex)}catch(_){}
-    PC[p]={rows:csvToRows(d.csv),at:Date.now(),ex}})().finally(()=>{delete PB[p]});return PB[p]}
+let SVAT={};
+/* প্রভাইডারের সব সার্ভিস (CSV) ফোনে নামায়; আগের কপির সাথে মিলিয়ে চালু সার্ভিসের বদল (বাদ/দাম↑) হিসাব করে */
+function provSync(p,sv){if(PB[p])return PB[p];
+  PB[p]=(async()=>{const d=await apiNet('svc_csv',{provider:p});const old=PC[p]&&PC[p].rows;
+    await idb.set('csv_'+p,{csv:d.csv,name:d.name,at:Date.now(),sv:sv||SVAT[p]||''});
+    let ex=(PC[p]&&PC[p].ex)||{};const rows=csvToRows(d.csv);rows.forEach(r=>{if(!r.provider)r.provider=p});PC[p]={rows,at:Date.now(),ex};
+    const exP=apiNet('svc_list',{provider:p,q:'',state:'all',category:'',platform:'',offset:0,limit:1}).then(e=>{const x={categories:e.categories,site_categories:e.site_categories,fx:e.fx,tiers:e.tiers,platforms:e.platforms};idb.set('ex_'+p,x);if(PC[p])PC[p].ex=x}).catch(()=>{});
+    await Promise.race([exP,new Promise(r=>setTimeout(r,4000))]);
+    return diffProv(p,old,rows)})().finally(()=>{delete PB[p]});return PB[p]}
+function diffProv(p,old,nw){if(!old||!old.length)return{p,first:1,rm:0,up:0,dn:0};
+  const on={};if(CAT)CAT.rows.forEach(r=>{if(r.state==='on')on[r.code]=1});const m={};nw.forEach(r=>{m[r.service_id]=r});let rm=0,up=0,dn=0;
+  old.forEach(o=>{if(!on[o.service_id])return;const n=m[o.service_id];if(!n)rm++;else{const a=+o.rate,b=+n.rate;if(b>a+1e-9)up++;else if(b<a-1e-9)dn++}});return{p,first:0,rm,up,dn}}
+/* ---------- পেছনে অটো-সিঙ্ক: প্রভাইডারের সংগ্রহের সময় বদলালেই নতুন ডেটা ফোনে নামে + নোটিফিকেশন ---------- */
+let bgBusy=0,bgAt=0;
+async function bgSync(force){if(bgBusy||!token||!navigator.onLine)return;if(!force&&Date.now()-bgAt<600000)return;bgBusy=1;
+  try{const d=await apiNet('svc_providers');bgAt=Date.now();const ch=[];
+    for(const q of (d.providers||[])){if(!q.has_api||!q.count)continue;const p=q.provider;SVAT[p]=q.collected_at||'';
+      const c=await idb.get('csv_'+p);if(c&&c.csv&&(c.sv===SVAT[p]||(c.sat&&!c.sv)))continue;
+      await provEnsure(p);
+      try{const r=await provSync(p,SVAT[p]);if(r&&!r.first)ch.push(r)}catch(e){if(authFail(e))return}}
+    if(ch.length)chgNotify(ch)}
+  catch(e){authFail(e)}
+  finally{bgBusy=0}}
+function chgNotify(L){const rm=L.reduce((a,x)=>a+x.rm,0),up=L.reduce((a,x)=>a+x.up,0),nm=L.map(x=>x.p).join(', ');
+  const msg='প্রভাইডার আপডেট ('+nm+') — নতুন ডেটা ফোনে নামানো হয়েছে'+(rm||up?'। ⚠ চালু সার্ভিসে: '+(rm?bn(rm)+'টি বাদ':'')+(rm&&up?', ':'')+(up?bn(up)+'টির দাম বেড়েছে':''):'');
+  const t=document.createElement('div');t.className='toast';t.setAttribute('role','status');t.append(msg+' ');
+  const b=document.createElement('button');b.className='sm';b.textContent='দেখুন';b.onclick=()=>{t.remove();location.hash='chg'};t.appendChild(b);document.body.appendChild(t);setTimeout(()=>t.remove(),12000);
+  try{if('Notification' in window&&Notification.permission==='granted')navigator.serviceWorker.ready.then(r=>r.showNotification('সার্ভিস স্টুডিও',{body:msg,icon:'icons/admin-192.png',tag:'prov-chg',data:{h:'chg'}}))}catch(_){}}
+/* নোটিফিকেশনের অনুমতি — লগইনের পর প্রথম ট্যাপে একবারই চায় */
+addEventListener('click',()=>{if(!token||!('Notification' in window)||Notification.permission!=='default'||ls.get('pb_notif_asked'))return;ls.set('pb_notif_asked','1');toast('প্রভাইডারে পরিবর্তন হলে জানাতে নোটিফিকেশনের অনুমতি দিন');setTimeout(()=>{try{Notification.requestPermission()}catch(_){}},900)},{passive:true});
 function provList(c,d,cp){const q=String(d.q||'').toLowerCase().trim(),cat=String(d.category||''),fl=String(d.state||'all'),pf=String(d.platform||'').toLowerCase(),cm={};
   if(CAT)CAT.rows.forEach(r=>{cm[r.code]=r.state});
   let all=c.rows.map(r=>{const o=Object.assign({},r);o.state=CAT?(cm[r.service_id]||'off'):(r.state||'off');return o});
@@ -119,13 +145,58 @@ function catPatch(a,x){const by={};CAT.rows.forEach(r=>{by[r.code]=r});const lb=
   if(a==='svc_site_hide'){const gone={};codes.forEach(c=>{const r=by[c];if(!r)return;if(x.on)r.state='on';else{r.state='off';if(x.del&&r.src==='custom')gone[c]=1}});if(Object.keys(gone).length)CAT.rows=CAT.rows.filter(r=>!gone[r.code])}
   else if(a==='svc_site_edit'){const r=by[String(x.code)];if(r){r.name=String(x.name||'').trim().substring(0,120);if(x.category)r.category=String(x.category).trim().substring(0,80);setPl(r,x.platform);r.ov=1;catSoon()}}
   else if(a==='svc_site_bulk'){codes.forEach(c=>{const r=by[c];if(!r)return;let nm=r.name,ct=r.category;if(x.tidy&&r.tidy){nm=r.tidy.name;ct=r.tidy.cat}if(x.category)ct=String(x.category).trim();r.name=String(nm).substring(0,120);r.category=String(ct).substring(0,80);setPl(r,x.platform);r.ov=1});if(x.tidy)catSoon()}}
+/* ---------- প্ল্যাটফর্ম পাতা: সার্ভার ছাড়া — ফোনে রাখা সব প্রভাইডারের CSV থেকে (সার্ভারের গোনার একই নিয়ম) ---------- */
+const LP_PLAT = [
+  ["Instagram", "instagram", /insta(?!nt)|\big\b/i], ["Facebook", "facebook", /facebook|\bfb\b/i], ["TikTok", "tiktok", /tik.?tok/i],
+  ["YouTube", "youtube", /youtube|\byt\b/i], ["Telegram", "telegram", /telegram|\btg\b/i], ["Twitter / X", "twitter", /twitter|\bx\b|tweet/i],
+  ["WhatsApp", "whatsapp", /whatsapp/i], ["Threads", "other", /threads/i], ["Spotify", "other", /spotify/i], ["LinkedIn", "other", /linkedin/i],
+  ["Snapchat", "other", /snap/i], ["Pinterest", "other", /pinterest/i], ["Discord", "other", /discord/i], ["Twitch", "other", /twitch/i],
+  ["Website Traffic", "other", /traffic|website|web ?visit/i]
+];
+const LP_TYPE = [['Story Reactions',/stor(y|ies).{0,14}(react|like|heart|emoji)/i],['Story Comments',/stor(y|ies).{0,14}comment/i],['Story Views',/stor(y|ies)/i],['Live Likes',/live.{0,14}(like|heart)/i],['Live Comments',/live.{0,14}(comment|chat)/i],['Live Views',/live.?stream|\blive\b|\bpk\b/i],['Watch Time',/watch.?(time|hour)|\d+\s*k\s*min/i],['Subscribers',/subscri/i],['Poll Votes',/\bpolls?\b|\bvotes?\b/i],['Bot Starts',/\bbot\b.{0,6}\bstarts?\b|\bstarts?\b.{0,6}\bbot\b/i],['Event Responses',/\bevent\b.{0,12}(join|going|respon|rsvp|interest)|\b(going|rsvp)\b/i],['Friend Requests',/friend.?requests?/i],['Reports',/\breports?\b/i],['Engagement Package',/\bpackage\b|\b(views?|likes?|comments?|shares?|saves?)\s*\+\s*(views?|likes?|comments?|shares?|saves?)\b|(\d+\+?\s*(likes?|retweets?|shares?|comments?|views?)\b.{0,25}){2,}/i],['Emoji Comments',/emoji.{0,12}comment|comment.{0,6}emoji/i],['Downloads',/downloads?\b/i],['Clicks',/\bclicks?\b/i],['Tweet Stats',/statistic|detail.?expand/i],['Stars',/\bstars?\b/i],['Page Reviews',/\breviews?\b|\bratings?\b|recommendations?\b/i],['Comment Reactions',/comment.{0,8}react/i],['Comment Likes',/comment.{0,8}(like|heart)|(like|heart).{0,8}comment/i],['Page Likes & Followers',/page.{0,10}likes?.{0,12}follow/i],['Page Likes',/page.{0,10}likes?\b|likes?.{0,10}\bpage\b/i],['Members',/member|joiner|\bjoins?\b/i],['Comments',/comment/i],['Shares',/share|repost|retweet|\bquotes?\b/i],['Saves',/\bsaves?\b|bookmark/i],['Reactions',/react|emoji|emotion|\blove\b|\bhaha\b|\bwow\b|\bangry\b|\bsad\b/i],['Likes',/\blikes?\b|\bhearts?\b/i],['Profile Visits',/profile.{0,4}visit/i],['Views',/views?\b|impression|\breach\b|\bplays?\b|stream|listen/i],['Followers',/follow(?!ing)|\bfans?\b/i],['Traffic',/traffic|\bvisit/i]];
+function lpPick(list, text) {
+  for (var i = 0; i < list.length; i++) { var re = list[i][list[i].length - 1]; if (re.test(text)) return list[i]; }
+  return null;
+}
+function lpClean(t, keep) {
+  var s = String(t || "").replace(/[\u{1F000}-\u{1FFFF}\u{2190}-\u{2BFF}\uFE0F\u200D\u20E3]/gu, " ");
+  s = s.replace(/[\[\(\{]([^\]\)\}]*)[\]\)\}]/g, function (m, i) {
+    return keep && /\d/.test(i) && /min|hour|hr|day|%|\d\s?[kKmMdDhH]\b/i.test(i) && !/refill|drop/i.test(i) ? " (" + i.trim() + ") " : " ";
+  });
+  return s.replace(/[|•~*_=#>]+/g, " ").replace(/\s+/g, " ").replace(/^[\s\-–—:.]+|[\s\-–—:.]+$/g, "");
+}
+const LP_STOP = /^(cheap|cheapest|best|premium|new|special|bulk|hq|vip|server|services?|offer|promo|speed|fast|instant|real|non|usa|global|top|mix|other|others|smm|panel|packages?|all|any|old|updated|hot|sale|quality|high|low|slow|stable|exclusive|limited|test|custom|auto|manual|\d+)$/i;
+function lpPlatOf(r) {
+  var c = nk(r.category), n = nk(r.name), P = lpPick(LP_PLAT, c) || lpPick(LP_PLAT, n);
+  if (P) return P[0];
+  var seg = lpClean(c).split(/\s[-–—|:\/>»]+\s|[|:»]/)[0].trim(), w = seg.split(/\s+/);
+  if (seg.length >= 2 && seg.length <= 24 && w.length <= 2 && !LP_STOP.test(w[0]) && !lpPick(LP_TYPE, seg)) return seg.replace(/\b\w/g, function (x) { return x.toUpperCase(); });
+  return "Other";
+}
+async function allReady(){for(const p of SNAP_P){await provEnsure(p);if(!(PC[p]&&PC[p].rows&&PC[p].rows.length))return false}return true}
+const lpLabel=r=>r._pl||(r._pl=lpPlatOf(r));
+const lpType=r=>{if(!r._ty){const T=lpPick(LP_TYPE,nk(r.category))||lpPick(LP_TYPE,nk(r.name));r._ty=T?T[0]:'Other'}return r._ty};
+function lpRows(){const o=[];SNAP_P.forEach(p=>{const c=PC[p];if(c&&c.rows)c.rows.forEach(r=>{if(!r.provider)r.provider=p;o.push(r)})});return o}
+function lpPlatforms(){const tot={},site={},ks={};lpRows().forEach(r=>{const l=lpLabel(r);tot[l]=(tot[l]||0)+1});CAT.rows.forEach(r=>{if(r.state==='on')site[r.platform_label]=(site[r.platform_label]||0)+1});
+  Object.keys(tot).concat(Object.keys(site)).forEach(k=>{ks[k]=1});
+  return{ok:true,platforms:Object.keys(ks).map(k=>({label:k,total:tot[k]||0,site:site[k]||0})).sort((a,b)=>(b.total+b.site*3)-(a.total+a.site*3))}}
+function lpByPlat(d){const label=String(d.label||''),q=String(d.q||'').toLowerCase().trim(),type=String(d.type||''),fl=String(d.state||'all'),cm={},types={},all=[];
+  CAT.rows.forEach(r=>{cm[r.code]=r.state});
+  lpRows().forEach(r=>{if(lpLabel(r)!==label)return;if(q&&!qOK(q,String(r.name)+' '+r.service_id+' '+r.category))return;
+    const tl=lpType(r);types[tl]=(types[tl]||0)+1;if(type&&tl!==type)return;
+    const st=cm[r.service_id]||'off';if(fl!=='all'&&st!==fl)return;const o=Object.assign({},r);o.state=st;all.push(o)});
+  all.sort((a,b)=>Number(a.rate)-Number(b.rate));
+  const off=Math.max(0,+d.offset||0),lim=Math.min(80,+d.limit||40),sc={};CAT.rows.forEach(r=>{if(r.category)sc[r.category]=1});
+  let fx;for(const p of SNAP_P){if(PC[p]&&PC[p].ex&&PC[p].ex.fx){fx=PC[p].ex.fx;break}}
+  return{ok:true,total:all.length,rows:all.slice(off,off+lim),types:Object.keys(types).map(k=>[k,types[k]]).sort((a,b)=>b[1]-a[1]),fx,site_categories:Object.keys(sc).sort()}}
 async function api(action,x){
   if(action==='svc_site_list'&&CAT)return catList(x||{});
+  if((action==='svc_platforms'||action==='svc_by_platform')&&CAT){try{if(await allReady())return action==='svc_platforms'?lpPlatforms():lpByPlat(x||{})}catch(_){}bgSync(true)}
   if(action==='svc_list'&&x&&x.provider){const p=x.provider;await provEnsure(p);const c=PC[p],off=!navigator.onLine;
-    if(c){if(!off&&Date.now()-c.at>=PFRESH&&!PB[p])provSync(p).catch(()=>{});return provList(c,x,!!x.platform)}
+    if(c){if(!off)bgSync(false);return provList(c,x,!!x.platform)}
+    /* প্রথমবার (ফোনে কপি নেই): সার্ভারের তালিকা না ডেকে সরাসরি পুরো CSV একবার নামাই — এরপর থেকে সব ফোনের কপি থেকে */
+    if(!off){try{await (PB[p]||provSync(p));const c2=PC[p];if(c2&&c2.rows)return provList(c2,x,!!x.platform)}catch(e){if(authFail(e))throw e}}
     try{const d0=await apiNet(action,x);
-      /* প্রথমবার (ক্যাশ নেই): CSV নামিয়ে অ্যাপের নিজের গোনা দিয়ে আইকন বসাই; না হলে সার্ভারের তালিকায় ৭টা আইকন জুড়ে দিই */
-      try{await (PB[p]||provSync(p));const c2=PC[p];if(c2&&c2.rows)return provList(c2,x,!!x.platform)}catch(_){}
       const L=(d0.platforms||[]).slice();['Facebook','Instagram','TikTok','Twitter / X','Telegram','WhatsApp','YouTube'].forEach(k=>{if(!L.some(z=>platKey(z.label)===platKey(k)))L.push({label:k,n:0})});d0.platforms=L;return d0}catch(e){if(c)return provList(c,x,true);throw e}}
   const xx=x||{};
   if(CAT&&((/^svc_site_(hide|edit|bulk)$/.test(action)&&!xx.del)||(action==='svc_toggle'&&(!xx.on||!navigator.onLine))))return qAdd(action,xx);
@@ -991,7 +1062,7 @@ function route(){rid++;const h=decodeURIComponent(location.hash.replace('#',''))
 function show(a){$('#login').hidden=a;$('#app').hidden=!a;aiShow(a)}
 function logout(m){token='';Object.keys(PC).forEach(k=>{idb.set('prov_'+k,null);idb.set('csv_'+k,null);idb.set('ex_'+k,null)});RK.forEach(k=>idb.set(k,null));RK=new Set();RCm={};Q=[];idb.set(QK,null);idb.set('rc_keys',null);PC={};CAT=null;idb.set(CATK,null);wipe();ls.del('pb_studio_token');show(false);$('#loginErr').textContent=m||'';$('#tok').value=''}
 $('#loginForm').onsubmit=async e=>{e.preventDefault();token=$('#tok').value.trim();const b=e.target.querySelector('button');b.disabled=true;$('#loginErr').textContent='';
-  try{await api('svc_providers');ls.set('pb_studio_token',token);show(true);route()}catch(x){$('#loginErr').textContent=ERR[x.code]||('সংযোগ করা যায়নি — '+x.message)}b.disabled=false};
+  try{await api('svc_providers');ls.set('pb_studio_token',token);show(true);route();setTimeout(()=>bgSync(true),2500)}catch(x){$('#loginErr').textContent=ERR[x.code]||('সংযোগ করা যায়নি — '+x.message)}b.disabled=false};
 $('#logout').onclick=()=>logout();$('#back').onclick=()=>{const h=location.hash;location.hash=h.indexOf('#pl=')===0?'plat':h.indexOf('#cat=')===0?'cats':''};
 addEventListener('hashchange',()=>token&&route());
 /* ---------- PWA ইনস্টল + সমস্যা পরীক্ষা ---------- */
@@ -1027,7 +1098,9 @@ const net=()=>{$('#net').hidden=navigator.onLine};addEventListener('online',net)
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js',{scope:'./',updateViaCache:'none'}).then(r=>{try{r.update()}catch(e){}}).catch(()=>{}));
 $('#shPlat').addEventListener('change',ngDraw);
 addEventListener('visibilitychange',()=>{if(!document.hidden&&token&&CAT&&Date.now()-CAT.at>30*60000)catSyncNow().catch(()=>{})});
-token?(show(true),catLoad().then(route,route)):show(false);
+addEventListener('online',()=>bgSync(true));setInterval(()=>bgSync(false),600000);
+addEventListener('visibilitychange',()=>{if(!document.hidden)bgSync(false)});
+token?(show(true),catLoad().then(route,route),setTimeout(()=>bgSync(true),2500)):show(false);
 })();
 
 /* BDT ⇄ USDT কনভার্টার — ডিফল্ট রেট ১৩১; রেট সার্ভারে সেভ হয় */
