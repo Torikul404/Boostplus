@@ -101,7 +101,9 @@ function provList(c,d,cp){const q=String(d.q||'').toLowerCase().trim(),cat=Strin
   if(cp&&pf)all=all.filter(r=>{const P=pick(NP,r.category)||pick(NP,r.name);return P&&(P[0].toLowerCase()===pf||pf.indexOf(P[0].toLowerCase())>=0)});
   const out=all.filter(r=>(!cat||r.category===cat)&&(fl==='all'||r.state===fl)&&(!q||qOK(q,String(r.name)+' '+r.service_id+' '+r.category)));
   const off=Math.max(0,+d.offset||0),lim=Math.min(200,+d.limit||100);
-  return Object.assign({ok:true,total:out.length,rows:out.slice(off,off+lim)},c.ex,{categories:cs})}
+  if(!c._pl||c._plN!==c.rows.length){const m={};['Facebook','Instagram','TikTok','Twitter / X','Telegram','WhatsApp','YouTube'].forEach(k=>{m[k]=0});c.rows.forEach(r=>{const P=pick(NP,r.category)||pick(NP,r.name);if(P)m[P[0]]=(m[P[0]]||0)+1});c._pl=Object.keys(m).map(k=>({label:k,n:m[k]})).sort((a,b)=>b.n-a.n);c._plN=c.rows.length}
+  const pls=c._pl;
+  return Object.assign({ok:true,total:out.length,rows:out.slice(off,off+lim)},c.ex,{categories:cs,platforms:pls})}
 function provPatch(a,x){if(a==='svc_collect'||a==='svc_auto')setTimeout(()=>Object.keys(PC).forEach(k=>provSync(k).catch(()=>{})),3000)}
 function catSoon(){clearTimeout(catTm);catTm=setTimeout(()=>{if(token)catSyncNow().catch(()=>{})},20000)}
 function catList(d){const q=String(d.q||'').toLowerCase().trim(),pl=String(d.platform||''),cat=String(d.category||''),st=String(d.state||'all'),plc={},cats={};
@@ -121,7 +123,10 @@ async function api(action,x){
   if(action==='svc_site_list'&&CAT)return catList(x||{});
   if(action==='svc_list'&&x&&x.provider){const p=x.provider;await provEnsure(p);const c=PC[p],off=!navigator.onLine;
     if(c){if(!off&&Date.now()-c.at>=PFRESH&&!PB[p])provSync(p).catch(()=>{});return provList(c,x,!!x.platform)}
-    try{const d0=await apiNet(action,x);if(!PB[p])provSync(p).catch(()=>{});return d0}catch(e){if(c)return provList(c,x,true);throw e}}
+    try{const d0=await apiNet(action,x);
+      /* প্রথমবার (ক্যাশ নেই): CSV নামিয়ে অ্যাপের নিজের গোনা দিয়ে আইকন বসাই; না হলে সার্ভারের তালিকায় ৭টা আইকন জুড়ে দিই */
+      try{await (PB[p]||provSync(p));const c2=PC[p];if(c2&&c2.rows)return provList(c2,x,!!x.platform)}catch(_){}
+      const L=(d0.platforms||[]).slice();['Facebook','Instagram','TikTok','Twitter / X','Telegram','WhatsApp','YouTube'].forEach(k=>{if(!L.some(z=>platKey(z.label)===platKey(k)))L.push({label:k,n:0})});d0.platforms=L;return d0}catch(e){if(c)return provList(c,x,true);throw e}}
   const xx=x||{};
   if(CAT&&((/^svc_site_(hide|edit|bulk)$/.test(action)&&!xx.del)||(action==='svc_toggle'&&(!xx.on||!navigator.onLine))))return qAdd(action,xx);
   if(RD.test(action))return readCached(action,x);
