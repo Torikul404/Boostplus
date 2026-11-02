@@ -214,6 +214,8 @@ async function toggle(r,btn){
     try{await api('svc_toggle',{provider:r.provider||cur,code:r.service_id,on:false});r.state='off';btn.setAttribute('aria-checked','false');toast('সাইট থেকে লুকানো হয়েছে')}catch(e){if(!authFail(e))toast(e.message)}
     busy=false;btn.disabled=false;return;
   }
+  /* আগে থেকে টিক দেওয়া সার্ভিস থাকলে সুইচ চাপা সার্ভিসটাও একই তালিকায় ঢোকে — সব একসাথে একটা পাতায় */
+  if(sel.size){sel.add(r);const its=[...sel].filter(x=>x.state!=='on');sel.clear();document.querySelectorAll('.sel').forEach(x=>x.checked=false);bulkBar();return addQueue(its)}
   openSheet(r,btn);
 }
 /* ক্যাটেগরি মনে রাখা: প্রভাইডারের ক্যাটেগরি → আপনার বাছা ক্যাটেগরি (ফোনে থাকে, পরের প্যানেলের একই ধরনের সার্ভিসে নিজে বসে) */
@@ -267,7 +269,7 @@ function addList(list){
     c.innerHTML=`<div class="bsh"><label class="bsk"><input type="checkbox" checked aria-label="চালু করুন"><b>#${esc(it.r.service_id)}</b></label><span class="sub">রেট $${esc(it.r.rate)}</span><button type="button" class="sm bsn" aria-label="অন্য নাম প্রস্তাব">↻ নাম</button></div><div class="sub bso"></div><input class="bn" maxlength="120" aria-label="সাইটে নাম"><div class="bsr"><select class="bp" aria-label="প্ল্যাটফর্ম">${PO}</select><input class="bc" autocomplete="off" aria-label="ক্যাটেগরি" placeholder="ক্যাটেগরি"></div>`;
     c.querySelector('.bso').textContent='মূল: '+it.r.name;
     const ck=c.querySelector('input[type=checkbox]'),n=c.querySelector('.bn'),p=c.querySelector('.bp'),cc=c.querySelector('.bc');
-    Object.assign(it,{c,ck,n,p,cc});p.value=it.plat;n.value=it.name;cc.value=it.cat;
+    Object.assign(it,{c,ck,n,p,cc});p.value=it.plat;n.value=it.name;cc.value=it.cat;catDrop(cc,p,()=>[cmGet(it.r.category),it.r.category]);
     ck.onchange=()=>{it.on=ck.checked;c.classList.toggle('off',!it.on);cnt()};n.oninput=()=>{it.name=n.value};p.onchange=()=>{it.plat=p.value};cc.oninput=()=>{it.cat=cc.value;cc.classList.remove('bad')};
     c.querySelector('.bsn').onclick=()=>{const a=nameIdeas(it.r,PLB[p.value]||'');if(a.length){it.k=(it.k+1)%a.length;n.value=it.name=a[it.k]}};
     box.appendChild(c)});
@@ -569,6 +571,36 @@ async function mact(k){
 
 /* ---------- ক্যাটেগরি-প্রস্তাব: প্ল্যাটফর্ম অনুযায়ী ১০ প্যানেল + সাইটের ক্যাটেগরি থেকে ট্যাপ করে বাছা ---------- */
 const PLB={instagram:'Instagram',facebook:'Facebook',tiktok:'TikTok',youtube:'YouTube',telegram:'Telegram',twitter:'Twitter / X',whatsapp:'WhatsApp'},CSG={};
+async function catGet(lab){if(CSG[lab])return CSG[lab];
+  try{const d=await api('svc_cat_suggest',{label:lab});return CSG[lab]={site:d.site||[],providers:d.providers||[]}}
+  catch(e){if(authFail(e))return null;return{site:(window._sc||[]).filter(c=>platMatch(lab,c)).map(c=>({c,n:0})),providers:[]}}}
+/* ক্যাটেগরি ঘরে ▾ ড্রপডাউন: বাছা প্ল্যাটফর্মের সাইটে থাকা ক্যাটেগরি */
+function catDrop(inp,sel,seed){
+  if(inp._cd){inp._cd.seed=seed;inp._cd.close();return}
+  const cd=inp._cd={seed,close(){ul.hidden=true;bt.setAttribute('aria-expanded','false')}};let typed=false,tok=0;
+  const w=document.createElement('div');w.className='cdd';inp.parentNode.insertBefore(w,inp);w.appendChild(inp);
+  const bt=document.createElement('button');bt.type='button';bt.className='cdb';bt.textContent='▾';bt.setAttribute('aria-label','ক্যাটেগরি তালিকা');bt.setAttribute('aria-expanded','false');
+  const ul=document.createElement('div');ul.className='cdl';ul.hidden=true;ul.setAttribute('role','listbox');w.append(bt,ul);
+  const draw=async()=>{const lab=PLB[sel.value],my=++tok;
+    if(!lab){ul.innerHTML='<div class="cdm">আগে প্ল্যাটফর্ম বাছুন</div>';return}
+    ul.innerHTML='<div class="cdm">আনা হচ্ছে…</div>';const L=await catGet(lab);if(my!==tok)return;
+    if(!L){ul.innerHTML='<div class="cdm">তালিকা আনা যায়নি — নিজে লিখুন</div>';return}
+    const q=typed?stripEmo(inp.value).toLowerCase():'',seen=new Set(),all=[];
+    [L.site].forEach(a=>(a||[]).forEach(x=>{const k=x.c.toLowerCase();if(seen.has(k))return;seen.add(k);all.push(x)}));
+    const f=all.filter(x=>!q||x.c.toLowerCase().indexOf(q)>=0).slice(0,80);
+    ul.innerHTML=f.length?'':'<div class="cdm">'+(all.length?'কিছু মেলেনি':'এই প্ল্যাটফর্মের কোনো ক্যাটেগরি সাইটে নেই')+' — নিজে লিখুন</div>';
+    const cu=document.createElement('button');cu.type='button';cu.className='cdo cdc';const tv=inp.value.trim();
+    const isNew=typed&&tv&&!seen.has(tv.toLowerCase());
+    cu.textContent=isNew?'＋ “'+tv+'” নতুন ক্যাটেগরি হিসেবে ব্যবহার':'✎ কাস্টম ক্যাটেগরি — নিজে লিখুন';
+    cu.onclick=()=>{cd.close();if(!isNew){inp.value='';inp.dispatchEvent(new Event('input',{bubbles:true}));typed=false}inp.focus()};
+    ul.insertBefore(cu,ul.firstChild);
+    f.forEach(x=>{const b=document.createElement('button');b.type='button';b.setAttribute('role','option');b.className='cdo';b.textContent=(x.s?'⭐ ':'')+x.c+(x.n?' ('+bn(x.n)+')':'');
+      b.onclick=()=>{inp.value=x.c;inp.dispatchEvent(new Event('input',{bubbles:true}));typed=false;cd.close()};ul.appendChild(b)})};
+  const open=()=>{ul.hidden=false;bt.setAttribute('aria-expanded','true');draw()};
+  bt.onclick=()=>{if(ul.hidden){typed=false;open()}else cd.close()};
+  inp.addEventListener('input',()=>{typed=true;if(!ul.hidden)draw()});
+  sel.addEventListener('change',()=>{cd.close()});
+  document.addEventListener('click',e=>{if(!w.contains(e.target))cd.close()})}
 function catSuggest(inp,sel,box,seed){let L=null,tok=0,typed=false;
   const draw=()=>{const lab=PLB[sel.value],q=typed?stripEmo(inp.value).toLowerCase():'';
     if(!lab){box.innerHTML='<p class="sub">প্ল্যাটফর্ম বাছলে ওই প্ল্যাটফর্মের ক্যাটেগরি প্রস্তাব আসবে।</p>';return}
@@ -581,7 +613,7 @@ function catSuggest(inp,sel,box,seed){let L=null,tok=0,typed=false;
     try{const d=await api('svc_cat_suggest',{label:lab});if(my!==tok)return;L=CSG[lab]={site:d.site||[],providers:d.providers||[]}}
     catch(e){if(my!==tok)return;if(authFail(e))return;L={site:(window._sc||[]).filter(c=>platMatch(lab,c)).map(c=>({c,n:0})),providers:[]}}
     draw()};
-  sel.onchange=load;inp.oninput=()=>{typed=true;draw()};load()}
+  sel.onchange=load;inp.oninput=()=>{typed=true;draw()};load();catDrop(inp,sel,seed)}
 
 /* ---------- ক্যাটেগরি: তালিকা · নতুন তৈরি · ভেতরে সার্ভিসের নাম এডিট ---------- */
 const catUrl=c=>'#cat='+encodeURIComponent(c);
