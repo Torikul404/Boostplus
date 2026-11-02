@@ -98,12 +98,10 @@ function provList(c,d,cp){const q=String(d.q||'').toLowerCase().trim(),cat=Strin
   if(CAT)CAT.rows.forEach(r=>{cm[r.code]=r.state});
   let all=c.rows.map(r=>{const o=Object.assign({},r);o.state=CAT?(cm[r.service_id]||'off'):(r.state||'off');return o});
   const cs={};all.forEach(r=>{cs[r.category]=(cs[r.category]||0)+1});
-  if(cp&&pf)all=all.filter(r=>{const P=pick(NP,r.category)||pick(NP,r.name);return P?(P[0].toLowerCase()===pf||pf.indexOf(P[0].toLowerCase())>=0):pf==='other'});
+  if(cp&&pf)all=all.filter(r=>{const P=pick(NP,r.category)||pick(NP,r.name);return P&&(P[0].toLowerCase()===pf||pf.indexOf(P[0].toLowerCase())>=0)});
   const out=all.filter(r=>(!cat||r.category===cat)&&(fl==='all'||r.state===fl)&&(!q||(String(r.name)+' '+r.service_id+' '+r.category).toLowerCase().indexOf(q)>=0));
   const off=Math.max(0,+d.offset||0),lim=Math.min(200,+d.limit||100);
-  const ex=Object.assign({},c.ex);
-  if(!ex.platforms||!ex.platforms.length){if(!c._pl){const m={};c.rows.forEach(r=>{const P=pick(NP,r.category)||pick(NP,r.name),l=P?P[0]:'Other';m[l]=(m[l]||0)+1});c._pl=Object.keys(m).map(k=>({label:k,n:m[k]})).sort((a,b)=>b.n-a.n)}ex.platforms=c._pl}
-  return Object.assign({ok:true,total:out.length,rows:out.slice(off,off+lim)},ex,{categories:cs})}
+  return Object.assign({ok:true,total:out.length,rows:out.slice(off,off+lim)},c.ex,{categories:cs})}
 function provPatch(a,x){if(a==='svc_collect'||a==='svc_auto')setTimeout(()=>Object.keys(PC).forEach(k=>provSync(k).catch(()=>{})),3000)}
 function catSoon(){clearTimeout(catTm);catTm=setTimeout(()=>{if(token)catSyncNow().catch(()=>{})},20000)}
 function catList(d){const q=String(d.q||'').toLowerCase().trim(),pl=String(d.platform||''),cat=String(d.category||''),st=String(d.state||'all'),plc={},cats={};
@@ -265,17 +263,14 @@ function addList(list){
   $('#bsT').textContent=`সাইটে চালু করুন — ${bn(list.length)}টি (নিচে একটার পর একটা)`;box.innerHTML='';E.textContent='';$('#bsAll').value='';
   const items=list.map(r=>{const t=r.tidy||{};return{r,on:true,k:0,name:nice(r)||t.name||r.name,plat:t.plat||guess(r.category+' '+r.name),cat:cmGet(r.category)||matchCat(t.cat||r.category)}});
   const cnt=()=>{const k=items.filter(x=>x.on).length;$('#bsOk').textContent=`সবগুলো চালু করুন (${bn(k)}টি)`;$('#bsOk').disabled=!k};
-  items.forEach(it=>{const c=document.createElement('div');c.className='card bsi';const r=it.r,t=r.tidy||{};
-    c.innerHTML=`<div class="bsh"><label class="bsk"><input type="checkbox" checked aria-label="চালু করুন"><b>#${esc(r.service_id)}</b></label></div><p class="sub bso"></p><label>সাইটে নাম</label><input class="bn" maxlength="120" aria-label="সাইটে নাম"><div class="csg bng"></div><label>প্ল্যাটফর্ম</label><select class="bp" aria-label="প্ল্যাটফর্ম">${PO}</select><label>ক্যাটেগরি</label><input class="bc" autocomplete="off" aria-label="ক্যাটেগরি" placeholder="ক্যাটেগরি"><div class="csg bsg"></div><p class="sub bpi"></p>`;
-    c.querySelector('.bso').textContent=`ID ${r.service_id} · রেট ${r.rate} · মূল: ${r.name} | ${r.category}`;
-    c.querySelector('.bpi').textContent=`দাম অটো: প্রভাইডার $${r.rate}/1K → সাইটে ≈ ৳${r.suggest?bn(r.suggest.bdt):'?'}/1K (সাইটের মার্কআপ নিয়মে)`;
-    const ck=c.querySelector('input[type=checkbox]'),n=c.querySelector('.bn'),p=c.querySelector('.bp'),cc=c.querySelector('.bc'),ng=c.querySelector('.bng');
+  items.forEach(it=>{const c=document.createElement('div');c.className='card bsi';
+    c.innerHTML=`<div class="bsh"><label class="bsk"><input type="checkbox" checked aria-label="চালু করুন"><b>#${esc(it.r.service_id)}</b></label><span class="sub">রেট $${esc(it.r.rate)}</span><button type="button" class="sm bsn" aria-label="অন্য নাম প্রস্তাব">↻ নাম</button></div><div class="sub bso"></div><input class="bn" maxlength="120" aria-label="সাইটে নাম"><div class="bsr"><select class="bp" aria-label="প্ল্যাটফর্ম">${PO}</select><input class="bc" autocomplete="off" aria-label="ক্যাটেগরি" placeholder="ক্যাটেগরি"></div>`;
+    c.querySelector('.bso').textContent='মূল: '+it.r.name;
+    const ck=c.querySelector('input[type=checkbox]'),n=c.querySelector('.bn'),p=c.querySelector('.bp'),cc=c.querySelector('.bc');
     Object.assign(it,{c,ck,n,p,cc});p.value=it.plat;n.value=it.name;cc.value=it.cat;
-    const draw=()=>{const a=nameIdeas(r,PLB[p.value]||'');ng.innerHTML=a.length?'<div class="sub">নাম প্রস্তাব (ট্যাপ করুন)</div><div class="csgc">'+a.map(x=>`<button type="button" class="chip cs" data-n="${esc(x)}">${esc(x)}</button>`).join('')+'</div>':'';
-      ng.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{n.value=it.name=b.dataset.n})};
-    catSuggest(cc,p,c.querySelector('.bsg'),()=>[t.cat,r.category]);
-    ck.onchange=()=>{it.on=ck.checked;c.classList.toggle('off',!it.on);cnt()};n.addEventListener('input',()=>{it.name=n.value});p.addEventListener('change',()=>{it.plat=p.value;draw()});cc.addEventListener('input',()=>{it.cat=cc.value;cc.classList.remove('bad')});
-    draw();box.appendChild(c)});
+    ck.onchange=()=>{it.on=ck.checked;c.classList.toggle('off',!it.on);cnt()};n.oninput=()=>{it.name=n.value};p.onchange=()=>{it.plat=p.value};cc.oninput=()=>{it.cat=cc.value;cc.classList.remove('bad')};
+    c.querySelector('.bsn').onclick=()=>{const a=nameIdeas(it.r,PLB[p.value]||'');if(a.length){it.k=(it.k+1)%a.length;n.value=it.name=a[it.k]}};
+    box.appendChild(c)});
   $('#bsAllB').onclick=()=>{const v=$('#bsAll').value.trim();if(!v)return;items.forEach(x=>{if(x.on&&!x.done){x.cat=v;x.cc.value=v;x.cc.classList.remove('bad')}})};
   $('#bsX').onclick=()=>{if(!busy)d.close()};
   d.onclose=()=>{if(any&&cur)provider(cur)};
@@ -401,7 +396,10 @@ async function pageRows(act,base,off,lim,type){let rows=[],raw=off,d;const L=typ
    নাম = "ধরন – কোয়ালিটি · দেশ · ড্রপ · রিফিল · স্পিড · স্টার্ট · Max" (প্ল্যাটফর্ম ক্যাটেগরিতেই থাকে, তাই নামে নেই)
    সব ট্যাগ শুধু প্রভাইডারের নিজের নাম/ক্যাটেগরি/ফিল্ড থেকে নেওয়া — নিজে থেকে কিছু বানানো হয় না। */
 const NP=[['Instagram',/insta(?!nt)|\big\b/i],['Facebook',/facebook|\bfb\b/i],['TikTok',/tik.?tok/i],['YouTube',/youtube|\byt\b/i],['Telegram',/telegram|\btg\b/i],['Twitter / X',/twitter|\bx\b|tweet/i],['WhatsApp',/whatsapp/i],['Threads',/threads/i],['Spotify',/spotify/i],['LinkedIn',/linkedin/i],['Snapchat',/snap/i],['Pinterest',/pinterest/i],['Discord',/discord/i],['Twitch',/twitch/i],['Website Traffic',/traffic|website|web ?visit/i]];
-const NT=[['Story Views',/story|stories/i],['Live Views',/\blive\b/i],['Watch Time',/watch.?(time|hour)/i],['Subscribers',/subscri/i],['Members',/member|joiner/i],['Comments',/comment/i],['Shares',/share|repost|retweet/i],['Saves',/\bsave|bookmark/i],['Reactions',/reaction|\blove\b|haha|\bwow\b/i],['Likes',/like|heart/i],['Views',/view|impression|\breach\b|\bplays?\b|stream|listen/i],['Followers',/follow/i],['Traffic',/traffic|visit/i]];
+const NT=[['Story Reactions',/stor(y|ies).{0,14}(react|like|heart|emoji)/i],['Story Comments',/stor(y|ies).{0,14}comment/i],['Story Views',/stor(y|ies)/i],['Live Likes',/live.{0,14}(like|heart)/i],['Live Comments',/live.{0,14}(comment|chat)/i],['Live Views',/live.?stream|\blive\b|\bpk\b/i],['Watch Time',/watch.?(time|hour)|\d+\s*k\s*min/i],['Subscribers',/subscri/i],['Poll Votes',/\bpolls?\b|\bvotes?\b/i],['Bot Starts',/\bbot\b.{0,6}\bstarts?\b|\bstarts?\b.{0,6}\bbot\b/i],['Event Responses',/\bevent\b.{0,12}(join|going|respon|rsvp|interest)|\b(going|rsvp)\b/i],['Friend Requests',/friend.?requests?/i],['Reports',/\breports?\b/i],['Engagement Package',/\bpackage\b|\b(views?|likes?|comments?|shares?|saves?)\s*\+\s*(views?|likes?|comments?|shares?|saves?)\b|(\d+\+?\s*(likes?|retweets?|shares?|comments?|views?)\b.{0,25}){2,}/i],['Emoji Comments',/emoji.{0,12}comment|comment.{0,6}emoji/i],['Downloads',/downloads?\b/i],['Clicks',/\bclicks?\b/i],['Tweet Stats',/statistic|detail.?expand/i],['Stars',/\bstars?\b/i],['Page Reviews',/\breviews?\b|\bratings?\b|recommendations?\b/i],['Comment Reactions',/comment.{0,8}react/i],['Comment Likes',/comment.{0,8}(like|heart)|(like|heart).{0,8}comment/i],['Page Likes & Followers',/page.{0,10}likes?.{0,12}follow/i],['Page Likes',/page.{0,10}likes?\b|likes?.{0,10}\bpage\b/i],['Members',/member|joiner|\bjoins?\b/i],['Comments',/comment/i],['Shares',/share|repost|retweet|\bquotes?\b/i],['Saves',/\bsaves?\b|bookmark/i],['Reactions',/react|emoji|emotion|\blove\b|\bhaha\b|\bwow\b|\bangry\b|\bsad\b/i],['Likes',/\blikes?\b|\bhearts?\b/i],['Profile Visits',/profile.{0,4}visit/i],['Views',/views?\b|impression|\breach\b|\bplays?\b|stream|listen/i],['Followers',/follow(?!ing)|\bfans?\b/i],['Traffic',/traffic|\bvisit/i]];
+/* সার্ভিসের ধরন: নামে যে ধরনের শব্দ আগে আসে সেটাই (সমান জায়গায় হলে তালিকার ক্রম) — 'Followers [with Stories]' Story Views হয় না */
+const NT_FB=[['Followers',/profile.?\/?.?page|page.?\/?.?profile|professional mode/i]];
+const pickEarliest=(L,t)=>{t=nk(t);let best=null,bi=1e9;for(const x of L){const m=x[1].exec(t);if(m&&m.index<bi){best=x;bi=m.index}}return best};
 const pick=(L,t)=>{t=nk(t);return L.find(x=>x[1].test(t))};
 const CTRY={usa:'USA',uk:'UK',india:'India',indian:'India',bangladesh:'BD',bd:'BD',turkey:'Turkey',turkish:'Turkey',brazil:'Brazil',brazilian:'Brazil',arab:'Arab',arabic:'Arab',indonesia:'Indonesia',pakistan:'Pakistan',russia:'Russia',germany:'Germany',france:'France',spain:'Spain',italy:'Italy',global:'Worldwide',worldwide:'Worldwide'};
 const kfmt=n=>n>=1e6?(+(n/1e6).toFixed(2))+'M':n>=1e3?(+(n/1e3).toFixed(1))+'K':String(n);
@@ -409,7 +407,7 @@ const kfmt=n=>n>=1e6?(+(n/1e6).toFixed(2))+'M':n>=1e3?(+(n/1e3).toFixed(1))+'K':
 /* ---------- ইমুজি দিয়ে সাজানো (চালু/বন্ধ: pb_emo) ---------- */
 const emoOn=()=>ls.get('pb_emo')!=='0';
 const PE={'Instagram':'📸','Facebook':'📘','TikTok':'🎵','YouTube':'▶️','Telegram':'✈️','Twitter / X':'🐦','WhatsApp':'💬','Threads':'🧵','Spotify':'🎧','LinkedIn':'💼','Snapchat':'👻','Pinterest':'📌','Discord':'🎮','Twitch':'🟣','Website Traffic':'🌐'};
-const TE={'Followers':'👥','Likes':'❤️','Views':'👁️','Story Views':'📖','Live Views':'🔴','Watch Time':'⏱️','Subscribers':'🔔','Members':'🙋','Comments':'💬','Shares':'🔁','Saves':'🔖','Reactions':'😍','Traffic':'🚦'};
+const TE={'Followers':'👥','Likes':'❤️','Views':'👁️','Story Views':'📖','Live Views':'🔴','Watch Time':'⏱️','Subscribers':'🔔','Members':'🙋','Comments':'💬','Shares':'🔁','Saves':'🔖','Reactions':'😍','Emoji Comments':'🙂','Downloads':'⬇️','Clicks':'👆','Tweet Stats':'📊','Stars':'⭐','Friend Requests':'🤝','Reports':'🚩','Engagement Package':'📦','Page Likes & Followers':'👍','Live Likes':'🔴','Live Comments':'🔴','Story Reactions':'📖','Story Comments':'📖','Traffic':'🚦','Poll Votes':'🗳️','Bot Starts':'🤖','Event Responses':'🎟️','Page Reviews':'⭐','Comment Likes':'👍','Comment Reactions':'😍','Page Likes':'👍','Profile Visits':'🚶','Custom Comments':'✍️','Random Comments':'🎲'};
 const FLAG={USA:'🇺🇸',UK:'🇬🇧',India:'🇮🇳',BD:'🇧🇩',Turkey:'🇹🇷',Brazil:'🇧🇷',Arab:'🇸🇦',Indonesia:'🇮🇩',Pakistan:'🇵🇰',Russia:'🇷🇺',Germany:'🇩🇪',France:'🇫🇷',Spain:'🇪🇸',Italy:'🇮🇹',Worldwide:'🌍'};
 const TAGE=[[/^HQ Real$/,'💎'],[/^HQ$/,'💎'],[/^Premium$/,'👑'],[/^Real$/,'✅'],[/^Mix$/,'🎲'],[/^LowQ$/,'🔻'],[/^(NoDrop|LowDrop|\d+%Drop)$/,'🛡️'],[/^NoRefill$/,'🚫'],[/^Refill$/,'♻'],[/^[\d.]+[KM]?(-[\d.]+[KM]?)?\/(D|Hr)$/,'🚀'],[/^Max/,'📈'],[/^Fast$/,'⏩']];
 const emTag=t=>{if(FLAG[t])return FLAG[t]+' '+t;const x=TAGE.find(a=>a[0].test(t));return x?x[1]+' '+t:t};
@@ -418,11 +416,27 @@ const stripEmo=s=>String(s==null?'':s).replace(/^[\p{Extended_Pictographic}\p{Re
 function catNice(cat){const c=stripEmo(cat);if(!c||!emoOn())return c;const P=pick(NP,c),T=pick(NT,c),e=P?PE[P[0]]:(T?TE[T[0]]:'📦');return (e+' '+c).substring(0,80)}
 const RF_NEG=/\b(no|non|without)[\s\-]?refill\b/i,RF_NEGG=/\b(no|non|without)[\s\-]?refill\b/ig,RF_POS=/refill|♻|lifetime|\blt\b|\br\d{2,3}\b/i;
 function refState(n,c,flag){for(const t of [n,c]){const s=nk(t);if(RF_NEG.test(s))return 'no';if(RF_POS.test(s.replace(RF_NEGG,' ')))return 'yes'}return flag===true?'yes':flag===false?'no':null}
+/* দেশ চেনা: শব্দ + পতাকা-ইমুজি; একটা হলে পতাকাসহ, ২–৩টা হলে 'USA/Canada', বেশি হলে Worldwide */
+const CW={usa:'USA','united states':'USA',american:'USA',america:'USA',uk:'UK','united kingdom':'UK',british:'UK',england:'UK',canada:'Canada',canadian:'Canada',australia:'Australia',australian:'Australia',india:'India',indian:'India',bangladesh:'BD',bangladeshi:'BD',bd:'BD',pakistan:'Pakistan',pakistani:'Pakistan',nepal:'Nepal',srilanka:'Sri Lanka','sri lanka':'Sri Lanka',turkey:'Turkey',turkish:'Turkey',brazil:'Brazil',brazilian:'Brazil',mexico:'Mexico',mexican:'Mexico',argentina:'Argentina',colombia:'Colombia',spain:'Spain',spanish:'Spain',france:'France',french:'France',germany:'Germany',german:'Germany',italy:'Italy',italian:'Italy',netherlands:'Netherlands',dutch:'Netherlands',poland:'Poland',polish:'Poland',russia:'Russia',russian:'Russia',ukraine:'Ukraine',egypt:'Egypt',egyptian:'Egypt',uae:'UAE',bae:'UAE',emirates:'UAE',saudi:'Saudi',israel:'Israel',israeli:'Israel',iran:'Iran',iranian:'Iran',iraq:'Iraq',indonesia:'Indonesia',indonesian:'Indonesia',malaysia:'Malaysia',thailand:'Thailand',thai:'Thailand',vietnam:'Vietnam',vietnamese:'Vietnam',philippines:'Philippines',filipino:'Philippines',japan:'Japan',japanese:'Japan',korea:'Korea',korean:'Korea',china:'China',chinese:'China',nigeria:'Nigeria',nigerian:'Nigeria','south africa':'South Africa',europe:'Europe',european:'Europe',asia:'Asia',asian:'Asia',arab:'Arab',arabic:'Arab',africa:'Africa',african:'Africa'};
+const ISO={US:'USA',GB:'UK',CA:'Canada',AU:'Australia',IN:'India',BD:'BD',PK:'Pakistan',NP:'Nepal',LK:'Sri Lanka',TR:'Turkey',BR:'Brazil',MX:'Mexico',AR:'Argentina',CO:'Colombia',ES:'Spain',FR:'France',DE:'Germany',IT:'Italy',NL:'Netherlands',PL:'Poland',RU:'Russia',UA:'Ukraine',EG:'Egypt',AE:'UAE',SA:'Saudi',IL:'Israel',IR:'Iran',IQ:'Iraq',ID:'Indonesia',MY:'Malaysia',TH:'Thailand',VN:'Vietnam',PH:'Philippines',JP:'Japan',KR:'Korea',CN:'China',NG:'Nigeria',ZA:'South Africa'};
+Object.assign(FLAG,{Canada:'🇨🇦',Australia:'🇦🇺',Nepal:'🇳🇵','Sri Lanka':'🇱🇰',Mexico:'🇲🇽',Argentina:'🇦🇷',Colombia:'🇨🇴',Netherlands:'🇳🇱',Poland:'🇵🇱',Ukraine:'🇺🇦',Egypt:'🇪🇬',UAE:'🇦🇪',Saudi:'🇸🇦',Israel:'🇮🇱',Iran:'🇮🇷',Iraq:'🇮🇶',Malaysia:'🇲🇾',Thailand:'🇹🇭',Vietnam:'🇻🇳',Philippines:'🇵🇭',Japan:'🇯🇵',Korea:'🇰🇷',China:'🇨🇳',Nigeria:'🇳🇬','South Africa':'🇿🇦',Europe:'🇪🇺',Asia:'🌏',Africa:'🌍'});
+/* আরও দেশ: নাম + ISO কোড; পতাকা কোড থেকেই বানানো হয় */
+const flagOf=c=>String.fromCodePoint(...[...c].map(x=>0x1F1E6+x.charCodeAt(0)-65));
+[['Sweden','SE'],['Norway','NO'],['Denmark','DK'],['Finland','FI'],['Ireland','IE'],['Portugal','PT'],['Greece','GR'],['Romania','RO'],['Czech','CZ'],['Hungary','HU'],['Switzerland','CH'],['Austria','AT'],['Belgium','BE'],['Kazakhstan','KZ'],['Uzbekistan','UZ'],['Azerbaijan','AZ'],['Morocco','MA'],['Algeria','DZ'],['Tunisia','TN'],['Kuwait','KW'],['Qatar','QA'],['Jordan','JO'],['Lebanon','LB'],['Oman','OM'],['Kenya','KE'],['Ghana','GH'],['Singapore','SG'],['Taiwan','TW'],['Peru','PE'],['Chile','CL'],['Venezuela','VE'],['Afghanistan','AF'],['Myanmar','MM'],['Cambodia','KH'],['New Zealand','NZ'],['Hong Kong','HK'],['Serbia','RS'],['Bulgaria','BG']].forEach(([n,c])=>{CW[n.toLowerCase()]=n;ISO[c]=n;FLAG[n]=flagOf(c)});
+const CWRE=new RegExp('\\b('+Object.keys(CW).sort((a,b)=>b.length-a.length).join('|')+')\\b','gi');
+function ctryTags(t){const f=[],add=x=>{if(x&&!f.includes(x))f.push(x)};
+  (String(t).match(/[\u{1F1E6}-\u{1F1FF}]{2}/gu)||[]).forEach(e=>add(ISO[String.fromCharCode(...[...e].map(c=>c.codePointAt(0)-0x1F1E6+65))]));
+  (String(t).match(CWRE)||[]).forEach(w=>add(CW[w.toLowerCase()]));
+  const wide=/\bworld.?wide\b|\bglobal\b|all countries|\bmix(ed)? countr/i.test(t);
+  if(f.length>1&&f.includes('Arab'))f.splice(f.indexOf('Arab'),1);
+  if(!f.length)return wide?['Worldwide']:[];
+  if(f.length===1)return f;if(f.length>3||wide)return['Worldwide'];
+  const m=f.join('/');FLAG[m]='🌍';return[m]}
 function niceTags(t,flag,max,rf){t=nk(t);const o=[];let m;if(rf===undefined)rf=refState(t,'',flag);
   const hq=/\bhq\b|high.?quality/i.test(t),pr=/premium/i.test(t),real=/\breal\b|organic|authentic/i.test(t);
-  if((hq||pr)&&real)o.push('HQ Real');else if(hq)o.push('HQ');else if(pr)o.push('Premium');else if(real)o.push('Real');else if(/\bmix(ed)?\b/i.test(t))o.push('Mix');else if(/\bbots?\b|low.?quality|\blq\b|lowq/i.test(t))o.push('LowQ');
-  m=t.match(/\b(usa|uk|india|indian|bangladesh|bd|turkey|turkish|brazil|brazilian|arab|arabic|indonesia|pakistan|russia|germany|france|spain|italy|global|worldwide)\b/i);if(m)o.push(CTRY[m[1].toLowerCase()]);
-  if(/non.?drop|no.?drop|\bnd\b|\b0\s*%\s*drop|zero.?drop/i.test(t))o.push('NoDrop');else if(/low.?drop|less.?drop/i.test(t))o.push('LowDrop');else if(m=t.match(/(\d{1,2})\s*%\s*drop/i))o.push(m[1]+'%Drop');
+  if((hq||pr)&&real)o.push('HQ Real');else if(hq)o.push('HQ');else if(pr)o.push('Premium');else if(real)o.push('Real');else if(/\bmix(ed)?\b/i.test(t))o.push('Mix');else if(/low.?quality|\blq\b|lowq|\bbots?\b(?!\s*(start|chat|user))/i.test(t))o.push('LowQ');
+  ctryTags(t).forEach(x=>o.push(x));
+  if(/non.?drop|no.?drop|\bnd\b|\b0\s*%\s*drop|zero.?drop|drop\W{0,4}0\s*%(?![\d-])/i.test(t))o.push('NoDrop');else if(/low.?drop|less.?drop/i.test(t))o.push('LowDrop');else if(m=t.match(/(\d{1,2})\s*%\s*drop/i)||t.match(/drop\W{0,4}[±~<≤]?\s*(?:\d{1,2}\s*-\s*)?(\d{1,2})\s*%/i))o.push(m[1]+'%Drop');
   if(rf==='no')o.push('NoRefill');
   else if(rf==='yes'){m=t.match(/♻\s*(\d{2,3})\s*d\b/i)||t.match(/refill\D{0,12}(\d{2,3})\s*(?:d|days?)\b/i)||t.match(/(\d{2,3})\s*(?:d|days?)\W{0,3}refill/i)||t.match(/\br(\d{2,3})\b/i);
     o.push(m?'♻'+m[1]+'D':/lifetime|\blt\b|♻\s*life/i.test(t)?'♻Life':'Refill')}
@@ -431,10 +445,14 @@ function niceTags(t,flag,max,rf){t=nk(t);const o=[];let m;if(rf===undefined)rf=r
   if(/instant/i.test(t))o.push('⚡Instant');
   else if(m=t.match(/(?:start(?:s|ing)?(?:\s*time)?|begins?)\W{0,4}(\d+(?:\s?[-–]\s?\d+)?)\s*(min|hour|hr)/i)||t.match(/⚡\s*(\d+(?:\s?[-–]\s?\d+)?)\s*(min|hour|hr)/i))o.push('⚡'+m[1].replace(/\s+/g,'')+(/^m/i.test(m[2])?'Min':'Hr'));
   else if(/\bfast\b/i.test(t))o.push('Fast');
-  max=+max||0;if(max>0)o.push('Max'+kfmt(max));
+  max=+max||0;if(max>0&&max<1e9)o.push('Max'+kfmt(max));
   return o}
+/* রিয়্যাক্ট সার্ভিস: নামে যেটা আছে (Angry/Love/Like…) সেটাই বসবে; ক্যাটেগরিতে 👍😍😡 একসাথে থাকলে সেটা ধরা হয় না */
+const RX=[['Like',/\blikes?\b|👍/i],['Love',/\blove\b|❤|😍|♥/i],['Care',/\bcare\b|🥰|🤗/i],['Haha',/\bha-?ha\b|😆|😂/i],['Wow',/\bwow\b|😮|😲/i],['Sad',/\bsad\b|😢|😭/i],['Angry',/\bangry\b|\banger\b|😡|😠/i]];
+const RXE={Like:'👍',Love:'😍',Care:'🥰',Haha:'😆',Wow:'😮',Sad:'😢',Angry:'😡'};Object.keys(RXE).forEach(k=>{TE[k+' Reactions']=RXE[k];TE[k+' Comment Reactions']=RXE[k]});
+function rxKind(n,c){const f=s=>RX.filter(x=>x[1].test(s)).map(x=>x[0]);let a=f(n);if(a.length===1)return a[0];if(a.length>1)return null;a=f(c);return a.length===1?a[0]:null}
 function nameCtx(r){if(!r)return null;const c0=nk(r.category),n0=nk(r.name),all=c0+' '+n0;
-  const P=pick(NP,c0)||pick(NP,n0),T=pick(NT,c0)||pick(NT,n0);if(!T)return null;
+  const T0=pickEarliest(NT,n0)||pickEarliest(NT,c0)||pickEarliest(NT_FB,n0)||pickEarliest(NT_FB,c0);if(!T0)return null;const P=T0[0]==='Traffic'?NP.find(x=>x[0]==='Website Traffic'):(pick(NP,c0)||pick(NP,n0));let T=T0;{const k=T0[0];if(k==='Reactions'||k==='Comment Reactions'){const rk=rxKind(n0,c0);if(rk)T=[rk+' '+k]}else if(k==='Comments'){if(/custom|costum/i.test(n0))T=['Custom Comments'];else if(/random|emoji/i.test(n0))T=['Random Comments']}}
   const flag=r.refill===undefined||r.refill===null||r.refill===''?null:/^(1|true|yes|y)$/i.test(String(r.refill));
   return{base:P&&P[0]==='Website Traffic'?'Traffic':T[0],plat:P?(P[0]==='Website Traffic'?'Website':P[0]):'',raw:niceTags(all,flag,r.max,refState(n0,c0,flag)),key:r.code||r.service_id||n0}}
 /* সুন্দর নাম: কাঁচা ট্যাগ (HQ, NoDrop, ♻30D) নয় — পড়ার মতো শব্দ ('Real & High Quality', 'Non-Drop', '30 Days Refill') + প্ল্যাটফর্ম + ৫টা ভিন্ন সাজ */
@@ -443,8 +461,8 @@ function tagWord(t){if(TW[t])return TW[t];let m;if(m=t.match(/^(\d+)%Drop$/))ret
 function nameIdeas(r,plat,em){const C=nameCtx(r);if(!C)return[];if(em===undefined)em=emoOn();
   const W=t=>{const x=TAGE.find(a=>a[0].test(t)),f=FLAG[t];return (em&&f?f+' ':'')+tagWord(t)};
   const isQ=t=>/^(HQ|Premium|Real|Mix|LowQ)/.test(t),isD=t=>/Drop$/.test(t),pl=plat||C.plat;
-  let qa=C.raw.filter(isQ).map(W),ca=C.raw.filter(t=>FLAG[t]).map(W),dr=C.raw.filter(isD).map(W),rs=C.raw.filter(t=>!isQ(t)&&!FLAG[t]&&!isD(t)).map(W);
-  const head=(em&&TE[C.base]?TE[C.base]+' ':'')+(pl?(pl.toLowerCase().indexOf(C.base.toLowerCase())>=0?pl:pl+' '+C.base):C.base),lim=em?56:48;
+  const isR=t=>/^(♻|Refill|NoRefill)/.test(t);let qa=C.raw.filter(isQ).map(W),ca=C.raw.filter(t=>FLAG[t]).map(W),dr=C.raw.filter(isD).map(W),xr=C.raw.filter(t=>isR(t)&&!isQ(t)&&!FLAG[t]&&!isD(t)).map(W),xl=C.raw.filter(t=>!isR(t)&&!isQ(t)&&!FLAG[t]&&!isD(t)).map(W);
+  const head=(em&&TE[C.base]?TE[C.base]+' ':'')+(pl?(pl.toLowerCase().indexOf(C.base.toLowerCase())>=0?pl:pl+' '+C.base):C.base),lim=em?84:72;
   const S=[
    (q,c,d,x)=>head+(q.length?' — '+q.join(' · '):'')+([].concat(c,d,x).length?' | '+[].concat(c,d,x).join(' · '):''),
    (q,c,d,x)=>head+(q.length?(' ['+q.join(' · ')+']'):'')+([].concat(c,d,x).length?' '+(em?'✦':'|')+' '+[].concat(c,d,x).join(' '+(em?'✦':'|')+' '):''),
@@ -452,8 +470,9 @@ function nameIdeas(r,plat,em){const C=nameCtx(r);if(!C)return[];if(em===undefine
    (q,c,d,x)=>head+' • '+[].concat(q,c,d,x).join(' • '),
    (q,c,d,x)=>(d.length?d[0]+' ':'')+head+([].concat(q,c,x).length?' | '+[].concat(q,c,x).join(' | '):'')+(d.length>1?' | '+d.slice(1).join(' | '):'')];
   const seen={},out=[];
-  S.forEach(f=>{let q=qa.slice(),c=ca.slice(),d=dr.slice(),x=rs.slice(),n=f(q,c,d,x);
-    while(n.length>lim&&(x.length||c.length||d.length||q.length)){if(x.length)x.pop();else if(c.length)c.pop();else if(d.length)d.pop();else q.pop();n=f(q,c,d,x)}
+  S.forEach(f=>{let q=qa.slice(),c=ca.slice(),d=dr.slice(),a=xr.slice(),l=xl.slice(),n=f(q,c,d,a.concat(l));
+    /* লম্বা হলে আগে স্পিড/Instant/Max, তারপর দেশ, তারপর কোয়ালিটি — রিফিল ও ড্রপ সবার শেষে বাদ যায় */
+    while(n.length>lim&&(l.length||c.length||q.length||d.length||a.length)){if(l.length)l.pop();else if(c.length)c.pop();else if(q.length)q.pop();else if(d.length)d.pop();else a.pop();n=f(q,c,d,a.concat(l))}
     n=n.substring(0,120);if(!seen[n]){seen[n]=1;out.push(n)}});
   return out}
 function nice(r){const C=nameCtx(r);if(!C)return null;const a=nameIdeas(r);return a.length?a[hsh(C.key)%a.length]:null}
@@ -574,38 +593,6 @@ async function mact(k){
 
 /* ---------- ক্যাটেগরি-প্রস্তাব: প্ল্যাটফর্ম অনুযায়ী ১০ প্যানেল + সাইটের ক্যাটেগরি থেকে ট্যাপ করে বাছা ---------- */
 const PLB={instagram:'Instagram',facebook:'Facebook',tiktok:'TikTok',youtube:'YouTube',telegram:'Telegram',twitter:'Twitter / X',whatsapp:'WhatsApp'},CSG={};
-const CGP={};
-function catGet(lab){if(CSG[lab])return Promise.resolve(CSG[lab]);
-  if(!CGP[lab])CGP[lab]=(async()=>{try{const d=await api('svc_cat_suggest',{label:lab});return CSG[lab]={site:d.site||[],providers:d.providers||[]}}
-    catch(e){if(authFail(e))return null;return{site:(window._sc||[]).filter(c=>platMatch(lab,c)).map(c=>({c,n:0})),providers:[]}}})().finally(()=>{delete CGP[lab]});
-  return CGP[lab]}
-/* ক্যাটেগরি ঘরে ▾ ড্রপডাউন: বাছা প্ল্যাটফর্মের সাইটে থাকা ক্যাটেগরি */
-function catDrop(inp,sel,seed){
-  if(inp._cd){inp._cd.seed=seed;inp._cd.close();return}
-  const cd=inp._cd={seed,close(){ul.hidden=true;bt.setAttribute('aria-expanded','false')}};let typed=false,tok=0;
-  const w=document.createElement('div');w.className='cdd';inp.parentNode.insertBefore(w,inp);w.appendChild(inp);
-  const bt=document.createElement('button');bt.type='button';bt.className='cdb';bt.textContent='▾';bt.setAttribute('aria-label','ক্যাটেগরি তালিকা');bt.setAttribute('aria-expanded','false');
-  const ul=document.createElement('div');ul.className='cdl';ul.hidden=true;ul.setAttribute('role','listbox');w.append(bt,ul);
-  const draw=async()=>{const lab=PLB[sel.value],my=++tok;
-    if(!lab){ul.innerHTML='<div class="cdm">আগে প্ল্যাটফর্ম বাছুন</div>';return}
-    ul.innerHTML='<div class="cdm">আনা হচ্ছে…</div>';const L=await catGet(lab);if(my!==tok)return;
-    if(!L){ul.innerHTML='<div class="cdm">তালিকা আনা যায়নি — নিজে লিখুন</div>';return}
-    const q=typed?stripEmo(inp.value).toLowerCase():'',seen=new Set(),all=[];
-    [L.site].forEach(a=>(a||[]).forEach(x=>{const k=x.c.toLowerCase();if(seen.has(k))return;seen.add(k);all.push(x)}));
-    const f=all.filter(x=>!q||x.c.toLowerCase().indexOf(q)>=0).slice(0,80);
-    ul.innerHTML=f.length?'':'<div class="cdm">'+(all.length?'কিছু মেলেনি':'এই প্ল্যাটফর্মের কোনো ক্যাটেগরি সাইটে নেই')+' — নিজে লিখুন</div>';
-    const cu=document.createElement('button');cu.type='button';cu.className='cdo cdc';const tv=inp.value.trim();
-    const isNew=typed&&tv&&!seen.has(tv.toLowerCase());
-    cu.textContent=isNew?'＋ “'+tv+'” নতুন ক্যাটেগরি হিসেবে ব্যবহার':'✎ কাস্টম ক্যাটেগরি — নিজে লিখুন';
-    cu.onclick=()=>{cd.close();if(!isNew){inp.value='';inp.dispatchEvent(new Event('input',{bubbles:true}));typed=false}inp.focus()};
-    ul.insertBefore(cu,ul.firstChild);
-    f.forEach(x=>{const b=document.createElement('button');b.type='button';b.setAttribute('role','option');b.className='cdo';b.textContent=(x.s?'⭐ ':'')+x.c+(x.n?' ('+bn(x.n)+')':'');
-      b.onclick=()=>{inp.value=x.c;inp.dispatchEvent(new Event('input',{bubbles:true}));typed=false;cd.close()};ul.appendChild(b)})};
-  const open=()=>{ul.hidden=false;bt.setAttribute('aria-expanded','true');draw()};
-  bt.onclick=()=>{if(ul.hidden){typed=false;open()}else cd.close()};
-  inp.addEventListener('input',()=>{typed=true;if(!ul.hidden)draw()});
-  sel.addEventListener('change',()=>{cd.close()});
-  document.addEventListener('click',e=>{if(!w.contains(e.target))cd.close()})}
 function catSuggest(inp,sel,box,seed){let L=null,tok=0,typed=false;
   const draw=()=>{const lab=PLB[sel.value],q=typed?stripEmo(inp.value).toLowerCase():'';
     if(!lab){box.innerHTML='<p class="sub">প্ল্যাটফর্ম বাছলে ওই প্ল্যাটফর্মের ক্যাটেগরি প্রস্তাব আসবে।</p>';return}
@@ -614,8 +601,11 @@ function catSuggest(inp,sel,box,seed){let L=null,tok=0,typed=false;
       sec=(t,a)=>a.length?`<div class="sub">${t}</div><div class="csgc">${a.map(x=>`<button type="button" class="chip cs" data-c="${esc(x.c)}">${esc(x.c)}${x.n?` <small>${bn(x.n)}</small>`:''}</button>`).join('')}</div>`:'';
     box.innerHTML=sec('⭐ প্রস্তাবিত',f((seed()||[]).filter(Boolean).map(c=>({c,n:0}))))+sec('সাইটে আছে',f(L.site))+sec('অন্য প্যানেলের ক্যাটেগরি (কয়টা সার্ভিসে)',f(L.providers))||'<p class="sub">কিছু মেলেনি — নিজে লিখুন</p>';
     box.querySelectorAll('.cs').forEach(b=>b.onclick=()=>{inp.value=b.dataset.c;typed=false;draw()})};
-  const load=async()=>{const lab=PLB[sel.value];L=null;if(!lab){draw();return}if(CSG[lab]){L=CSG[lab];draw();return}const my=++tok;draw();const d=await catGet(lab);if(my!==tok||!d)return;L=d;draw()};
-  sel.onchange=load;inp.oninput=()=>{typed=true;draw()};load();catDrop(inp,sel,seed)}
+  const load=async()=>{const lab=PLB[sel.value];L=null;if(!lab){draw();return}if(CSG[lab]){L=CSG[lab];draw();return}const my=++tok;draw();
+    try{const d=await api('svc_cat_suggest',{label:lab});if(my!==tok)return;L=CSG[lab]={site:d.site||[],providers:d.providers||[]}}
+    catch(e){if(my!==tok)return;if(authFail(e))return;L={site:(window._sc||[]).filter(c=>platMatch(lab,c)).map(c=>({c,n:0})),providers:[]}}
+    draw()};
+  sel.onchange=load;inp.oninput=()=>{typed=true;draw()};load()}
 
 /* ---------- ক্যাটেগরি: তালিকা · নতুন তৈরি · ভেতরে সার্ভিসের নাম এডিট ---------- */
 const catUrl=c=>'#cat='+encodeURIComponent(c);
