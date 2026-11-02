@@ -55,7 +55,7 @@
   }
 
   /* ধাপ ১৯: নাম সর্বোচ্চ ৪০ অক্ষর (ইমোজি না ভেঙে); পুরো নাম title/বিবরণে */
-  var NAME_MAX = 40;
+  var NAME_MAX = 400; /* নাম আর কাটা হয় না — পুরো নাম দেখায় */
   function trunc(s, n) { var a = Array.from(String(s || "")); return a.length <= n ? a.join("") : a.slice(0, n - 1).join("").replace(/[\s·,\-–|]+$/, "") + "…"; }
 
   /* ফেভারিট সার্ভিস (শুধু এই ডিভাইসে, localStorage; না চললে চুপচাপ বাদ) */
@@ -276,7 +276,7 @@
       var t = splitTags(nm), tg = [];
       t.tags.forEach(function (x) { String(x).split(/\s*·\s*/).forEach(function (y) { y = y.trim(); if (y && !tg.some(function (z) { return z.toLowerCase() === y.toLowerCase(); })) tg.push(y); }); });
       try { (Array.isArray(p.tags) ? p.tags : []).forEach(function (x) { x = String(x || "").trim(); if (x && !tg.some(function (y) { return y.toLowerCase() === x.toLowerCase(); })) tg.push(x); }); } catch (e) {}
-      var more = tg.length > 3 ? tg.length - 3 : 0; tg = tg.slice(0, 3); if (more) tg.push("+" + more);
+      tg = tg.slice(0, 2); /* ট্যাগ সর্বোচ্চ ২টা */
       return { v: String(p.code), name: trunc(t.name, NAME_MAX), full: (function () { try { return decodeEntities(String(p.name || "")).normalize("NFKC").replace(/\s{2,}/g, " ").trim(); } catch (e) { return String(p.name || ""); } })() || t.name, tags: tg, price: price };
     });
     syncTriggers();

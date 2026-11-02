@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -35,20 +35,21 @@
   <script src="design/theme.js?v=20261030a"></script>
   <link rel="stylesheet" href="design/tokens.css?v=20261029b" />
   <link rel="stylesheet" href="styles.css?v=20261030a" />
-  <link rel="stylesheet" href="support.css?v=20261029c" />
+  <link rel="stylesheet" href="support.css?v=20261030b" />
   <link rel="stylesheet" href="design/theme.css?v=20261030a" />
-  <link rel="stylesheet" href="design/picker.css?v=20261029e" />
+  <link rel="stylesheet" href="design/picker.css?v=20261102b" />
 <link rel="stylesheet" href="design/home.css?v=20261026r" />
   <link rel="stylesheet" href="design/bottomnav.css?v=20261029e" />
+  <link rel="stylesheet" href="design/svclist.css?v=20261030b" />
   <link rel="stylesheet" href="design/sidebar.css?v=20261029u" />
   <link rel="stylesheet" href="design/account.css?v=20261029v" />
 <!-- PB:CSS-L2 : লেন ২ এখানে নিজের নতুন CSS লিংক বসাবে -->
 <!-- PB:CSS-L1 : লেন ১ এখানে নিজের নতুন CSS লিংক বসাবে -->
   <link rel="stylesheet" href="design/orders.css?v=20261029e" />
   <link rel="stylesheet" href="design/currency.css?v=20261029e" />
-  <link rel="stylesheet" href="design/a11y.css?v=20261029b" />
+  <link rel="stylesheet" href="design/a11y.css?v=20261029x" />
 <!-- PB:END-CSS : এর পরে শুধু R0 বদলায় -->
-  <link rel="preload" href="packages-full.json" as="fetch" crossorigin="anonymous" />
+  <link rel="preload" href="app-l1-catalog/index.json" as="fetch" crossorigin="anonymous" />
   <!-- Structured data — helps Google show a richer search result -->
   <script type="application/ld+json">
   {
@@ -95,7 +96,7 @@
         <a href="https://wa.me/8801921018882?text=Assalamu%20Alaikum%2C%20boostplus%20order%20help%20lagbe" target="_blank" rel="noopener noreferrer">Contact</a>
       </div>
       <div class="site-nav-tabs">
-        <button type="button" class="site-nav-tab active" id="navNewOrderBtn">New Order</button>
+        <button type="button" class="site-nav-tab active" id="navNewOrderBtn">নতুন অর্ডার</button>
         <button type="button" class="site-nav-tab" id="navWalletBtn" aria-label="Wallet" title="Wallet"><svg class="nav-wallet-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-3px;margin-right:4px"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><circle cx="16.5" cy="14" r="1.2" fill="currentColor"/></svg><span id="navWalletBal" style="display:none;font-size:11px;color:#6ee7b7;font-weight:800;"></span></button>
       </div>
     </div>
@@ -126,23 +127,27 @@
       </div>
       <button type="button" class="pb-side-item" data-go="new-order">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M12 8v8M8 12h8"/></svg>
-        <span>New Order</span>
+        <span>নতুন অর্ডার</span>
+      </button>
+      <button type="button" class="pb-side-item" data-go="services">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="4" cy="18" r="1.2"/></svg>
+        <span>সার্ভিস</span>
       </button>
       <button type="button" class="pb-side-item" data-go="orders">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h8l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14.5 3.5V8H19"/><circle cx="12" cy="14.5" r="2.6"/><path d="M14 16.5l1.8 1.8"/></svg>
-        <span>Order History</span>
+        <span>অর্ডার ইতিহাস</span>
       </button>
       <button type="button" class="pb-side-item" data-go="rules">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h8l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14.5 3.5V8H19M9 12.5h7M9 16h5"/></svg>
-        <span>Order Rules</span>
+        <span>নিয়ম</span>
       </button>
       <button type="button" class="pb-side-item" data-go="contact">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>
-        <span>Contact us</span>
+        <span>যোগাযোগ</span>
       </button>
       <button type="button" class="pb-side-item" data-go="tickets">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9a2 2 0 0 0 0 6v2.5A1.5 1.5 0 0 0 4.5 19h15a1.5 1.5 0 0 0 1.5-1.5V15a2 2 0 0 1 0-6V6.5A1.5 1.5 0 0 0 19.5 5h-15A1.5 1.5 0 0 0 3 6.5V9z"/><path d="M14 5v14" stroke-dasharray="2 2.5"/></svg>
-        <span>Tickets</span>
+        <span>টিকেট</span>
         <span class="pb-side-badge" id="pbTicketBadge" hidden>0</span>
       </button>
       <button type="button" class="pb-side-item" data-go="account">
@@ -439,13 +444,13 @@
         </div>
 
         <div class="payment-grid" id="grid-banking" role="radiogroup" aria-label="মোবাইল ব্যাংকিং পেমেন্ট মেথড">
-          <div class="pay-card" data-method="bkash" role="radio" aria-checked="false" tabindex="0"><img src="bKash.png" alt="bKash" class="pay-logo-img"><span>bKash Personal</span></div>
-          <div class="pay-card" data-method="nagad" role="radio" aria-checked="false" tabindex="0"><img src="nagad.png" alt="Nagad" class="pay-logo-img"><span>Nagad Personal</span></div>
-          <div class="pay-card" data-method="rocket" role="radio" aria-checked="false" tabindex="0"><img src="rocket.png" alt="Rocket" class="pay-logo-img"><span>Rocket Personal</span></div>
+          <div class="pay-card" data-method="bkash" role="radio" aria-checked="false" tabindex="0"><img src="bKash.png" loading="lazy" decoding="async" alt="bKash" class="pay-logo-img"><span>bKash Personal</span></div>
+          <div class="pay-card" data-method="nagad" role="radio" aria-checked="false" tabindex="0"><img src="nagad.png" loading="lazy" decoding="async" alt="Nagad" class="pay-logo-img"><span>Nagad Personal</span></div>
+          <div class="pay-card" data-method="rocket" role="radio" aria-checked="false" tabindex="0"><img src="rocket.png" loading="lazy" decoding="async" alt="Rocket" class="pay-logo-img"><span>Rocket Personal</span></div>
         </div>
 
         <div class="payment-grid" id="grid-international" style="display:none;" role="radiogroup" aria-label="ইন্টারন্যাশনাল পেমেন্ট মেথড">
-          <div class="pay-card" data-method="binance" role="radio" aria-checked="false" tabindex="0"><img src="binance.png" alt="Binance Pay" class="pay-logo-img"><span>Binance Pay</span></div>
+          <div class="pay-card" data-method="binance" role="radio" aria-checked="false" tabindex="0"><img src="binance.png" loading="lazy" decoding="async" alt="Binance Pay" class="pay-logo-img"><span>Binance Pay</span></div>
         </div>
 
         <button type="button" class="pay-bottom-bar" id="step1PayBtn" disabled>Pay <span id="payAmountDisplay">0.00</span> BDT</button>
@@ -743,9 +748,9 @@
               <div class="tf-bonus" id="tfBonusBanner" hidden></div>
               <div class="af-label">Payment Method</div>
               <div class="payment-grid af-methods" id="tfMethodGrid" role="radiogroup" aria-label="টপ-আপ পেমেন্ট মেথড">
-                <div class="tf-method pay-card" data-method="bKash" role="radio" aria-checked="false" tabindex="0"><img src="bKash.png" alt="bKash" class="pay-logo-img"><span>bKash</span></div>
-                <div class="tf-method pay-card" data-method="Nagad" role="radio" aria-checked="false" tabindex="0"><img src="nagad.png" alt="Nagad" class="pay-logo-img"><span>Nagad</span></div>
-                <div class="tf-method pay-card" data-method="Rocket" role="radio" aria-checked="false" tabindex="0"><img src="rocket.png" alt="Rocket" class="pay-logo-img"><span>Rocket</span></div>
+                <div class="tf-method pay-card" data-method="bKash" role="radio" aria-checked="false" tabindex="0"><img src="bKash.png" loading="lazy" decoding="async" alt="bKash" class="pay-logo-img"><span>bKash</span></div>
+                <div class="tf-method pay-card" data-method="Nagad" role="radio" aria-checked="false" tabindex="0"><img src="nagad.png" loading="lazy" decoding="async" alt="Nagad" class="pay-logo-img"><span>Nagad</span></div>
+                <div class="tf-method pay-card" data-method="Rocket" role="radio" aria-checked="false" tabindex="0"><img src="rocket.png" loading="lazy" decoding="async" alt="Rocket" class="pay-logo-img"><span>Rocket</span></div>
               </div>
 
               <div class="af-note">ন্যূনতম টপ-আপ <b>৳20</b>। পেমেন্ট মেথড বেছে নিয়ে অ্যামাউন্ট লিখুন।</div>
@@ -907,6 +912,23 @@
     </div>
 
     <!-- ===== Order Rules page — layer 4 ===== -->
+<!-- PB:ZONE svclist-view [L1 সার্ভিস লিস্ট — ধাপ ২৪ পরবর্তী] -->
+    <div id="svclist-view" class="view-section dark-section pb-extra-view" style="display:none;">
+      <div class="sl-page">
+        <div class="sl-head">
+          <h1>Services</h1>
+          <p>boostplus-এর সব সার্ভিস — ক্যাটাগরি ধরে সাজানো। দাম প্রতি ১০০০-এর।</p>
+        </div>
+        <div class="sl-tools">
+          <div class="sl-chips" id="slPlatforms" role="group" aria-label="Filter by platform"></div>
+          <select class="sl-field" id="slCat" aria-label="Category"><option value="">সব ক্যাটাগরি</option></select>
+          <input class="sl-field" id="slSearch" type="search" placeholder="Search ID, name, category…" aria-label="Search services" autocomplete="off" />
+          <div class="sl-count" id="slCount" role="status"></div>
+        </div>
+        <div id="slList"><div class="sl-msg" role="status">সার্ভিস লোড হচ্ছে…</div></div>
+      </div>
+    </div>
+
 <!-- PB:ZONE rules-view [L2 নিয়ম] -->
     <div id="rules-view" class="view-section dark-section pb-extra-view" style="display:none;">
       <div class="pb-page">
@@ -967,7 +989,7 @@
     <div id="orders-view" class="view-section dark-section pb-extra-view" style="display:none;">
       <div class="pb-page pb-oh-page">
         <div class="pb-card" id="ohGuest" hidden>
-          <h3>Order History</h3>
+          <h3>অর্ডার ইতিহাস</h3>
           <p>আপনার অর্ডারের তালিকা দেখতে ওয়ালেটে লগইন করুন।</p>
           <button type="button" class="pb-btn pb-btn-blue" id="ohLoginBtn">Login / Register</button>
         </div>
@@ -1140,7 +1162,7 @@
       <div class="hiw-step"><div class="hiw-num">১</div><h3>লগইন করুন</h3><p>মোবাইল নম্বর ও পিন দিয়ে অ্যাকাউন্ট খুলুন বা লগইন করুন।</p></div>
       <div class="hiw-step"><div class="hiw-num">২</div><h3>ওয়ালেটে টাকা যোগ</h3><p>bKash, Nagad বা Rocket দিয়ে ওয়ালেটে টপ-আপ করুন।</p></div>
       <div class="hiw-step"><div class="hiw-num">৩</div><h3>সার্ভিস বেছে অর্ডার</h3><p>সার্ভিস বেছে লিংক ও পরিমাণ দিয়ে অর্ডার করুন।</p></div>
-      <div class="hiw-step"><div class="hiw-num">৪</div><h3>ট্র্যাক করুন</h3><p>Order History-তে স্ট্যাটাস দেখুন, দরকারে Refill নিন।</p></div>
+      <div class="hiw-step"><div class="hiw-num">৪</div><h3>ট্র্যাক করুন</h3><p>অর্ডার ইতিহাসে স্ট্যাটাস দেখুন, দরকারে Refill নিন।</p></div>
     </div>
   </section>
 
@@ -1233,7 +1255,7 @@
             <span class="faq-icon">+</span>
           </button>
           <div class="faq-answer">
-            <p>লগইন করে <b>Order History</b> থেকে Completed অর্ডারে <b>Refill</b> বাটন (রিফিল-সক্ষম সার্ভিস, ৩০ দিনের মধ্যে) এবং Pending/Processing অর্ডারে <b>Cancel</b> বাটন পাবেন। ওয়ালেটে পেইড ও শুরুর আগের অর্ডার সঙ্গে সঙ্গে বাতিল হয়ে টাকা ফেরত যায়; অন্য ক্ষেত্রে অনুরোধ অ্যাডমিন যাচাই করেন। বিস্তারিত: <a href="refund.html">রিফান্ড ও রিফিল নীতি</a>।</p>
+            <p>লগইন করে <b>অর্ডার ইতিহাস</b> থেকে Completed অর্ডারে <b>Refill</b> বাটন (রিফিল-সক্ষম সার্ভিস, ৩০ দিনের মধ্যে) এবং Pending/Processing অর্ডারে <b>Cancel</b> বাটন পাবেন। ওয়ালেটে পেইড ও শুরুর আগের অর্ডার সঙ্গে সঙ্গে বাতিল হয়ে টাকা ফেরত যায়; অন্য ক্ষেত্রে অনুরোধ অ্যাডমিন যাচাই করেন। বিস্তারিত: <a href="refund.html">রিফান্ড ও রিফিল নীতি</a>।</p>
           </div>
         </div>
         <div class="faq-item">
@@ -1336,7 +1358,8 @@
   <script src="pricing.js?v=20261030a"></script>
   <script src="app-core.js?v=20261030a"></script>
   <script src="app-catalog.js?v=20261030a"></script>
-  <script src="app-picker.js?v=20261029e"></script>
+  <script src="app-picker.js?v=20261102b"></script>
+  <script src="app-svclist.js?v=20261030b"></script>
   <script src="app-order.js?v=20261026r"></script>
   <script src="app-checkout.js?v=20261030a"></script>
   <script src="app-proof-upload.js?v=20261026r"></script>
@@ -1347,7 +1370,7 @@
   <script src="app-orders.js?v=20261030a"></script>
 <script src="app-gate.js?v=20261026r"></script>
   <script src="app-popup.js?v=20261026r"></script>
-  <script src="app-bottomnav.js?v=20261029e"></script>
+  <script src="app-bottomnav.js?v=20261030b"></script>
   <script src="app-account.js?v=20261030a"></script>
 <!-- PB:JS-L2 : লেন ২ এখানে নিজের নতুন script বসাবে -->
 <!-- PB:JS-L1 : লেন ১ এখানে নিজের নতুন script বসাবে -->
