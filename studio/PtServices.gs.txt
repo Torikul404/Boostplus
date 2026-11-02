@@ -96,7 +96,7 @@ function svcCollect_(provider) {
   arr.forEach(function (s) {
     if (!s || s.service == null) return;
     lines.push(svcCsvLine_([provider, s.service, String(s.name || "").trim(), String(s.category || "").trim(), s.type || "", s.rate, s.min, s.max,
-      s.refill !== undefined ? svcFlag_(s.refill) : (/refill/i.test(s.name || "") ? 1 : 0), svcFlag_(s.cancel), svcFlag_(s.dripfeed), at]));
+      s.refill !== undefined ? svcFlag_(s.refill) : (/refill|♻|lifetime|\br\d{2,3}\b/i.test(String(s.name || "").replace(/\b(no|non|without)[\s\-]?refill\b/ig, " ")) ? 1 : 0), svcFlag_(s.cancel), svcFlag_(s.dripfeed), at]));
   });
   var csv = "\uFEFF" + lines.join("\n"), name = svcFileName_(provider), f = svcFindFile_(name);
   if (f) f.setContent(csv); else svcFolder_().createFile(name, csv, MimeType.CSV);
@@ -170,7 +170,6 @@ function svcToggle_(d) {
     if (!cat) return { ok: false, error: "category_required" };
     if (!(usd > 0)) return { ok: false, error: "price_required" };
     var rm = meta.removed[code]; if (rm && rm.provider && rm.provider !== provider) rm = null;
-    if (rm && !d.force) return { ok: false, error: "previously_removed", removed_info: rm, message: "এই সার্ভিস আগে সাইট থেকে বাদ দেওয়া হয়েছিল" };
     var entry = { code: code, name: String(d.name || row.name).trim().substring(0, 120), platform: plat, category: cat, tags: [], pricePerK: "$" + usd,
       min: Number(row.min) || 10, max: Number(row.max) || 10000, popular: false, provider: provider };
     if (row.refill === "1") entry.refill = "yes";
@@ -309,8 +308,8 @@ function svcBulk_(d) {
     }
     var row = by[code]; if (!row) { skip++; return; }
     var rm = meta.removed[code]; if (rm && rm.provider && rm.provider !== provider) rm = null;
-    if (rm && !d.force) { skip++; return; }
-    var usd = Math.round(Number(row.rate) * 1e6) / 1e6;   // প্রভাইডারের রেটই বসবে; মার্কআপ সাইট নিজে দেবে if (!(usd > 0)) { skip++; return; }
+    var usd = Math.round(Number(row.rate) * 1e6) / 1e6;   // প্রভাইডারের রেটই বসবে; মার্কআপ সাইট নিজে দেবে
+    if (!(usd > 0)) { skip++; return; }
     var t = svcTidy_(row, cmap);
     var entry = { code: code, name: t.name.substring(0, 120), platform: t.plat, category: cat || t.cat, tags: [], pricePerK: "$" + usd,
       min: Number(row.min) || 10, max: Number(row.max) || 10000, popular: false, provider: provider };
@@ -352,7 +351,14 @@ function svcClean_(t, keep) {
   });
   return s.replace(/[|•~*_=#>]+/g, " ").replace(/\s+/g, " ").replace(/^[\s\-–—:.]+|[\s\-–—:.]+$/g, "");
 }
-function svcTags_(t, refillFlag) {
+var SVC_RF_NEG_ = /\b(no|non|without)[\s\-]?refill\b/i, SVC_RF_POS_ = /refill|♻|lifetime|\blt\b|\br\d{2,3}\b/i;
+// রিফিল অবস্থা: আগে নাম, তারপর ক্যাটেগরি, শেষে প্রভাইডারের ফ্ল্যাগ (true/false/null)
+function svcRf_(n, c, flag) {
+  var a = [String(n || ""), String(c || "")];
+  for (var i = 0; i < a.length; i++) { if (SVC_RF_NEG_.test(a[i])) return "no"; if (SVC_RF_POS_.test(a[i].replace(/\b(no|non|without)[\s\-]?refill\b/ig, " "))) return "yes"; }
+  return flag === true ? "yes" : flag === false ? "no" : null;
+}
+function svcTags_(t, refillFlag, rf) {
   var o = [], m;
   var hq = /\bhq\b|high.?quality/i.test(t), rl = /\breal\b|organic/i.test(t);
   if (hq && rl) o.push("Real HQ"); else if (/premium/i.test(t)) o.push("Premium"); else if (hq) o.push("HQ"); else if (rl) o.push("Real");
@@ -361,10 +367,11 @@ function svcTags_(t, refillFlag) {
   if (m) o.push(m[1].length <= 3 ? m[1].toUpperCase() : m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase());
   if (/non.?drop|no.?drop|\bnd\b/i.test(t)) o.push("Non-Drop");
   var tr = t.replace(/\b(no|non|without)[\s\-]?refill\b/ig, " ");
-  if (/refill|♻|lifetime|\blt\b|\br\d{2,3}\b/i.test(tr) || refillFlag) {
+  if (rf === undefined) rf = svcRf_(t, "", refillFlag ? true : null);
+  if (rf === "yes") {
     m = tr.match(/(\d{2,3})\s*(?:d|days?)\b|\br(\d{2,3})\b/i);
     o.push((m ? (m[1] || m[2]) + "D " : (/lifetime|\blt\b/i.test(tr) ? "Lifetime " : "")) + "Refill");
-  } else if (/\b(no|non)[\s\-]?refill\b/i.test(t)) o.push("No Refill");
+  } else if (rf === "no") o.push("No Refill");
   m = t.match(/(\d+)\s*(minutes?|mins?|hours?|hrs?)\b/i);
   if (m) o.push(m[1] + (/^m/i.test(m[2]) ? " Min" : " Hr"));
   if (/instant|super.?fast|\bfast\b/i.test(t)) o.push("Fast");
@@ -376,7 +383,8 @@ function svcTidy_(r, map) {
   var P = svcPick_(SVC_PLAT_, c0) || svcPick_(SVC_PLAT_, n0), T = svcPick_(SVC_TYPE_, c0) || svcPick_(SVC_TYPE_, n0);
   var mapped = map && map[(r.provider || "") + "|" + c0], base = (P && T) ? P[0] + " " + T[0] : "";
   var cat = mapped || base || svcClean_(c0) || "Other", name;
-  if (base) { var tg = svcTags_(all, String(r.refill) === "1"); name = base + (tg.length ? " – " + tg.join(" · ") : ""); }
+  if (base) { var fl = (r.refill === undefined || r.refill === null || r.refill === "") ? null : /^(1|true|yes|y)$/i.test(String(r.refill));
+    var tg = svcTags_(all, fl === true, svcRf_(n0, c0, fl)); name = base + (tg.length ? " – " + tg.join(" · ") : ""); }
   else name = svcClean_(n0, true) || n0;
   return { name: name, cat: cat, plat: P ? P[1] : "other" };
 }
@@ -401,7 +409,7 @@ function svcTidyList_() {
       if (!cache[p]) { cache[p] = {}; (svcRead_(p) || []).forEach(function (r) { cache[p][r.service_id] = r; }); }
       raw = cache[p][String(c.code)];
     }
-    var t = svcTidy_(raw || { provider: p, name: c.name, category: c.category, refill: c.refill === "yes" ? "1" : "0" }, map);
+    var t = svcTidy_(raw || { provider: p, name: c.name, category: c.category, refill: c.refill === "yes" ? "1" : "" }, map);
     if (t.name !== c.name || t.cat !== c.category) out.push({ code: String(c.code), provider: p, cn: c.name, cc: c.category, nn: t.name, nc: t.cat });
   });
   return { ok: true, rows: out };
@@ -530,7 +538,7 @@ function svcSiteListAct_(d) {
   f.forEach(function (r) { if (r.category) cats[r.category] = 1; });
   if (cat) f = f.filter(function (r) { return r.category === cat; });
   var off = Math.max(0, Number(d.offset) || 0), lim = d.all ? 5000 : Math.min(100, Number(d.limit) || 40), cmap = svcCatMap_(), rows = f.slice(off, off + lim);
-  rows.forEach(function (r) { r.tidy = svcTidy_({ provider: "", name: r.name, category: r.category, refill: 0 }, cmap); });
+  rows.forEach(function (r) { r.tidy = svcTidy_({ provider: "", name: r.name, category: r.category, refill: r.refill }, cmap); });
   return { ok: true, total: f.length, rows: rows, categories: Object.keys(cats).sort(),
     platforms: Object.keys(plc).map(function (k) { return { label: k, n: plc[k] }; }).sort(function (a, b) { return b.n - a.n; }) };
 }
@@ -571,7 +579,7 @@ function svcSiteBulk_(d) {
   (d.codes || []).map(String).slice(0, 200).forEach(function (code) {
     var r = by[code]; if (!r) return;
     var name = r.name, ct = r.category;
-    if (d.tidy) { var t = svcTidy_({ provider: "", name: r.name, category: r.category, refill: 0 }, cmap); name = t.name; ct = t.cat; }
+    if (d.tidy) { var t = svcTidy_({ provider: "", name: r.name, category: r.category, refill: r.refill }, cmap); name = t.name; ct = t.cat; }
     if (cat) ct = cat;
     var c = cust[code]; if (!c) { c = { code: code, ov: 1 }; meta.custom.push(c); cust[code] = c; }
     c.name = name.substring(0, 120); c.category = ct.substring(0, 80); if (plat) c.platform = plat;

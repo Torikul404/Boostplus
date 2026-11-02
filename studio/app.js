@@ -230,9 +230,9 @@ function openSheet(r,btn,force){NGR=r;setTimeout(ngDraw,0);
   sh.onclose=async()=>{
     if(sh.returnValue!=='ok')return;
     busy=true;btn.disabled=true;
-    try{await api('svc_toggle',{provider:r.provider||cur,code:r.service_id,on:true,name:$('#shName').value,platform:$('#shPlat').value,category:$('#shCat').value.trim(),price_usd:+$('#shUsd').value,force:!!force});cmSet(r.category,$('#shCat').value.trim());
+    try{await api('svc_toggle',{provider:r.provider||cur,code:r.service_id,on:true,name:$('#shName').value,platform:$('#shPlat').value,category:$('#shCat').value.trim(),price_usd:+$('#shUsd').value,force:true});cmSet(r.category,$('#shCat').value.trim());
       r.state='on';btn.setAttribute('aria-checked','true');toast('সাইটে চালু হয়েছে ✔')}
-    catch(e){if(authFail(e)){}else if(e.code==='previously_removed'&&confirm(e.message+'\nতবুও চালু করবেন?'))openSheet(r,btn,true);else toast(e.message)}
+    catch(e){if(authFail(e)){}else toast(e.message)}
     busy=false;btn.disabled=false;
   };
   $('#shForm').onsubmit=e=>{const u=+$('#shUsd').value,c=$('#shCat').value.trim();if(e.submitter&&e.submitter.value==='ok'&&!c){e.preventDefault();$('#shErr').textContent='ক্যাটেগরি দিন'}};
@@ -261,7 +261,7 @@ async function bulk(k){
   if(busy)return;const codes=[...sel].map(r=>r.service_id),on=k==='on';let cat='',mk='';
   if(on){cat=prompt('ক্যাটেগরি লিখুন, অথবা ফাঁকা রাখুন (ফাঁকা = প্রতিটার নাম ও ক্যাটেগরি অটো সাজানো হবে)','');if(cat===null)return;}
   else if(!confirm(bn(codes.length)+'টি সার্ভিস সাইট থেকে লুকানো হবে?'))return;
-  busy=true;try{const r=await api('svc_bulk',{provider:cur,codes,on,category:(cat||'').trim(),markup:mk});
+  busy=true;try{const r=await api('svc_bulk',{provider:cur,codes,on,category:(cat||'').trim(),markup:mk,force:true});
     if(on){const its=[...sel].filter(x=>x.state==='off').map(x=>({code:x.service_id,name:nice(x)||(x.tidy&&x.tidy.name)||x.name,cat:(cat||'').trim()||(x.tidy&&x.tidy.cat)||x.category}));for(const ch of chunks(its,300)){try{await api('svc_tidy_apply',{items:ch})}catch(e){}}}
     toast(`${bn(r.done)}টি হয়েছে, ${bn(r.skipped)}টি বাদ`);sel.clear();bulkBar();provider(cur)}catch(e){if(!authFail(e))toast(e.message)}busy=false}
 
@@ -375,15 +375,16 @@ const emTag=t=>{if(FLAG[t])return FLAG[t]+' '+t;const x=TAGE.find(a=>a[0].test(t
 const stripEmo=s=>String(s==null?'':s).replace(/^[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u200D\u20E3\s]+/u,'').trim();
 /* ক্যাটেগরির নাম: প্ল্যাটফর্মের ইমুজি + নাম (আগের ইমুজি সরিয়ে একবারই বসে — বারবার চালালে একই থাকে) */
 function catNice(cat){const c=stripEmo(cat);if(!c||!emoOn())return c;const P=pick(NP,c),T=pick(NT,c),e=P?PE[P[0]]:(T?TE[T[0]]:'📦');return (e+' '+c).substring(0,80)}
-function niceTags(t,flag,max){const o=[];let m;
+const RF_NEG=/\b(no|non|without)[\s\-]?refill\b/i,RF_NEGG=/\b(no|non|without)[\s\-]?refill\b/ig,RF_POS=/refill|♻|lifetime|\blt\b|\br\d{2,3}\b/i;
+function refState(n,c,flag){for(const t of [n,c]){const s=String(t||'');if(RF_NEG.test(s))return 'no';if(RF_POS.test(s.replace(RF_NEGG,' ')))return 'yes'}return flag===true?'yes':flag===false?'no':null}
+function niceTags(t,flag,max,rf){const o=[];let m;if(rf===undefined)rf=refState(t,'',flag);
   const hq=/\bhq\b|high.?quality/i.test(t),pr=/premium/i.test(t),real=/\breal\b|organic|authentic/i.test(t);
   if((hq||pr)&&real)o.push('HQ Real');else if(hq)o.push('HQ');else if(pr)o.push('Premium');else if(real)o.push('Real');else if(/\bmix(ed)?\b/i.test(t))o.push('Mix');else if(/\bbots?\b|low.?quality|\blq\b|lowq/i.test(t))o.push('LowQ');
   m=t.match(/\b(usa|uk|india|indian|bangladesh|bd|turkey|turkish|brazil|brazilian|arab|arabic|indonesia|pakistan|russia|germany|france|spain|italy|global|worldwide)\b/i);if(m)o.push(CTRY[m[1].toLowerCase()]);
   if(/non.?drop|no.?drop|\bnd\b|\b0\s*%\s*drop|zero.?drop/i.test(t))o.push('NoDrop');else if(/low.?drop|less.?drop/i.test(t))o.push('LowDrop');else if(m=t.match(/(\d{1,2})\s*%\s*drop/i))o.push(m[1]+'%Drop');
-  if(/\b(no|non|without)[\s\-]?refill\b/i.test(t))o.push('NoRefill');
-  else if(/refill|♻|lifetime|\blt\b|\br\d{2,3}\b/i.test(t)||flag===true){m=t.match(/♻\s*(\d{2,3})\s*d\b/i)||t.match(/refill\D{0,12}(\d{2,3})\s*(?:d|days?)\b/i)||t.match(/(\d{2,3})\s*(?:d|days?)\W{0,3}refill/i)||t.match(/\br(\d{2,3})\b/i);
+  if(rf==='no')o.push('NoRefill');
+  else if(rf==='yes'){m=t.match(/♻\s*(\d{2,3})\s*d\b/i)||t.match(/refill\D{0,12}(\d{2,3})\s*(?:d|days?)\b/i)||t.match(/(\d{2,3})\s*(?:d|days?)\W{0,3}refill/i)||t.match(/\br(\d{2,3})\b/i);
     o.push(m?'♻'+m[1]+'D':/lifetime|\blt\b|♻\s*life/i.test(t)?'♻Life':'Refill')}
-  else if(flag===false)o.push('NoRefill');
   m=t.match(/(\d+(?:\.\d+)?\s*[kKmM]?(?:\s*[-–]\s*\d+(?:\.\d+)?\s*[kKmM]?)?)\s*(?:\/|per\s*)\s*(day|d|hour|hr|h)\b/i);
   if(m)o.push(m[1].replace(/\s+/g,'').toUpperCase()+(/^d/i.test(m[2])?'/D':'/Hr'));
   if(/instant/i.test(t))o.push('⚡Instant');
@@ -393,8 +394,8 @@ function niceTags(t,flag,max){const o=[];let m;
   return o}
 function nameCtx(r){if(!r)return null;const c0=String(r.category||''),n0=String(r.name||''),all=c0+' '+n0;
   const P=pick(NP,c0)||pick(NP,n0),T=pick(NT,c0)||pick(NT,n0);if(!T)return null;
-  const flag=r.refill===undefined||r.refill===null||r.refill===''?null:String(r.refill)==='1'||r.refill===true;
-  return{base:P&&P[0]==='Website Traffic'?'Traffic':T[0],plat:P?(P[0]==='Website Traffic'?'Website':P[0]):'',raw:niceTags(all,flag,r.max),key:r.code||r.service_id||n0}}
+  const flag=r.refill===undefined||r.refill===null||r.refill===''?null:/^(1|true|yes|y)$/i.test(String(r.refill));
+  return{base:P&&P[0]==='Website Traffic'?'Traffic':T[0],plat:P?(P[0]==='Website Traffic'?'Website':P[0]):'',raw:niceTags(all,flag,r.max,refState(n0,c0,flag)),key:r.code||r.service_id||n0}}
 /* সুন্দর নাম: কাঁচা ট্যাগ (HQ, NoDrop, ♻30D) নয় — পড়ার মতো শব্দ ('Real & High Quality', 'Non-Drop', '30 Days Refill') + প্ল্যাটফর্ম + ৫টা ভিন্ন সাজ */
 const TW={'HQ Real':'Real HQ','HQ':'HQ','Premium':'Premium','Real':'Real','Mix':'Mixed','LowQ':'Budget','NoDrop':'Non-Drop','LowDrop':'Low Drop','NoRefill':'No Refill','Refill':'Refill','Fast':'Fast','⚡Instant':'Instant'};
 function tagWord(t){if(TW[t])return TW[t];let m;if(m=t.match(/^(\d+)%Drop$/))return m[1]+'% Drop';if(m=t.match(/^♻(\d+)D$/))return m[1]+'D Refill';if(t==='♻Life')return 'Lifetime Refill';if(m=t.match(/^⚡(.+)Min$/))return m[1]+' Min Start';if(m=t.match(/^⚡(.+)Hr$/))return m[1]+' Hr Start';if(m=t.match(/^(.+)\/D$/))return m[1]+'/Day';if(m=t.match(/^(.+)\/Hr$/))return m[1]+'/Hour';if(m=t.match(/^Max\s*(.+)$/))return 'Max '+m[1];return t}
@@ -789,7 +790,7 @@ function aiInit(){if($('#aiFab'))return;
     $('#aiChips').innerHTML=['TikTok Followers-এর সবচেয়ে সস্তা ৫টা (সব প্রভাইডার)','ফেসবুকের ক্যাটেগরিগুলো দেখাও','কতগুলো সার্ভিসের নাম সাজানো বাকি?','Instagram Followers-এর নাম সাজাও'].map(x=>`<button class="chip" type="button">${esc(x)}</button>`).join('');
     $('#aiChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>send(b.textContent))};
   hello();aiStatus();window._aiClose=close}
-function aiShow(a){aiInit();const F=$('#aiFab'),P=$('#ai');if(!a){P.hidden=true;F.hidden=true}else{F.hidden=!P.hidden?true:false;topLayer(F);fabFit()}}
+function aiShow(){/* AI রোবট বাদ — বাটন/প্যানেল আর তৈরি হয় না */['#aiFab','#ai'].forEach(q=>{const e=$(q);if(e)e.remove()})}
 
 /* ---------- রাউটার, লগইন, ইনস্টল ---------- */
 function exc(){cur=null;$('#title').textContent='ব্যতিক্রম';$('#back').hidden=true;const el=$('#main'),I=EXC.items,G=[['new','🆕 নতুন সার্ভিস'],['gone','⚠ প্রভাইডার থেকে চলে গেছে (সাইটে চালু ছিল)'],['price','💲 দাম বদলেছে (৫%+)']];
@@ -841,9 +842,15 @@ token?(show(true),catLoad().then(route,route)):show(false);
 })();
 
 /* BDT ⇄ USDT কনভার্টার — ডিফল্ট রেট ১৩১; রেট সার্ভারে সেভ হয় */
-(function(){let rate=+ls.get('pb_fx')||131;const R=$('#fxR'),U=$('#fxU'),B=$('#fxB'),D=$('#fxd');
-const upd=f=>{const r=+R.value||rate;if(f==='u'&&U.value!=='')B.value=(+U.value*r).toFixed(2);else if(f==='b'&&B.value!=='')U.value=(+B.value/r).toFixed(4)};
-$('#fx').onclick=async()=>{try{const d=await api('svc_fx');if(d&&d.rate>0){rate=d.rate;ls.set('pb_fx',rate)}}catch(_){}R.value=rate;U.value='1';B.value=(+rate).toFixed(2);$('#fxE').textContent='';D.showModal()};
-U.oninput=()=>upd('u');B.oninput=()=>upd('b');R.oninput=()=>upd('u');
-$('#fxS').onclick=async e=>{e.preventDefault();const v=+R.value;if(!(v>0)){$('#fxE').textContent='সঠিক রেট দিন';return}
-  try{const d=await api('svc_fx',{rate:v});rate=d.rate;ls.set('pb_fx',rate);toast('রেট সেভ: ১ USDT = ৳'+rate);D.close()}catch(x){$('#fxE').textContent='সেভ হয়নি — অনলাইনে আবার চেষ্টা করুন'}}})();
+(function(){let rate=+ls.get('pb_fx')||131,last='u';const R=$('#fxR'),U=$('#fxU'),B=$('#fxB'),D=$('#fxd'),E=$('#fxE');
+/* বাংলা/আরবি অঙ্ক, কমা, ৳/$ চিহ্ন, দাঁড়ি — সব সাধারণ সংখ্যা হয়ে পড়ে (type=number বাংলা কিবোর্ডে ফাঁকা হয়ে যেত) */
+const num=v=>{v=String(v==null?'':v).replace(/[০-৯]/g,c=>'০১২৩৪৫৬৭৮৯'.indexOf(c)).replace(/[٠-٩]/g,c=>'٠١٢٣٤٥٦٧٨٩'.indexOf(c)).replace(/[,،\s৳$]/g,'').replace(/[٫।]/g,'.');const n=parseFloat(v);return isFinite(n)?n:NaN};
+const upd=f=>{if(f==='r')f=last;const r=num(R.value);if(!(r>0))return;
+  if(f==='u'){const u=num(U.value);last='u';if(isFinite(u))B.value=(u*r).toFixed(2)}
+  else{const b=num(B.value);last='b';if(isFinite(b))U.value=String(+(b/r).toFixed(4))}};
+const fill=()=>{R.value=String(rate);U.value='1';B.value=(+rate).toFixed(2);last='u';E.textContent=''};
+$('#fx').onclick=async()=>{fill();D.showModal();try{const d=await api('svc_fx');if(d&&d.rate>0){rate=d.rate;ls.set('pb_fx',rate);fill()}}catch(_){}};
+U.oninput=()=>upd('u');B.oninput=()=>upd('b');R.oninput=()=>upd('r');
+const save=async()=>{const v=num(R.value);if(!(v>=1&&v<10000)){E.textContent='রেট ১ থেকে ৯৯৯৯-এর মধ্যে দিন';return}
+  try{const d=await api('svc_fx',{rate:v});if(!(d&&d.rate>0))throw 0;rate=d.rate;ls.set('pb_fx',rate);toast('রেট সেভ: ১ USDT = ৳'+rate);D.close()}catch(x){E.textContent='সেভ হয়নি — অনলাইনে আবার চেষ্টা করুন'}};
+$('#fxS').onclick=e=>{e.preventDefault();save()};D.querySelector('form').onsubmit=e=>{e.preventDefault();save()};})();
