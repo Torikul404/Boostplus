@@ -392,10 +392,18 @@ function addList(list){
     {const seen=new Set(items.filter(x=>x.done).map(x=>nk2(x.name))),dup=[];L.forEach(x=>{const k=nk2(x.name);if(seen.has(k))dup.push(x);seen.add(k)});
       if(dup.length){dup.forEach(x=>x.n.classList.add('bad'));E.textContent='একই নাম একাধিক সার্ভিসে — লাল ঘরের নাম আলাদা করুন (↻ নাম চাপুন)';dup[0].n.scrollIntoView({block:'center'});return}}
     busy=true;$('#bsOk').disabled=true;let ok=0;const er=[];
-    for(let i=0;i<L.length;i++){const x=L[i];E.textContent=`চালু হচ্ছে… ${bn(i+1)}/${bn(L.length)}`;
-      try{await api('svc_toggle',{provider:x.r.provider||cur,code:x.r.service_id,on:true,name:x.name.trim()||x.r.name,platform:x.p.value,category:x.cat.trim(),force:true});
-        cmSet(x.r.category,x.cat.trim());x.r.state='on';sel.delete(x.r);{const w=RW.get(x.r);if(w){w.cb&&(w.cb.checked=false);w.sw&&w.sw.setAttribute('aria-checked','true')}}x.done=true;x.on=false;x.ck.checked=false;x.ck.disabled=true;x.c.classList.add('done');ok++;any=true}
-      catch(e){if(authFail(e)){busy=false;return}er.push('#'+x.r.service_id+' '+e.message);x.c.classList.add('fail')}}
+    const mark=x=>{cmSet(x.r.category,x.cat.trim());x.r.state='on';sel.delete(x.r);{const w=RW.get(x.r);if(w){w.cb&&(w.cb.checked=false);w.sw&&w.sw.setAttribute('aria-checked','true')}}x.done=true;x.on=false;x.ck.checked=false;x.ck.disabled=true;x.c.classList.add('done');ok++;any=true};
+    const bad1=(x,m)=>{er.push('#'+x.r.service_id+' '+m);x.c.classList.add('fail')};
+    /* একসাথে: ৪০টা করে ভাগে ১টা সার্ভার-কলে (আগে প্রতিটার জন্য আলাদা কল) */
+    let fb=!navigator.onLine;
+    if(!fb)for(const ch of chunks(L,40)){E.textContent=`চালু হচ্ছে… ${bn(ok)}/${bn(L.length)}`;
+      try{const q=await api('svc_toggle',{on:true,force:true,many:ch.map(x=>({provider:x.r.provider||cur,code:x.r.service_id,name:x.name.trim()||x.r.name,platform:x.p.value,category:x.cat.trim()}))});
+        const R=q.results||[];ch.forEach((x,i)=>{const r=R[i]||{};if(r.ok)mark(x);else bad1(x,r.message||ERR[r.error]||r.error||'failed')})}
+      catch(e){if(authFail(e)){busy=false;return}if(e.code==='code_required'&&!ok&&!er.length){fb=true;break}ch.forEach(x=>bad1(x,e.message))}}
+    if(fb){const L2=L.filter(x=>!x.done);er.length=0;L2.forEach(x=>x.c.classList.remove('fail'));
+      for(let i=0;i<L2.length;i++){const x=L2[i];E.textContent=`চালু হচ্ছে… ${bn(i+1)}/${bn(L2.length)} (ধীর পদ্ধতি — PtServices.gs নতুনটা বসান)`;
+        try{await api('svc_toggle',{provider:x.r.provider||cur,code:x.r.service_id,on:true,name:x.name.trim()||x.r.name,platform:x.p.value,category:x.cat.trim(),force:true});mark(x)}
+        catch(e){if(authFail(e)){busy=false;return}bad1(x,e.message)}}}
     busy=false;cnt();
     if(!er.length){d.close();toast(bn(ok)+'টি সার্ভিস সাইটে চালু হয়েছে ✔')}
     else E.textContent=`${bn(ok)}টি হয়েছে, ${bn(er.length)}টি হয়নি — ${er.slice(0,3).join(' · ')}। লাল কার্ডগুলো ঠিক করে আবার চাপুন।`};
