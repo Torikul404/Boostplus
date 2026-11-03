@@ -352,6 +352,7 @@ async function loadSiteCats(pv){const lab=PLB[pv];if(!lab||CSG[lab])return;try{c
 function fillCatSel(sel,pv,val){const L=siteCatsFor(pv),k=stripEmo(val||'').toLowerCase();
   sel.innerHTML='<option value="">'+(L.length?'সাইটে থাকা ক্যাটেগরি থেকে বাছুন ▾':'এই প্ল্যাটফর্মে সাইটে ক্যাটেগরি নেই — নিজে লিখুন')+'</option>'+L.map(x=>`<option value="${esc(x.c)}">${esc(x.c)}${x.n?' ('+bn(x.n)+')':''}</option>`).join('');
   const f=L.find(x=>stripEmo(x.c).toLowerCase()===k);sel.value=f?f.c:''}
+const planName=(b,k)=>b.substring(0,112)+' · Plan '+String.fromCharCode(65+k);
 function allIdeas(r,plat){const a=nameIdeas(r,plat),out=[],seen=new Set(),add=x=>{x=x.substring(0,120);const k=x.toLowerCase();if(x&&!seen.has(k)){seen.add(k);out.push(x)}};
   a.forEach(add);
   const V=[x=>x.replace(/ \| /g,' ✦ '),x=>x.replace(/ · /g,' • '),x=>x.replace(/ \| /g,' ✦ ').replace(/ · /g,' • '),x=>x.replace(/ — /g,' ⭐ '),x=>x.replace(/ \| /g,' ❘ ').replace(/ · /g,' ‧ ')];
@@ -364,6 +365,7 @@ function addList(list){
   const nk2=s=>String(s||'').trim().toLowerCase(),taken=new Set(((CAT&&CAT.rows)||[]).map(r=>nk2(r&&r.name)).filter(Boolean));
   items.forEach(it=>{const a=allIdeas(it.r,PLB[it.plat]||''),C=nameCtx(it.r),nb=nameIdeas(it.r,PLB[it.plat]||'').length||1,st=C&&a.length?hsh(C.key)%nb%a.length:0;let nm=null;
     for(let i=0;i<a.length&&!nm;i++){const c=a[(st+i)%a.length];if(!taken.has(nk2(c)))nm=c}
+      if(!nm&&a.length){for(let k=1;k<26&&!nm;k++){const c=planName(a[st],k);if(!taken.has(nk2(c)))nm=c}}
     it.name=nm||(a.length?a[st]:it.name);taken.add(nk2(it.name))});
   const cnt=()=>{const k=items.filter(x=>x.on).length;$('#bsOk').textContent=`সবগুলো চালু করুন (${bn(k)}টি)`;$('#bsOk').disabled=!k};
   items.forEach(it=>{const c=document.createElement('div');c.className='card bsi';
@@ -376,8 +378,9 @@ function addList(list){
     n.onkeydown=cc.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();e.target.blur()}};
     ck.onchange=()=>{it.on=ck.checked;c.classList.toggle('off',!it.on);cnt()};n.oninput=()=>{it.name=n.value;n.classList.remove('bad');autoH(n)};p.onchange=()=>{it.plat=p.value;it.fill();loadSiteCats(p.value).then(it.fill)};cc.oninput=()=>{it.cat=cc.value;cc.classList.remove('bad');autoH(cc);it.fill()};
     c.querySelector('.bsn').onclick=()=>{const a=allIdeas(it.r,PLB[p.value]||'');if(!a.length)return;
-      const u=new Set(items.filter(x=>x!==it).map(x=>nk2(x.name)));for(let t=0;t<a.length;t++){it.k=(it.k+1)%a.length;if(!u.has(nk2(a[it.k])))break}
-      n.value=it.name=a[it.k];n.classList.remove('bad');autoH(n)};
+      const u=new Set(items.filter(x=>x!==it).map(x=>nk2(x.name)));let ok2=false;for(let t=0;t<a.length;t++){it.k=(it.k+1)%a.length;if(!u.has(nk2(a[it.k]))&&!taken.has(nk2(a[it.k]))){ok2=true;break}}
+      let nn=a[it.k];if(!ok2){for(let k=1;k<26;k++){const c=planName(a[it.k],k);if(!u.has(nk2(c))&&!taken.has(nk2(c))){nn=c;break}}}
+      n.value=it.name=nn;n.classList.remove('bad');autoH(n)};
     box.appendChild(c)});
   const applyAll=v=>{v=(v||'').trim();if(!v)return;items.forEach(x=>{if(x.on&&!x.done){x.cat=v;x.cc.value=v;x.cc.classList.remove('bad');autoH(x.cc);x.fill()}})};
   $('#bsAllB').onclick=()=>applyAll($('#bsAll').value);
@@ -585,7 +588,7 @@ function niceTags(t,flag,max,rf){t=nk(t);const o=[];let m;if(rf===undefined)rf=r
   ctryTags(t).forEach(x=>o.push(x));
   if(/non.?drop|no.?drop|\bnd\b|\b0\s*%\s*drop|zero.?drop|drop\W{0,4}0\s*%(?![\d-])/i.test(t))o.push('NoDrop');else if(/low.?drop|less.?drop/i.test(t))o.push('LowDrop');else if(m=t.match(/(\d{1,2})\s*%\s*drop/i)||t.match(/drop\W{0,4}[±~<≤]?\s*(?:\d{1,2}\s*-\s*)?(\d{1,2})\s*%/i))o.push(m[1]+'%Drop');
   if(rf==='no')o.push('NoRefill');
-  else if(rf==='yes'){m=t.match(/♻\s*(\d{2,3})\s*d\b/i)||t.match(/refill\D{0,12}(\d{2,3})\s*(?:d|days?)\b/i)||t.match(/(\d{2,3})\s*(?:d|days?)\W{0,3}refill/i)||t.match(/\br(\d{2,3})\b/i);
+  else if(rf==='yes'){m=t.match(/♻\uFE0F?\s*(\d{2,3})\s*(?:d|days?)\b/i)||t.match(/refill\D{0,12}(\d{2,3})\s*(?:d|days?)\b/i)||t.match(/(\d{2,3})\s*(?:d|days?)\W{0,4}(?:refill|♻|guarant|warrant)/i)||t.match(/(?:refill|♻|guarant|warrant)\w*\W{0,4}(\d{2,3})\b(?!\s*[kKmM%])/i)||t.match(/\br(\d{2,3})\b/i);
     o.push(m?'♻'+m[1]+'D':/lifetime|\blt\b|♻\s*life/i.test(t)?'♻Life':'Refill')}
   m=t.match(/(\d+(?:\.\d+)?\s*[kKmM]?(?:\s*[-–]\s*\d+(?:\.\d+)?\s*[kKmM]?)?)\s*(?:\/|per\s*)\s*(day|d|hour|hr|h)\b/i);
   if(m)o.push(m[1].replace(/\s+/g,'').toUpperCase()+(/^d/i.test(m[2])?'/D':'/Hr'));
@@ -594,7 +597,6 @@ function niceTags(t,flag,max,rf){t=nk(t);const o=[];let m;if(rf===undefined)rf=r
   else if(m=t.match(/(?:^|[\[(|,;:\s])(\d+(?:\.\d+)?\s?[-–]\s?\d+(?:\.\d+)?)\s*(min(?:ute)?s?|hours?|hrs?)\b(?!\s*(?:\/|per))/i)||t.match(/[\[(]\s*(\d+(?:\.\d+)?)\s*(min(?:ute)?s?|hours?|hrs?)\s*[\])]/i))o.push('⚡'+m[1].replace(/\s+/g,'')+(/^m/i.test(m[2])?'Min':'Hr'));
   else if(/\bfast\b/i.test(t))o.push('Fast');
   if(/\bslow(?:er)?\b/i.test(t)&&!/not\s+slow/i.test(t))o.push('Slow');
-  max=+max||0;if(max>0&&max<1e9)o.push('Max'+kfmt(max));
   return o}
 /* রিয়্যাক্ট সার্ভিস: নামে যেটা আছে (Angry/Love/Like…) সেটাই বসবে; ক্যাটেগরিতে 👍😍😡 একসাথে থাকলে সেটা ধরা হয় না */
 const RX=[['Like',/\blikes?\b|👍/i],['Love',/\blove\b|❤|😍|♥/i],['Care',/\bcare\b|🥰|🤗/i],['Haha',/\bha-?ha\b|😆|😂/i],['Wow',/\bwow\b|😮|😲/i],['Sad',/\bsad\b|😢|😭/i],['Angry',/\bangry\b|\banger\b|😡|😠/i]];
@@ -607,13 +609,13 @@ function nameCtx(r){if(!r)return null;const c0=nk(r.category),n0=nk(r.name),all=
   const flag=r.refill===undefined||r.refill===null||r.refill===''?null:/^(1|true|yes|y)$/i.test(String(r.refill));
   return{base:P&&P[0]==='Website Traffic'?'Traffic':T[0],plat:P?(P[0]==='Website Traffic'?'Website':P[0]):'',raw:niceTags(all,flag,r.max,refState(n0,c0,flag)).concat(tgtTag(n0,P,T)),key:r.code||r.service_id||n0}}
 /* সুন্দর নাম: কাঁচা ট্যাগ (HQ, NoDrop, ♻30D) নয় — পড়ার মতো শব্দ ('Real & High Quality', 'Non-Drop', '30 Days Refill') + প্ল্যাটফর্ম + ৫টা ভিন্ন সাজ */
-const TW={'HQ Real':'Real HQ','HQ':'HQ','Premium':'Premium','Real':'Real','Mix':'Mixed','LowQ':'Budget','NoDrop':'Non-Drop','LowDrop':'Low Drop','NoRefill':'No Refill','Refill':'Refill','Fast':'Fast','Slow':'Slow','⚡Instant':'Instant'};
-function tagWord(t){if(TW[t])return TW[t];let m;if(m=t.match(/^(\d+)%Drop$/))return m[1]+'% Drop';if(m=t.match(/^♻(\d+)D$/))return m[1]+' Days Refill';if(t==='♻Life')return 'Lifetime Refill';if(m=t.match(/^⚡(.+)Min$/))return m[1]+' Min Start';if(m=t.match(/^⚡(.+)Hr$/))return m[1]+' Hr Start';if(m=t.match(/^(.+)\/D$/))return m[1]+'/Day';if(m=t.match(/^(.+)\/Hr$/))return m[1]+'/Hour';if(m=t.match(/^Max\s*(.+)$/))return 'Max '+m[1];return t}
+const TW={'HQ Real':'Real HQ','HQ':'HQ','Premium':'Premium','Real':'Real','Mix':'Mixed','LowQ':'Budget','NoDrop':'Non-Drop','LowDrop':'Low Drop','Worldwide':'Global','NoRefill':'No Refill','Refill':'Refill','Fast':'Fast','Slow':'Slow','⚡Instant':'Instant'};
+function tagWord(t){if(TW[t])return TW[t];let m;if(m=t.match(/^(\d+)%Drop$/))return m[1]+'% Drop';if(m=t.match(/^♻(\d+)D$/))return m[1]+'D Refill';if(t==='♻Life')return 'Lifetime Refill';if(m=t.match(/^⚡(.+)Min$/))return m[1]+' Min Start';if(m=t.match(/^⚡(.+)Hr$/))return m[1]+' Hr Start';if(m=t.match(/^(.+)\/D$/))return m[1]+'/Day';if(m=t.match(/^(.+)\/Hr$/))return m[1]+'/Hour';if(m=t.match(/^Max\s*(.+)$/))return 'Max '+m[1];return t}
 function nameIdeas(r,plat,em){const C=nameCtx(r);if(!C)return[];if(em===undefined)em=emoOn();
   const W=t=>{const x=TAGE.find(a=>a[0].test(t)),f=FLAG[t];return (em&&f?f+' ':'')+tagWord(t)};
   const isQ=t=>/^(HQ|Premium|Real|Mix|LowQ|Profile|Page$)/.test(t),isD=t=>/Drop$/.test(t),pl=plat||C.plat;
   const isR=t=>/^(♻|Refill|NoRefill)/.test(t);let qa=C.raw.filter(isQ).map(W),ca=C.raw.filter(t=>FLAG[t]).map(W),dr=C.raw.filter(isD).map(W),xr=C.raw.filter(t=>isR(t)&&!isQ(t)&&!FLAG[t]&&!isD(t)).map(W),xl=C.raw.filter(t=>!isR(t)&&!isQ(t)&&!FLAG[t]&&!isD(t)).map(W);
-  const head=(em&&TE[C.base]?TE[C.base]+' ':'')+(pl?(pl.toLowerCase().indexOf(C.base.toLowerCase())>=0?pl:pl+' '+C.base):C.base),lim=em?96:84;
+  const head=(em&&TE[C.base]?TE[C.base]+' ':'')+(pl?(pl.toLowerCase().indexOf(C.base.toLowerCase())>=0?pl:pl+' '+C.base):C.base),lim=em?72:64;
   const S=[
    (q,c,d,x)=>head+(q.length?' — '+q.join(' · '):'')+([].concat(c,d,x).length?' | '+[].concat(c,d,x).join(' · '):''),
    (q,c,d,x)=>head+(q.length?(' ['+q.join(' · ')+']'):'')+([].concat(c,d,x).length?' '+(em?'✦':'|')+' '+[].concat(c,d,x).join(' '+(em?'✦':'|')+' '):''),
