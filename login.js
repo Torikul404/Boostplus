@@ -49,7 +49,7 @@
     $("lgTabRegister").setAttribute("aria-selected", String(name === "register"));
     $("lgTitle").textContent = name === "register" ? "নতুন অ্যাকাউন্ট খুলুন" : (name === "forgot" ? "পিন রিসেট" : "অ্যাকাউন্টে লগইন");
     var sub = $("lgSub");
-    if (sub) sub.textContent = name === "register" ? "মোবাইল নম্বর আর ৪–৬ ডিজিটের একটি পিন দিয়ে অ্যাকাউন্ট খুলুন। এই পিনই আপনার লগইন পাসওয়ার্ড।" : (name === "forgot" ? "মোবাইল নম্বর দিন; অ্যাডমিনের দেওয়া কোড ও নতুন পিন দিয়ে পিন বদলান।" : "মোবাইল নম্বর ও পিন দিয়ে আপনার অ্যাকাউন্টে প্রবেশ করুন।");
+    if (sub) sub.textContent = name === "register" ? "User name, মোবাইল নম্বর আর ৪–৬ ডিজিটের পাসওয়ার্ড (পিন) দিয়ে অ্যাকাউন্ট খুলুন।" : (name === "forgot" ? "মোবাইল নম্বর দিন; অ্যাডমিনের দেওয়া কোড ও নতুন পিন দিয়ে পিন বদলান।" : "মোবাইল নম্বর ও পিন দিয়ে আপনার অ্যাকাউন্টে প্রবেশ করুন।");
     msg("", "");
   }
   $("lgTabLogin").addEventListener("click", function () { show("login"); });
@@ -63,13 +63,12 @@
 
   // ---- লগইন ----
   $("lgBtnLogin").addEventListener("click", async function () {
-    var name = val("lgLoginName"), mobile = val("lgLoginMobile"), pin = val("lgLoginPin");
-    if (!name || !mobile || !pin) return msg("info", "নাম, মোবাইল নম্বর ও পিন দিন");
-    if (!nameOk(name)) return msg("info", "নাম কমপক্ষে ২ অক্ষরের হতে হবে");
+    var mobile = val("lgLoginMobile"), pin = val("lgLoginPin");
+    if (!mobile || !pin) return msg("info", "মোবাইল নম্বর ও পিন দিন");
     if (!mobileOk(mobile)) return msg("info", "মোবাইল নম্বর ১১ ডিজিটের হতে হবে (01XXXXXXXXX)");
     await busy($("lgBtnLogin"), "লগইন হচ্ছে…", async function () {
       try {
-        var d = await post({ action: "wallet_auth", sub: "login", name: name, mobile: mobile, pin: pin });
+        var d = await post({ action: "wallet_auth", sub: "login", mobile: mobile, pin: pin });
         if (!d || !d.ok) return msg("error", (d && d.message) || (d && d.error) || "লগইন ব্যর্থ");
         done(d, mobile, "লগইন সফল");
       } catch (e) { msg("error", netErr(e)); }
@@ -79,8 +78,8 @@
   // ---- রেজিস্টার ----
   $("lgBtnRegister").addEventListener("click", async function () {
     var name = val("lgRegName"), mobile = val("lgRegMobile"), pin = val("lgRegPin");
-    if (!name || !mobile || !pin) return msg("info", "নাম, মোবাইল নম্বর ও পিন দিন");
-    if (!nameOk(name)) return msg("info", "নাম কমপক্ষে ২ অক্ষরের হতে হবে");
+    if (!name || !mobile || !pin) return msg("info", "User name, মোবাইল নম্বর ও পাসওয়ার্ড দিন");
+    if (!nameOk(name)) return msg("info", "User name কমপক্ষে ২ অক্ষরের হতে হবে");
     if (!mobileOk(mobile)) return msg("info", "মোবাইল নম্বর ১১ ডিজিটের হতে হবে (01XXXXXXXXX)");
     if (!pinOk(pin)) return msg("info", "পিন ৪–৬ ডিজিটের সংখ্যা হতে হবে");
     await busy($("lgBtnRegister"), "অপেক্ষা করুন…", async function () {
@@ -123,7 +122,7 @@
   });
 
   // Enter চাপলে সংশ্লিষ্ট বাটন
-  [["lgLoginName", "lgBtnLogin"], ["lgRegName", "lgBtnRegister"], ["lgLoginMobile", "lgBtnLogin"], ["lgLoginPin", "lgBtnLogin"], ["lgRegMobile", "lgBtnRegister"], ["lgRegPin", "lgBtnRegister"], ["lgForgotMobile", "lgBtnSendCode"], ["lgCode", "lgBtnReset"], ["lgNewPin", "lgBtnReset"]].forEach(function (x) {
+  [["lgRegName", "lgBtnRegister"], ["lgLoginMobile", "lgBtnLogin"], ["lgLoginPin", "lgBtnLogin"], ["lgRegMobile", "lgBtnRegister"], ["lgRegPin", "lgBtnRegister"], ["lgForgotMobile", "lgBtnSendCode"], ["lgCode", "lgBtnReset"], ["lgNewPin", "lgBtnReset"]].forEach(function (x) {
     var i = $(x[0]); if (i) i.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); $(x[1]).click(); } });
   });
 
