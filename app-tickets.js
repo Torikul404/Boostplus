@@ -244,7 +244,7 @@
     const rawLs = (k) => { try { return localStorage.getItem(k) || ''; } catch (_) { return ''; } };
     const sessTok = rawLs('pb_wallet_token'), sessMobile = rawLs('pb_wallet_mobile').replace(/\D/g, '');
     const actSub = ACT_SUB[subcategory];
-    const directAct = category === 'Orders' && actSub && sessTok && sessMobile === mobile && knownOrder &&
+    const directAct = category === 'Orders' && actSub && sessTok && knownOrder &&
       String(knownOrder.order_id).toUpperCase() === orderId && flagState(knownOrder, subcategory) === 'ok';
     if (directAct && actSub === 'cancel' && knownOrder.can_cancel === 'instant' &&
         !window.confirm('অর্ডার ' + orderId + ' এখনই বাতিল হবে এবং টাকা ওয়ালেটে ফেরত যাবে। চালিয়ে যাবেন?')) return;

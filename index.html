@@ -659,11 +659,11 @@
           <div id="walPanelLogin" style="display:grid;gap:10px;">
             <div style="position:relative;">
               <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">📱</span>
-              <input id="walLoginMobile" type="tel" inputmode="numeric" maxlength="11" placeholder="মোবাইল 01XXXXXXXXX" style="width:100%;padding:12px 12px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
+              <input id="walLoginMobile" type="text" maxlength="30" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="User name" style="width:100%;padding:12px 12px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
             </div>
             <div style="position:relative;">
               <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔒</span>
-              <input id="walLoginPin" type="password" inputmode="numeric" maxlength="6" placeholder="পিন (৪–৬ ডিজিট)" style="width:100%;padding:12px 40px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
+              <input id="walLoginPin" type="password" maxlength="32" placeholder="পাসওয়ার্ড" style="width:100%;padding:12px 40px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
               <button type="button" id="walToggleLoginPin" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:15px;cursor:pointer;padding:4px;">👁</button>
             </div>
             <button type="button" id="walBtnLogin" class="track-submit" style="width:100%;">লগইন</button>
@@ -674,11 +674,11 @@
           <div id="walPanelRegister" style="display:none;gap:10px;">
             <div style="position:relative;">
               <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">📱</span>
-              <input id="walRegMobile" type="tel" inputmode="numeric" maxlength="11" placeholder="মোবাইল 01XXXXXXXXX" style="width:100%;padding:12px 12px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
+              <input id="walRegMobile" type="text" maxlength="30" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="User name" style="width:100%;padding:12px 12px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
             </div>
             <div style="position:relative;">
               <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔒</span>
-              <input id="walRegPin" type="password" inputmode="numeric" maxlength="6" placeholder="নতুন পিন (৪–৬ ডিজিট)" style="width:100%;padding:12px 40px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
+              <input id="walRegPin" type="password" maxlength="32" placeholder="নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" style="width:100%;padding:12px 40px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
               <button type="button" id="walToggleRegPin" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:15px;cursor:pointer;padding:4px;">👁</button>
             </div>
             <button type="button" id="walBtnRegister" class="track-submit" style="width:100%;">রেজিস্টার</button>
@@ -689,19 +689,19 @@
             <div class="muted" style="font-size:12px;text-align:center;">কোড মোবাইলে যাবে না — এডমিন যাচাই করে আপনাকে ৬ ডিজিটের কোড দেবেন (WhatsApp/সাপোর্টে)।</div>
             <div style="position:relative;">
               <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">📱</span>
-              <input id="walForgotMobile" type="tel" inputmode="numeric" maxlength="11" placeholder="মোবাইল 01XXXXXXXXX" style="width:100%;padding:12px 12px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
+              <input id="walForgotMobile" type="text" maxlength="30" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="মোবাইল নম্বর বা User name" style="width:100%;padding:12px 12px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
             </div>
             <button type="button" id="walBtnForgotSend" class="track-submit" style="width:100%;">এডমিনের কাছে কোড চান</button>
             <div id="walForgotStep2" style="display:none;gap:10px;">
               <input id="walForgotCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="এডমিনের দেওয়া ৬ ডিজিটের কোড" style="width:100%;padding:12px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;letter-spacing:4px;text-align:center;" />
               <div style="position:relative;">
               <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔒</span>
-              <input id="walForgotNewPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="নতুন পিন (৪–৬ ডিজিট)" style="width:100%;padding:12px 40px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
+              <input id="walForgotNewPin" type="password" maxlength="32" autocomplete="off" placeholder="নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" style="width:100%;padding:12px 40px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
               <button type="button" id="walToggleForgotNew" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:15px;cursor:pointer;padding:4px;">👁</button>
             </div>
               <div style="position:relative;">
               <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔒</span>
-              <input id="walForgotConfirmPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="নতুন পিন আবার দিন" style="width:100%;padding:12px 40px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
+              <input id="walForgotConfirmPin" type="password" maxlength="32" autocomplete="off" placeholder="নতুন পিন আবার দিন" style="width:100%;padding:12px 40px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
               <button type="button" id="walToggleForgotConfirm" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:15px;cursor:pointer;padding:4px;">👁</button>
             </div>
               <button type="button" id="walBtnForgotReset" class="track-submit" style="width:100%;">নতুন পিন সেট করুন</button>
@@ -881,19 +881,19 @@
           <label class="af-label" for="walOldPin">পুরনো পিন</label>
           <div class="af-input-wrap">
             <span class="af-input-prefix">🔒</span>
-            <input id="walOldPin" class="af-input" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="পুরনো পিন" style="padding-right:44px;" />
+            <input id="walOldPin" class="af-input" type="password" maxlength="32" autocomplete="off" placeholder="পুরনো পিন" style="padding-right:44px;" />
             <button type="button" id="walToggleOldPin" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:16px;cursor:pointer;">👁</button>
           </div>
-          <label class="af-label" for="walNewPin">নতুন পিন (৪–৬ ডিজিট)</label>
+          <label class="af-label" for="walNewPin">নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
           <div class="af-input-wrap">
             <span class="af-input-prefix">🔒</span>
-            <input id="walNewPin" class="af-input" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="নতুন পিন (৪–৬ ডিজিট)" style="padding-right:44px;" />
+            <input id="walNewPin" class="af-input" type="password" maxlength="32" autocomplete="off" placeholder="নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" style="padding-right:44px;" />
             <button type="button" id="walToggleNewPin" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:16px;cursor:pointer;">👁</button>
           </div>
           <label class="af-label" for="walConfirmPin">নতুন পিন আবার দিন</label>
           <div class="af-input-wrap">
             <span class="af-input-prefix">🔒</span>
-            <input id="walConfirmPin" class="af-input" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="নতুন পিন আবার দিন" style="padding-right:44px;" />
+            <input id="walConfirmPin" class="af-input" type="password" maxlength="32" autocomplete="off" placeholder="নতুন পিন আবার দিন" style="padding-right:44px;" />
             <button type="button" id="walToggleConfirmPin" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:16px;cursor:pointer;">👁</button>
           </div>
             <button type="button" id="walBtnChangePin" class="af-pay-btn">পিন পরিবর্তন করুন</button>
@@ -1161,7 +1161,7 @@
   <section class="hiw-section" id="howItWorks">
     <h2 class="section-title">কীভাবে অর্ডার করবেন</h2>
     <div class="hiw-grid">
-      <div class="hiw-step"><div class="hiw-num">১</div><h3>লগইন করুন</h3><p>মোবাইল নম্বর ও পিন দিয়ে অ্যাকাউন্ট খুলুন বা লগইন করুন।</p></div>
+      <div class="hiw-step"><div class="hiw-num">১</div><h3>লগইন করুন</h3><p>User name ও পাসওয়ার্ড দিয়ে অ্যাকাউন্ট খুলুন বা লগইন করুন।</p></div>
       <div class="hiw-step"><div class="hiw-num">২</div><h3>ওয়ালেটে টাকা যোগ</h3><p>bKash, Nagad বা Rocket দিয়ে ওয়ালেটে টপ-আপ করুন।</p></div>
       <div class="hiw-step"><div class="hiw-num">৩</div><h3>সার্ভিস বেছে অর্ডার</h3><p>সার্ভিস বেছে লিংক ও পরিমাণ দিয়ে অর্ডার করুন।</p></div>
       <div class="hiw-step"><div class="hiw-num">৪</div><h3>ট্র্যাক করুন</h3><p>অর্ডার ইতিহাসে স্ট্যাটাস দেখুন, দরকারে Refill নিন।</p></div>
@@ -1316,7 +1316,7 @@
           <section class="pb-acc-sec" data-sec="password">
             <h3><button type="button" class="pb-acc-head" aria-expanded="true" aria-controls="accBodyPass">পাসওয়ার্ড (PIN)</button></h3>
             <div class="pb-acc-body" id="accBodyPass">
-              <p>আপনার লগইন PIN ৪–৬ সংখ্যার। বদলাতে পুরনো PIN লাগবে।</p>
+              <p>আপনার লগইন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে। বদলাতে পুরনোটা লাগবে।</p>
               <button type="button" class="pb-btn" id="accPinBtn">PIN বদলান</button>
             </div>
           </section>
@@ -1367,10 +1367,10 @@
   <script src="app-proof-upload.js?v=20261026r"></script>
   <script src="app-misc.js?v=20261026r"></script>
   <script src="app-sidebar.js?v=20261029v"></script>
-  <script src="app-tickets.js?v=20261029d"></script>
-  <script src="app-wallet.js?v=20261030a"></script>
+  <script src="app-tickets.js?v=20261106a"></script>
+  <script src="app-wallet.js?v=20261106a"></script>
   <script src="app-orders.js?v=20261030a"></script>
-<script src="app-gate.js?v=20261026r"></script>
+<script src="app-gate.js?v=20261106a"></script>
   <script src="app-popup.js?v=20261026r"></script>
   <script src="app-bottomnav.js?v=20261030b"></script>
   <script src="app-account.js?v=20261030a"></script>

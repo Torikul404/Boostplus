@@ -105,7 +105,8 @@
 
   function val(id) { return ((document.getElementById(id) || {}).value || "").trim(); }
   function clearVals(ids) { ids.forEach(function (id) { const el = document.getElementById(id); if (el) el.value = ""; }); }
-  function pinOk(p) { return /^[0-9]{4,6}$/.test(p); }
+  function pinOk(p) { return p.length >= 4 && p.length <= 32; }          // পুরনো পিন/পাসওয়ার্ড (ঢিলা চেক)
+  function pwNewOk(p) { return p.length >= 6 && p.length <= 32; }      // নতুন পাসওয়ার্ড: কমপক্ষে ৬ অক্ষর
 
   function getToken() { return localStorage.getItem(LS_TOKEN) || ""; }
   function getMobile() { return localStorage.getItem(LS_MOBILE) || ""; }
@@ -376,8 +377,8 @@
     const oldPin = val("walOldPin");
     const newPin = val("walNewPin");
     const confirm = val("walConfirmPin");
-    if (!pinOk(oldPin)) return toast("info", "পুরনো পিন ৪–৬ ডিজিটের সংখ্যা দিন");
-    if (!pinOk(newPin)) return toast("info", "নতুন পিন ৪–৬ ডিজিটের সংখ্যা হতে হবে");
+    if (!pinOk(oldPin)) return toast("info", "পুরনো পাসওয়ার্ড/পিন দিন");
+    if (!pwNewOk(newPin)) return toast("info", "নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
     if (newPin !== confirm) return toast("error", "নতুন পিন ও কনফার্ম পিন মিলছে না");
     if (newPin === oldPin) return toast("info", "নতুন পিন পুরনো পিনের মতো হতে পারবে না");
     await withLoading(document.getElementById("walBtnChangePin"), "পরিবর্তন হচ্ছে…", async function () {
@@ -426,7 +427,7 @@
 
   async function doForgotSend() {
     const mobile = val("walForgotMobile");
-    if (!/^01[0-9]{9}$/.test(mobile)) return toast("info", "সঠিক মোবাইল নম্বর দিন (01XXXXXXXXX)");
+    if (!mobile) return toast("info", "মোবাইল নম্বর বা User name দিন");
     const btn = document.getElementById("walBtnForgotSend");
     let sent = false;
     await withLoading(btn, "অনুরোধ পাঠানো হচ্ছে…", async function () {
@@ -455,7 +456,7 @@
     const newPin = val("walForgotNewPin");
     const confirm = val("walForgotConfirmPin");
     if (!/^[0-9]{6}$/.test(code)) return toast("info", "এডমিনের দেওয়া ৬ ডিজিটের কোড দিন");
-    if (!pinOk(newPin)) return toast("info", "নতুন পিন ৪–৬ ডিজিটের সংখ্যা হতে হবে");
+    if (!pwNewOk(newPin)) return toast("info", "নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
     if (newPin !== confirm) return toast("error", "নতুন পিন ও কনফার্ম পিন মিলছে না");
     await withLoading(document.getElementById("walBtnForgotReset"), "সেট হচ্ছে…", async function () {
       try {

@@ -25,7 +25,7 @@
 <main class="lg-wrap" id="main" tabindex="-1">
   <section class="lg-card" aria-labelledby="lgTitle">
     <h1 id="lgTitle">অ্যাকাউন্টে লগইন</h1>
-    <p class="lg-sub" id="lgSub">মোবাইল নম্বর ও পিন দিয়ে আপনার অ্যাকাউন্টে প্রবেশ করুন।</p>
+    <p class="lg-sub" id="lgSub">User name ও পাসওয়ার্ড দিয়ে আপনার অ্যাকাউন্টে প্রবেশ করুন।</p>
     <p class="lg-svc" id="lgSvc" hidden></p>
 
     <div class="lg-tabs" id="lgTabs" role="tablist">
@@ -34,34 +34,32 @@
     </div>
 
     <div class="lg-panel" id="lgPanel-login">
-      <div class="lg-field"><label for="lgLoginMobile">মোবাইল নম্বর</label>
-        <input class="lg-in" id="lgLoginMobile" type="tel" inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX" autocomplete="username" /></div>
-      <div class="lg-field"><label for="lgLoginPin">পিন (৪–৬ ডিজিট)</label>
-        <div class="lg-in-wrap"><input class="lg-in" id="lgLoginPin" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" /><button type="button" class="lg-eye" id="lgEyeLogin" aria-label="পিন দেখান/লুকান">👁</button></div></div>
+      <div class="lg-field"><label for="lgLoginMobile">User name / মোবাইল নম্বর (পুরনো ইউজার)</label>
+        <input class="lg-in" id="lgLoginMobile" type="text" maxlength="30" placeholder="যেমন: rahim_ahmed বা 01XXXXXXXXX" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" /></div>
+      <div class="lg-field"><label for="lgLoginPin">পাসওয়ার্ড</label>
+        <div class="lg-in-wrap"><input class="lg-in" id="lgLoginPin" type="password" maxlength="32" autocomplete="current-password" /><button type="button" class="lg-eye" id="lgEyeLogin" aria-label="পাসওয়ার্ড দেখান/লুকান">👁</button></div></div>
       <button type="button" class="lg-btn" id="lgBtnLogin">লগইন</button>
-      <button type="button" class="lg-link" id="lgForgotLink">পিন ভুলে গেছেন?</button>
+      <button type="button" class="lg-link" id="lgForgotLink">পাসওয়ার্ড ভুলে গেছেন?</button>
     </div>
 
     <div class="lg-panel" id="lgPanel-register" hidden>
-      <div class="lg-field"><label for="lgRegName">User name</label>
-        <input class="lg-in" id="lgRegName" type="text" maxlength="40" placeholder="যেমন: rahim_ahmed" autocomplete="nickname" /></div>
-      <div class="lg-field"><label for="lgRegMobile">মোবাইল নম্বর</label>
-        <input class="lg-in" id="lgRegMobile" type="tel" inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX" autocomplete="username" /></div>
-      <div class="lg-field"><label for="lgRegPin">পাসওয়ার্ড (৪–৬ ডিজিট পিন)</label>
-        <div class="lg-in-wrap"><input class="lg-in" id="lgRegPin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" /><button type="button" class="lg-eye" id="lgEyeReg" aria-label="পিন দেখান/লুকান">👁</button></div></div>
+      <div class="lg-field"><label for="lgRegName">User name (নাম বা মোবাইল নম্বর)</label>
+        <input class="lg-in" id="lgRegName" type="text" maxlength="30" placeholder="যেমন: rahim_ahmed বা 01XXXXXXXXX" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" /></div>
+      <div class="lg-field"><label for="lgRegPin">পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
+        <div class="lg-in-wrap"><input class="lg-in" id="lgRegPin" type="password" maxlength="32" autocomplete="new-password" /><button type="button" class="lg-eye" id="lgEyeReg" aria-label="পিন দেখান/লুকান">👁</button></div></div>
       <button type="button" class="lg-btn" id="lgBtnRegister">অ্যাকাউন্ট খুলুন</button>
     </div>
 
     <div class="lg-panel" id="lgPanel-forgot" hidden>
-      <div class="lg-field"><label for="lgForgotMobile">মোবাইল নম্বর</label>
-        <input class="lg-in" id="lgForgotMobile" type="tel" inputmode="numeric" maxlength="11" placeholder="01XXXXXXXXX" /></div>
+      <div class="lg-field"><label for="lgForgotMobile">মোবাইল নম্বর (পুরনো ইউজার) / User name (নতুন ইউজার)</label>
+        <input class="lg-in" id="lgForgotMobile" type="text" maxlength="30" placeholder="যেমন: rahim_ahmed বা 01XXXXXXXXX" autocapitalize="none" autocorrect="off" spellcheck="false" /></div>
       <button type="button" class="lg-btn" id="lgBtnSendCode">কোড পাঠান</button>
       <div class="lg-panel" id="lgResetBox" hidden>
         <div class="lg-field"><label for="lgCode">কোড</label>
           <input class="lg-in" id="lgCode" type="tel" inputmode="numeric" autocomplete="one-time-code" /></div>
-        <div class="lg-field"><label for="lgNewPin">নতুন পিন (৪–৬ ডিজিট)</label>
-          <div class="lg-in-wrap"><input class="lg-in" id="lgNewPin" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" /><button type="button" class="lg-eye" id="lgEyeNew" aria-label="পিন দেখান/লুকান">👁</button></div></div>
-        <button type="button" class="lg-btn" id="lgBtnReset">পিন বদলান</button>
+        <div class="lg-field"><label for="lgNewPin">নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
+          <div class="lg-in-wrap"><input class="lg-in" id="lgNewPin" type="password" maxlength="32" autocomplete="new-password" /><button type="button" class="lg-eye" id="lgEyeNew" aria-label="পাসওয়ার্ড দেখান/লুকান">👁</button></div></div>
+        <button type="button" class="lg-btn" id="lgBtnReset">পাসওয়ার্ড বদলান</button>
       </div>
       <button type="button" class="lg-link" id="lgBackLogin">← লগইনে ফিরুন</button>
     </div>
