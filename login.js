@@ -70,7 +70,7 @@
     if (!mobile || !pin) return msg("info", "User name ও পাসওয়ার্ড দিন");
     await busy($("lgBtnLogin"), "লগইন হচ্ছে…", async function () {
       try {
-        var d = await post({ action: "wallet_auth", sub: "login", username: mobile, pin: pin });
+        var d = await post({ action: "wallet_auth", sub: "login", mobile: mobile, username: mobile, name: mobile, pin: pin });
         if (!d || !d.ok) return msg("error", (d && d.message) || (d && d.error) || "লগইন ব্যর্থ");
         done(d, mobile, "লগইন সফল");
       } catch (e) { msg("error", netErr(e)); }
@@ -85,7 +85,7 @@
     if (!pwOk(pin)) return msg("info", "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
     await busy($("lgBtnRegister"), "অপেক্ষা করুন…", async function () {
       try {
-        var d = await post({ action: "wallet_auth", sub: "register", username: name, pin: pin });
+        var d = await post({ action: "wallet_auth", sub: "register", mobile: name, username: name, name: name, pin: pin });
         if (!d || !d.ok) {
           if (d && (d.error === "exists" || (d.message && d.message.indexOf("আগেই") !== -1))) return msg("error", "এই User name আগেই নেওয়া হয়েছে। অন্য User name দিন, অথবা আপনার হলে লগইন করুন।");
           return msg("error", (d && d.message) || (d && d.error) || "রেজিস্টার ব্যর্থ");
@@ -101,7 +101,7 @@
     if (!mobile) return msg("info", "মোবাইল নম্বর বা User name দিন");
     await busy($("lgBtnSendCode"), "পাঠানো হচ্ছে…", async function () {
       try {
-        var d = await post({ action: "wallet_auth", sub: "forgot_pin_request", username: mobile });
+        var d = await post({ action: "wallet_auth", sub: "forgot_pin_request", mobile: mobile, username: mobile, name: mobile });
         if (!d || !d.ok) return msg("error", (d && d.message) || (d && d.error) || "কোড পাঠানো যায়নি");
         $("lgResetBox").hidden = false;
         msg("success", d.message || "কোড পাঠানো হয়েছে। নিচে কোড ও নতুন পাসওয়ার্ড দিন।");
@@ -115,7 +115,7 @@
     if (!pwOk(np)) return msg("info", "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
     await busy($("lgBtnReset"), "অপেক্ষা করুন…", async function () {
       try {
-        var d = await post({ action: "wallet_auth", sub: "forgot_pin_reset", username: mobile, code: code, new_pin: np });
+        var d = await post({ action: "wallet_auth", sub: "forgot_pin_reset", mobile: mobile, username: mobile, name: mobile, code: code, new_pin: np });
         if (!d || !d.ok) return msg("error", (d && d.message) || (d && d.error) || "রিসেট ব্যর্থ");
         $("lgLoginMobile").value = mobile; $("lgLoginPin").value = ""; show("login");
         msg("success", "পাসওয়ার্ড বদলানো হয়েছে। নতুন পাসওয়ার্ড দিয়ে লগইন করুন।");
