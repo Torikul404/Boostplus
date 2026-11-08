@@ -347,14 +347,16 @@ function bulkBar(){let b=$('#bulk');if(!b){b=document.createElement('div');b.id=
   b.querySelectorAll('[data-b]').forEach(x=>x.onclick=()=>bulk(x.dataset.b))}
 /* সাইটে থাকা ক্যাটেগরি: সার্ভারের প্রস্তাব + ফোনের কপি + সাইটের তালিকা মিলিয়ে, প্ল্যাটফর্ম ধরে */
 const autoH=e=>{if(!e)return;e.style.height='auto';e.style.height=(e.scrollHeight+2)+'px'};
-function siteCatsFor(pv){const lab=PLB[pv];if(!lab)return[];const m=new Map(),add=(c,n)=>{if(!c)return;const k=stripEmo(c).toLowerCase();const o=m.get(k);if(o)o.n=Math.max(o.n,n||0);else m.set(k,{c,n:n||0})};
-  ((CSG[lab]&&CSG[lab].site)||[]).forEach(x=>add(x.c,x.n));
-  const cnt={};((CAT&&CAT.rows)||[]).forEach(r=>{if(r.category&&String(r.platform_label||'').toLowerCase()===lab.toLowerCase())cnt[r.category]=(cnt[r.category]||0)+1});Object.keys(cnt).forEach(c=>add(c,cnt[c]));
-  (window._sc||[]).filter(c=>platMatch(lab,c)).forEach(c=>add(c,0));
-  return [...m.values()].sort((a,b)=>b.n-a.n||a.c.localeCompare(b.c))}
+const catLbl=c=>String(c||'').replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u200D\u20E3]/gu,'').replace(/\s+/g,' ').trim()||String(c||'');
+function siteCatsFor(pv){const lab=PLB[pv];if(!lab)return[];const m=new Map();
+  ((CAT&&CAT.rows)||[]).forEach(r=>{if(!r.category||String(r.platform_label||'').toLowerCase()!==lab.toLowerCase())return;const k=stripEmo(r.category).toLowerCase(),o=m.get(k);if(o)o.n++;else m.set(k,{c:r.category,n:1})});
+  const ti=c=>{const i=TORD.indexOf(typeOf(c));return i<0?99:i};
+  return [...m.values()].sort((a,b)=>ti(a.c)-ti(b.c)||catLbl(a.c).localeCompare(catLbl(b.c)))}
+const catOpt=x=>`<option value="${esc(x.c)}">${esc(catLbl(x.c))}${x.n?' ('+bn(x.n)+')':''}</option>`,
+  catGroups=L=>{const g={};L.forEach(x=>{const k=typeOf(x.c);(g[k]=g[k]||[]).push(x)});return TORD.filter(k=>g[k]).map(k=>`<optgroup label="${esc(TLBL[k])}">${g[k].map(catOpt).join('')}</optgroup>`).join('')};
 async function loadSiteCats(pv){const lab=PLB[pv];if(!lab||CSG[lab])return;try{const d=await api('svc_cat_suggest',{label:lab});CSG[lab]={site:d.site||[],providers:d.providers||[]}}catch(e){}}
 function fillCatSel(sel,pv,val){const L=siteCatsFor(pv),k=stripEmo(val||'').toLowerCase();
-  sel.innerHTML='<option value="">'+(L.length?'সাইটে থাকা ক্যাটেগরি থেকে বাছুন ▾':'এই প্ল্যাটফর্মে সাইটে ক্যাটেগরি নেই — নিজে লিখুন')+'</option>'+L.map(x=>`<option value="${esc(x.c)}">${esc(x.c)}${x.n?' ('+bn(x.n)+')':''}</option>`).join('');
+  sel.innerHTML='<option value="">'+(L.length?'সাইটে থাকা ক্যাটেগরি থেকে বাছুন ▾':'এই প্ল্যাটফর্মে সাইটে ক্যাটেগরি নেই — নিজে লিখুন')+'</option>'+catGroups(L);
   const f=L.find(x=>stripEmo(x.c).toLowerCase()===k);sel.value=f?f.c:''}
 const planName=(b,k)=>b.substring(0,112)+' · Plan '+String.fromCharCode(65+k);
 function allIdeas(r,plat){const a=nameIdeas(r,plat),out=[],seen=new Set(),add=x=>{x=x.substring(0,120);const k=x.toLowerCase();if(x&&!seen.has(k)){seen.add(k);out.push(x)}};
@@ -388,7 +390,7 @@ function addList(list){
     box.appendChild(c)});
   const applyAll=v=>{v=(v||'').trim();if(!v)return;items.forEach(x=>{if(x.on&&!x.done){x.cat=v;x.cc.value=v;x.cc.classList.remove('bad');autoH(x.cc);x.fill()}})};
   $('#bsAllB').onclick=()=>applyAll($('#bsAll').value);
-  const as=$('#bsAllS'),plats=[...new Set(items.map(x=>x.plat))],drawAll=()=>{as.innerHTML='<option value="">সাইটে থাকা ক্যাটেগরি থেকে বাছুন ▾</option>'+plats.map(pv=>{const L=siteCatsFor(pv);return L.length?`<optgroup label="${esc(PLB[pv]||pv)}">${L.map(x=>`<option value="${esc(x.c)}">${esc(x.c)}${x.n?' ('+bn(x.n)+')':''}</option>`).join('')}</optgroup>`:''}).join('')};
+  const as=$('#bsAllS'),plats=[...new Set(items.map(x=>x.plat))],drawAll=()=>{as.innerHTML='<option value="">সাইটে থাকা ক্যাটেগরি থেকে বাছুন ▾</option>'+plats.map(pv=>{const L=siteCatsFor(pv);return L.length?`<optgroup label="${esc(PLB[pv]||pv)}">${L.map(catOpt).join('')}</optgroup>`:''}).join('')};
   drawAll();Promise.all(plats.map(loadSiteCats)).then(drawAll);
   as.onchange=()=>{if(!as.value)return;$('#bsAll').value=as.value;applyAll(as.value);as.value=''};
   items.forEach(x=>loadSiteCats(x.p.value).then(x.fill));
@@ -814,14 +816,11 @@ function catSuggest(inp,sel,box,seed){let L=null,tok=0,typed=false;
   const draw=()=>{const lab=PLB[sel.value],q=typed?stripEmo(inp.value).toLowerCase():'';
     if(!lab){box.innerHTML='<p class="sub">প্ল্যাটফর্ম বাছলে ওই প্ল্যাটফর্মের ক্যাটেগরি প্রস্তাব আসবে।</p>';return}
     if(!L){box.innerHTML='<p class="sub">ক্যাটেগরি প্রস্তাব আনা হচ্ছে…</p>';return}
-    const f=a=>a.filter(x=>!q||x.c.toLowerCase().indexOf(q)>=0).slice(0,14),
-      sec=(t,a)=>a.length?`<div class="sub">${t}</div><div class="csgc">${a.map(x=>`<button type="button" class="chip cs" data-c="${esc(x.c)}">${esc(x.c)}${x.n?` <small>${bn(x.n)}</small>`:''}</button>`).join('')}</div>`:'';
-    box.innerHTML=sec('⭐ প্রস্তাবিত',f((seed()||[]).filter(Boolean).map(c=>({c,n:0}))))+sec('সাইটে আছে',f(L.site))+sec('অন্য প্যানেলের ক্যাটেগরি (কয়টা সার্ভিসে)',f(L.providers))||'<p class="sub">কিছু মেলেনি — নিজে লিখুন</p>';
+    const f=a=>a.filter(x=>!q||catLbl(x.c).toLowerCase().indexOf(q)>=0).slice(0,14),
+      sec=(t,a)=>a.length?`<div class="sub">${t}</div><div class="csgc">${a.map(x=>`<button type="button" class="chip cs" data-c="${esc(x.c)}">${esc(catLbl(x.c))}${x.n?` <small>${bn(x.n)}</small>`:''}</button>`).join('')}</div>`:'';
+    box.innerHTML=sec('সাইটে আছে',f(siteCatsFor(sel.value)))||'<p class="sub">এই প্ল্যাটফর্মে সাইটে মেলার মতো ক্যাটেগরি নেই — নিজে লিখুন</p>';
     box.querySelectorAll('.cs').forEach(b=>b.onclick=()=>{inp.value=b.dataset.c;typed=false;draw()})};
-  const load=async()=>{const lab=PLB[sel.value];L=null;if(!lab){draw();return}if(CSG[lab]){L=CSG[lab];draw();return}const my=++tok;draw();
-    try{const d=await api('svc_cat_suggest',{label:lab});if(my!==tok)return;L=CSG[lab]={site:d.site||[],providers:d.providers||[]}}
-    catch(e){if(my!==tok)return;if(authFail(e))return;L={site:(window._sc||[]).filter(c=>platMatch(lab,c)).map(c=>({c,n:0})),providers:[]}}
-    draw()};
+  const load=()=>{L={};draw()};
   sel.onchange=load;inp.oninput=()=>{typed=true;draw()};load()}
 
 /* ---------- ক্যাটেগরি: তালিকা · নতুন তৈরি · ভেতরে সার্ভিসের নাম এডিট ---------- */
@@ -1087,7 +1086,10 @@ pVal=r=>{const cu=PM&&+PM[r.code]>0?+PM[r.code]:0;return cu||pr2(pbSell(r.usd))}
 let PAI=null,PSITE={};
 function pItems(){if(PAI)return PAI;PSITE={};CAT.rows.forEach(r=>{PSITE[r.code]=r});const raw=lpRows();
   PAI=raw.length?raw.map(r=>{const st=PSITE[r.service_id];return{key:r.provider+'|'+r.service_id,code:String(r.service_id),prov:r.provider,r,platform_label:lpLabel(r),usd:+r.rate||0,min:r.min,max:r.max,on:!!(st&&st.state==='on'),ty:typeOf(r.category+' '+r.name),cat:r.category}}):CAT.rows.filter(r=>r.state==='on').map(r=>({key:'site|'+r.code,code:String(r.code),prov:'সাইট',r,platform_label:r.platform_label,usd:+r.cost||0,min:r.min,max:r.max,on:true,ty:typeOf(r.category+' '+r.name),cat:r.category}));return PAI}
-const pName=it=>{if(!it._n){const st=PSITE[it.code];let n=st&&st.state==='on'&&st.name;if(!n){try{n=nice(it.r)}catch(e){}}it._n=stripEmo(n||it.r.name)}return it._n};
+const PEM=/(?:\p{Extended_Pictographic}|\p{Regional_Indicator}{2})(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*/gu;
+/* রিয়্যাক্ট-ধরনের সার্ভিসে মূল নামের ইমোজিগুলো বাদ যায় না — নামের 'Reactions' শব্দের পরেই বসে */
+function pEmo(it){const t=String(it.r.name||''),L=[...new Set(t.replace(/[0-9#*]\uFE0F?\u20E3/gu,'').match(PEM)||[])];return L.length>=3||(L.length&&/react/i.test(t+' '+it.cat))?L.slice(0,14).join(''):''}
+const pName=it=>{if(!it._n){const st=PSITE[it.code];let n=st&&st.state==='on'&&st.name;if(!n){try{n=nice(it.r)}catch(e){}}n=stripEmo(n||it.r.name).replace(/\s*[✪◆◇✦✧★☆➤➢▶►❖✱✯✰|—–]+\s*/g,' · ').replace(/(\s·)+\s*$/,'');const em=pEmo(it);if(em&&!n.includes(em.slice(0,2))){const m=n.match(/react\w*/i);n=m?n.slice(0,m.index+m[0].length)+' '+em+n.slice(m.index+m[0].length):n+' '+em}it._n=n}return it._n};
 const pFil=()=>{const q=PS.q,lo=PS.lo===''?-1:+PS.lo,hi=PS.hi===''?1e12:+PS.hi;return pItems().filter(it=>(!PS.plat||it.platform_label===PS.plat)&&(!PS.ty.length||PS.ty.includes(it.ty))&&(!PS.pv.length||PS.pv.includes(it.prov))&&(!PS.on||it.on)&&(!q||qOK(q,String(it.r.name)+' '+it.code+' '+it.cat+' '+it.prov))).map(it=>(it.p=pVal(it),it)).filter(it=>it.p>=lo&&it.p<=hi).sort((a,b)=>PS.so?b.p-a.p:a.p-b.p)};
 function pAuto(){const m=new Map();pFil().sort((a,b)=>a.p-b.p).forEach(it=>{const k=it.platform_label+'|'+it.ty;if(!m.has(k))m.set(k,it)});PSEL.clear();[...m.values()].slice(0,PSZ[PS.sz][3]).forEach(it=>PSEL.add(it.key))}
 function pWrap(c,t,w,n){const o=[];let l='';String(t).split(/\s+/).forEach(x=>{const z=l?l+' '+x:x;if(c.measureText(z).width>w&&l){o.push(l);l=x}else l=z});o.push(l);if(o.length>n){o.length=n;let s=o[n-1];while(s&&c.measureText(s+'…').width>w)s=s.slice(0,-1);o[n-1]=s+'…'}return o}
