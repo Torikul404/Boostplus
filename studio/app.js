@@ -610,10 +610,14 @@ const RXE={Like:'👍',Love:'😍',Care:'🥰',Haha:'😆',Wow:'😮',Sad:'😢'
 function rxKind(n,c){const f=s=>RX.filter(x=>x[1].test(s)).map(x=>x[0]);let a=f(n);if(a.length===1)return a[0];if(a.length>1)return null;a=f(c);return a.length===1?a[0]:null}
 /* ফেসবুকে নামে Profile / Page থাকলে সেটাও নামে ওঠে (যেমন 'Profile/Page', 'Page') */
 function tgtTag(n,P,T){if(!P||P[0]!=='Facebook'||/page|profile/i.test(T[0]))return[];const pr=/\bprofiles?\b/i.test(n),pg=/\bpages?\b/i.test(n);return pr&&pg?['Profile/Page']:pr?['Profile']:pg?['Page']:[]}
+/* মিশ্র রিয়্যাক্ট (👍❤️…): নামের আসল ইমোজিগুলোই নামের শুরুতে বসে, জেনারেল 😍 নয় */
+const REM=/\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*/gu;
+const rxEmo=r=>{const g=t=>[...new Set(String(t||'').replace(/[0-9#*]\uFE0F?\u20E3/gu,'').match(REM)||[])];let a=g(r.name);if(!a.length)a=g(r.category);return a.slice(0,6).join('')};
 function nameCtx(r){if(!r)return null;const c0=nk(r.category),n0=nk(r.name),all=c0+' '+n0;
   const T0=pickEarliest(NT,n0)||pickEarliest(NT,c0)||pickEarliest(NT_FB,n0)||pickEarliest(NT_FB,c0);if(!T0)return null;const P=T0[0]==='Traffic'?NP.find(x=>x[0]==='Website Traffic'):(pick(NP,c0)||pick(NP,n0));let T=T0;{const k=T0[0];if(k==='Reactions'||k==='Comment Reactions'){const rk=rxKind(n0,c0);if(rk)T=[rk+' '+k]}else if(k==='Comments'){if(/custom|costum/i.test(n0))T=['Custom Comments'];else if(/random|emoji/i.test(n0))T=['Random Comments']}}
+  const isRx=T0[0]==='Reactions'||T0[0]==='Comment Reactions',E=isRx?rxEmo(r):'';if(E&&[...E.matchAll(REM)].length>=2)T=T0;
   const flag=r.refill===undefined||r.refill===null||r.refill===''?null:/^(1|true|yes|y)$/i.test(String(r.refill));
-  return{base:P&&P[0]==='Website Traffic'?'Traffic':T[0],plat:P?(P[0]==='Website Traffic'?'Website':P[0]):'',raw:niceTags(all,flag,r.max,refState(n0,c0,flag)).concat(tgtTag(n0,P,T)),key:r.code||r.service_id||n0}}
+  return{base:P&&P[0]==='Website Traffic'?'Traffic':T[0],emo:(T===T0&&isRx)?E:'',plat:P?(P[0]==='Website Traffic'?'Website':P[0]):'',raw:niceTags(all,flag,r.max,refState(n0,c0,flag)).concat(tgtTag(n0,P,T)),key:r.code||r.service_id||n0}}
 /* সুন্দর নাম: কাঁচা ট্যাগ (HQ, NoDrop, ♻30D) নয় — পড়ার মতো শব্দ ('Real & High Quality', 'Non-Drop', '30 Days Refill') + প্ল্যাটফর্ম + ৫টা ভিন্ন সাজ */
 const TW={'HQ Real':'Real HQ','HQ':'HQ','Premium':'Premium','Real':'Real','Mix':'Mixed','LowQ':'Budget','NoDrop':'Non-Drop','LowDrop':'Low Drop','Worldwide':'Global','NoRefill':'No Refill','Refill':'Refill','Fast':'Fast','Slow':'Slow','⚡Instant':'Instant'};
 function tagWord(t){if(TW[t])return TW[t];let m;if(m=t.match(/^(\d+)%Drop$/))return m[1]+'% Drop';if(m=t.match(/^♻(\d+)D$/))return m[1]+'D Refill';if(t==='♻Life')return 'Lifetime Refill';if(m=t.match(/^⚡(.+)Min$/))return m[1]+' Min Start';if(m=t.match(/^⚡(.+)Hr$/))return m[1]+' Hr Start';if(m=t.match(/^(.+)\/D$/))return m[1]+'/Day';if(m=t.match(/^(.+)\/Hr$/))return m[1]+'/Hour';if(m=t.match(/^Max\s*(.+)$/))return 'Max '+m[1];return t}
@@ -621,7 +625,7 @@ function nameIdeas(r,plat,em){const C=nameCtx(r);if(!C)return[];if(em===undefine
   const W=t=>{const x=TAGE.find(a=>a[0].test(t)),f=FLAG[t];return (em&&f?f+' ':'')+tagWord(t)};
   const isQ=t=>/^(HQ|Premium|Real|Mix|LowQ|Profile|Page$)/.test(t),isD=t=>/Drop$/.test(t),pl=plat||C.plat;
   const isR=t=>/^(♻|Refill|NoRefill)/.test(t);let qa=C.raw.filter(isQ).map(W),ca=C.raw.filter(t=>FLAG[t]).map(W),dr=C.raw.filter(isD).map(W),xr=C.raw.filter(t=>isR(t)&&!isQ(t)&&!FLAG[t]&&!isD(t)).map(W),xl=C.raw.filter(t=>!isR(t)&&!isQ(t)&&!FLAG[t]&&!isD(t)).map(W);
-  const head=(em&&TE[C.base]?TE[C.base]+' ':'')+(pl?(pl.toLowerCase().indexOf(C.base.toLowerCase())>=0?pl:pl+' '+C.base):C.base),lim=em?72:64;
+  const he=C.emo||TE[C.base],head=(em&&he?he+' ':'')+(pl?(pl.toLowerCase().indexOf(C.base.toLowerCase())>=0?pl:pl+' '+C.base):C.base),lim=em?72:64;
   const S=[
    (q,c,d,x)=>head+(q.length?' — '+q.join(' · '):'')+([].concat(c,d,x).length?' | '+[].concat(c,d,x).join(' · '):''),
    (q,c,d,x)=>head+(q.length?(' ['+q.join(' · ')+']'):'')+([].concat(c,d,x).length?' '+(em?'✦':'|')+' '+[].concat(c,d,x).join(' '+(em?'✦':'|')+' '):''),
