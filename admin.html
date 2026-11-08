@@ -8,6 +8,38 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="PB Admin" />
+<!--ADMIN_BUILD_MARK:20261107g-->
+<script>
+/* অ্যাডমিন অটো-আপডেট: পুরনো ক্যাশ বা সার্ভিস ওয়ার্কার থাকলে নিজে মুছে সবসময় নতুন ভার্সন আনে */
+(function () {
+  var BUILD = "20261107g";
+  window.ADMIN_BUILD = BUILD;
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }).catch(function () {});
+    }
+    if (window.caches && caches.keys) {
+      caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }).catch(function () {});
+    }
+  } catch (e) {}
+  try {
+    fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store", credentials: "same-origin" })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var m = t.match(/ADMIN_BUILD_MARK:([0-9a-z]+)/);
+        var latest = m ? m[1] : BUILD;
+        var k = "adm_reload_" + latest;
+        if (latest !== BUILD && !sessionStorage.getItem(k)) { sessionStorage.setItem(k, "1"); location.replace(location.pathname + "?v=" + latest + location.hash); }
+      }).catch(function () {});
+  } catch (e) {}
+  document.addEventListener("DOMContentLoaded", function () {
+    var b = document.createElement("div");
+    b.textContent = "Admin v" + BUILD;
+    b.style.cssText = "position:fixed;left:8px;bottom:4px;font:10px/1 sans-serif;color:#94a3b8;opacity:.55;z-index:5;pointer-events:none";
+    document.body.appendChild(b);
+  });
+})();
+</script>
 <link rel="manifest" href="admin.webmanifest" />
 <link rel="apple-touch-icon" href="icons/admin-192.png" />
 <link rel="icon" type="image/png" href="icons/admin-192.png" />
@@ -374,12 +406,35 @@
     <button type="button" id="tabWallet" onclick="showTab('wallet')">💰 ওয়ালেট</button>
     <button type="button" id="tabRefund" onclick="showTab('refund')">↩️ রিফান্ড হিস্ট্রি</button>
     <button type="button" id="tabActions" onclick="showTab('actions')">🧾 OrderActions</button>
+    <button type="button" id="tabLog" onclick="showTab('log')">📜 অ্যাক্টিভিটি লগ</button>
     <button type="button" id="tabPT" onclick="showTab('pt')">🛰 Provider টিকেট</button>
     <button type="button" id="tabSpeed" onclick="showTab('speed')">⚡ স্পিড টেস্টার</button>
     <button type="button" id="tabTheme" onclick="showTab('theme')">🎨 থিম</button>
     <button type="button" class="adm-theme" id="admThemeBtn" onclick="admToggleTheme()" aria-label="লাইট/ডার্ক বদলান" title="লাইট/ডার্ক বদলান">🌓</button>
   </div>
   <div id="ordersPane">
+  <style>
+    #dashBox { border:1px solid var(--border,#334155); border-radius:12px; padding:10px; margin:0 0 12px; }
+    #dashBox summary { cursor:pointer; font-weight:600; font-size:14px; }
+    #dashBox .ds-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px; }
+    #dashBox .ds-c { border:1px solid var(--border,#334155); border-radius:10px; padding:8px; text-align:center; }
+    #dashBox .ds-c b { display:block; font-size:20px; }
+    #dashBox .ds-c span { font-size:11px; color:var(--muted,#94a3b8); }
+    #dashBox .ds-c.warn { border-color:#ef4444; }
+    #dashBox .ds-c.tap { cursor:pointer; }
+    #dashBox .ds-note { font-size:11px; color:var(--muted,#94a3b8); margin-top:6px; }
+    #dashBox .ds-b { font-size:12px; padding:3px 0; display:flex; justify-content:space-between; }
+  </style>
+  <details id="dashBox" open>
+    <summary>📊 আজকের অবস্থা <span id="dashTime" class="ds-note"></span></summary>
+    <div id="dashGrid" class="ds-grid"><div class="ds-note" style="grid-column:1/-1;">লোড হচ্ছে…</div></div>
+    <div class="ds-note" id="dashToday"></div>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button type="button" class="svc-fbtn" style="font-size:12px;padding:6px 10px;" onclick="dashLoad(true)">রিফ্রেশ</button>
+      <button type="button" class="svc-fbtn" style="font-size:12px;padding:6px 10px;" onclick="dashBalances()">💰 প্রোভাইডার ব্যালেন্স দেখুন</button>
+    </div>
+    <div id="dashBal" style="margin-top:6px;"></div>
+  </details>
   <h1>📋 অর্ডার ম্যানেজমেন্ট</h1>
   <p class="muted" style="font-size:12px;margin:0 0 8px;">📱 নতুন অর্ডারের নোটিফ: Telegram (Apps Script → setupTelegram_)</p>
   <div id="pinReqBox" style="display:none;margin:0 0 12px;padding:12px;border-radius:12px;border:1px solid #6ee7b7;background:rgba(110,231,183,0.10);"></div>
@@ -426,6 +481,32 @@
     <input id="orderSearch" type="search" placeholder="🔍 Order ID, মোবাইল, TrxID, সার্ভিস কোড..." onkeydown="if(event.key==='Enter')loadOrders()" />
     <button type="button" onclick="loadOrders()">খুঁজুন</button>
   </div>
+  <div class="search-row" style="gap:6px;align-items:center;flex-wrap:wrap;">
+    <span class="muted" style="font-size:12px;">তারিখ:</span>
+    <input id="bulkFrom" type="date" style="flex:1;min-width:120px;" onchange="loadOrders()" />
+    <span class="muted">→</span>
+    <input id="bulkTo" type="date" style="flex:1;min-width:120px;" onchange="loadOrders()" />
+    <button type="button" onclick="document.getElementById('bulkFrom').value='';document.getElementById('bulkTo').value='';loadOrders()">✕</button>
+  </div>
+  <style>
+    #bulkBar { display:none; position:sticky; top:0; z-index:50; background:var(--surface,#0f172a); border:1px solid var(--border,#334155); border-radius:10px; padding:8px; margin:6px 0; }
+    #bulkBar button { font-size:12px; padding:6px 9px; border-radius:8px; margin:2px; cursor:pointer; }
+    #bulkBar .danger { background:#7f1d1d; color:#fff; border:1px solid #ef4444; }
+    .bulk-cb { margin-right:6px; width:20px; height:20px; vertical-align:middle; }
+    #bulkRes { display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.55); }
+    #bulkRes .bk-card { position:absolute; left:0; right:0; bottom:0; max-height:82vh; overflow:auto; background:var(--surface,#0f172a); color:var(--text,#e2e8f0); border-radius:16px 16px 0 0; padding:14px; font-size:13px; }
+    #bulkRes .bk-l { word-break:break-all; font-size:12px; padding:2px 0; }
+  </style>
+  <div id="bulkBar">
+    <div style="font-size:13px;margin-bottom:4px;">☑ নির্বাচিত <b id="bulkCount">0</b>/25 <span class="muted" id="bulkBusy"></span></div>
+    <button type="button" onclick="bulkRun('complete')">✅ কমপ্লিট</button>
+    <button type="button" onclick="bulkRun('retry')">🔁 রিট্রাই</button>
+    <button type="button" onclick="bulkRun('refill')">♻ রিফিল</button>
+    <button type="button" class="danger" onclick="bulkRun('cancel')">❌ ক্যানসেল</button>
+    <button type="button" onclick="bulkSelectAll()">সব নির্বাচন</button>
+    <button type="button" onclick="bulkClear()">বাতিল</button>
+  </div>
+  <div id="bulkRes" onclick="if(event.target===this)bulkCloseRes()"><div class="bk-card" id="bulkResCard"></div></div>
   <div class="toolbar">
     <select id="statusFilter" onchange="loadOrders()">
       <option value="Pending">Pending</option>
@@ -454,6 +535,104 @@
   
   <div id="servicesPane" style="display:none;">
     <h1>🛠 সার্ভিস ম্যানেজমেন্ট</h1>
+    <style>
+      #stuckBox { border:1px solid var(--border,#334155); border-radius:12px; padding:10px; margin:8px 0 14px; }
+      #stuckBox .st-head { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+      #stuckBox .st-sum { font-size:12px; color:var(--muted,#94a3b8); margin:6px 0; }
+      #stuckBox .st-row { border:1px solid var(--border,#334155); border-radius:10px; padding:9px; margin-top:8px; cursor:pointer; }
+      #stuckBox .st-row.over { border-color:#ef4444; }
+      #stuckBox .st-top { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
+      #stuckBox .st-name { font-weight:600; font-size:13px; word-break:break-word; }
+      #stuckBox .st-meta { font-size:12px; color:var(--muted,#94a3b8); margin-top:3px; }
+      #stuckBox .st-badge { display:inline-block; font-size:11px; padding:2px 7px; border-radius:999px; background:#ef4444; color:#fff; margin-left:4px; white-space:nowrap; }
+      #stuckBox .st-badge.gray { background:#64748b; }
+      #stuckBox .st-btn { font-size:12px; padding:6px 10px; border-radius:8px; cursor:pointer; }
+      #stuckBox .st-btn.danger { background:#7f1d1d; color:#fff; border:1px solid #ef4444; }
+      #stuckSheet { display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.55); }
+      #stuckSheet .st-card { position:absolute; left:0; right:0; bottom:0; max-height:82vh; overflow:auto; background:var(--surface,#0f172a); color:var(--text,#e2e8f0); border-radius:16px 16px 0 0; padding:14px; }
+      #stuckSheet .st-ord { border-top:1px solid var(--border,#334155); padding:9px 0; font-size:12px; word-break:break-all; }
+      #stuckSheet .st-ord a { color:var(--primary,#60a5fa); }
+    </style>
+    <div id="stuckBox">
+      <div class="st-head">
+        <b>⏱ চলমান সার্ভিস</b>
+        <span>
+          <button type="button" class="st-btn svc-fbtn" id="stuckOnlyOver" onclick="stuckToggleOver()">⚠ শুধু ৪ঘণ্টা+</button>
+          <button type="button" class="st-btn svc-fbtn" onclick="stuckLoad(true)">রিফ্রেশ</button>
+        </span>
+      </div>
+      <div class="st-sum" id="stuckSum">লোড হচ্ছে…</div>
+      <div id="stuckList"></div>
+    </div>
+    <div id="stuckSheet" onclick="if(event.target===this)stuckCloseSheet()"><div class="st-card" id="stuckCard"></div></div>
+    <style>
+      #healthBox { border:1px solid var(--border,#334155); border-radius:12px; padding:10px; margin:8px 0 14px; }
+      #healthBox .hl-row { border:1px solid var(--border,#334155); border-radius:10px; padding:8px; margin-top:8px; }
+      #healthBox .hl-top { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
+      #healthBox .hl-name { font-weight:600; font-size:13px; word-break:break-word; }
+      #healthBox .hl-meta { font-size:12px; color:var(--muted,#94a3b8); margin-top:3px; }
+      .hl-b { display:inline-block; font-size:11px; padding:2px 7px; border-radius:999px; color:#fff; margin-left:4px; white-space:nowrap; }
+      .hl-b.good { background:#16a34a; } .hl-b.ok { background:#d97706; } .hl-b.bad { background:#dc2626; } .hl-b.nodata { background:#64748b; }
+    </style>
+    <div id="healthBox">
+      <div class="st-head" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+        <b>🩺 সার্ভিস হেলথ</b>
+        <span>
+          <button type="button" class="svc-fbtn" id="healthOnlyBad" style="font-size:12px;padding:6px 10px;" onclick="healthToggleBad()">শুধু খারাপ</button>
+          <button type="button" class="svc-fbtn" style="font-size:12px;padding:6px 10px;" onclick="healthLoad(true)">রিফ্রেশ</button>
+        </span>
+      </div>
+      <div class="st-sum" id="healthSum" style="font-size:12px;margin:6px 0;">লোড হচ্ছে…</div>
+      <div id="healthList"></div>
+    </div>
+    <style>
+      #mrBox { border:1px solid var(--border,#334155); border-radius:12px; padding:10px; margin:8px 0 14px; }
+      #mrBox .mr-f { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0; font-size:12px; }
+      #mrBox .mr-f input[type=number], #mrBox .mr-f select { width:72px; padding:6px; }
+      #mrBox .mr-row { border-top:1px solid var(--border,#334155); padding:7px 0; font-size:12px; word-break:break-word; }
+      #mrBox .mr-note { font-size:11px; color:var(--muted,#94a3b8); }
+      #mrBox button { font-size:12px; padding:7px 11px; border-radius:8px; cursor:pointer; }
+    </style>
+    <div id="mrBox">
+      <b>📈 মার্জিন-রুল (নিরাপদ দাম হিসাব)</b>
+      <div class="mr-note" style="margin-top:4px;">নিচের সার্ভিস তালিকায় যা ফিল্টার করে দেখছেন (সর্বোচ্চ ২০০টি) শুধু সেগুলোর জন্য। আগে প্রিভিউ — নিশ্চিত না করলে কিছু বদলায় না।</div>
+      <div class="mr-f">
+        <label>লক্ষ্য মার্জিন % <input id="mrTarget" type="number" value="20" min="1" max="80" step="1"></label>
+        <label>ন্যূনতম % <input id="mrMin" type="number" value="10" min="0" max="60" step="1"></label>
+        <label>গোল (ওপরে) <select id="mrStep"><option value="0.1">০.১</option><option value="0.5" selected>০.৫</option><option value="1">১</option></select> ৳</label>
+      </div>
+      <div class="mr-f">
+        <label><input id="mrOver" type="checkbox"> হাতে-বসানো দাম ওভাররাইট করুন</label>
+        <label><input id="mrLower" type="checkbox"> দাম কমানোও চলবে</label>
+      </div>
+      <button type="button" class="svc-fbtn on" onclick="mrPreview()">👁 প্রিভিউ দেখুন</button>
+      <div id="mrOut" style="margin-top:8px;"></div>
+      <div style="margin-top:10px;border-top:1px solid var(--border,#334155);padding-top:8px;">
+        <b style="font-size:13px;">💹 খরচ বাড়ার সতর্কতা</b> <button type="button" class="svc-fbtn" onclick="mrWatchLoad(true)">পরীক্ষা করুন</button>
+        <div id="mrWatch" class="mr-note" style="margin-top:6px;">—</div>
+      </div>
+    </div>
+    <style>
+      #bkBox { border:1px solid var(--border,#334155); border-radius:12px; padding:10px; margin:8px 0 14px; }
+      #bkBox .bk-f { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0; font-size:12px; }
+      #bkBox .bk-f input, #bkBox .bk-f select { padding:7px; min-width:0; }
+      #bkBox .bk-row { border-top:1px solid var(--border,#334155); padding:7px 0; font-size:12px; word-break:break-word; }
+      #bkBox .bk-note { font-size:11px; color:var(--muted,#94a3b8); }
+      #bkBox button { font-size:12px; padding:7px 11px; border-radius:8px; cursor:pointer; }
+    </style>
+    <div id="bkBox">
+      <b>↪ ব্যাকআপ প্রোভাইডার (ম্যানুয়াল)</b>
+      <div class="bk-note" style="margin-top:4px;">প্রাইমারিতে অর্ডার আটকে গেলে এক ট্যাপে ব্যাকআপে পাঠানো যায় ("⏱ চলমান সার্ভিস" → সার্ভিস → অর্ডার → ↪ ব্যাকআপে)। নিজে নিজে কিছু যায় না। প্রতিটি সার্ভিসের জন্য ব্যাকআপ প্রোভাইডারের নিজস্ব সার্ভিস-আইডি হাতে বসাতে হয়।</div>
+      <div id="bkList" style="margin-top:6px;"></div>
+      <div class="bk-f">
+        <input id="bkCode" type="text" inputmode="numeric" placeholder="সার্ভিস কোড" style="width:110px;" oninput="bkName()">
+        <select id="bkProv"></select>
+        <input id="bkSid" type="text" placeholder="ব্যাকআপের সার্ভিস আইডি" style="width:150px;">
+        <button type="button" class="svc-fbtn on" onclick="bkCheck()">🔎 যাচাই করুন</button>
+      </div>
+      <div id="bkNm" class="bk-note"></div>
+      <div id="bkChk"></div>
+    </div>
     <p class="muted" style="font-size:12px;">নাম দিয়ে সার্চ করুন → বাটনে ক্লিক করে হাইড / Instant / Slow। কোড মুখস্থ লাগবে না।</p>
     <div class="search-row">
       <input id="svcSearch" placeholder="নাম, কোড বা প্ল্যাটফর্ম লিখুন…" />
@@ -646,6 +825,21 @@
     <h3 style="font-size:14px;margin:16px 0 8px;">সব ইউজার (সাম্প্রতিক)</h3>
     <button type="button" onclick="walListUsers()" style="margin-bottom:8px;">লিস্ট লোড</button>
     <div id="walUsers" class="muted">—</div>
+  </div>
+
+  <div id="logPane" style="display:none;">
+    <h1>📜 অ্যাডমিন অ্যাক্টিভিটি লগ</h1>
+    <p class="muted" style="font-size:12px;margin:0 0 8px;">কে কখন কী বদলেছে (শুধু লেখা-অ্যাকশন)। টোকেন/পিন কখনও লগে থাকে না। এই ডিভাইসের নাম: <b id="logActorName"></b> <a href="#" onclick="logRename();return false;" style="color:inherit;text-decoration:underline;">বদলান</a></p>
+    <div class="toolbar" style="flex-wrap:wrap;gap:6px;">
+      <input id="logFrom" type="date" onchange="loadAdminLog()" style="min-width:120px;" />
+      <input id="logTo" type="date" onchange="loadAdminLog()" style="min-width:120px;" />
+      <select id="logActor" onchange="loadAdminLog()"><option value="">সব ব্যবহারকারী</option></select>
+      <input id="logAct" type="search" placeholder="অ্যাকশন (যেমন wallet)" onkeydown="if(event.key==='Enter')loadAdminLog()" style="min-width:130px;" />
+      <input id="logQ" type="search" placeholder="অর্ডার/মোবাইল/নোট…" onkeydown="if(event.key==='Enter')loadAdminLog()" style="min-width:130px;" />
+      <button type="button" onclick="loadAdminLog()">খুঁজুন</button>
+      <span class="muted" id="logCount"></span>
+    </div>
+    <div id="logList"></div>
   </div>
 
   <div id="actionsPane" style="display:none;">
@@ -949,6 +1143,17 @@
     if (isIn) loadInbox();
     if (isT) loadTickets();
     if (isS) loadServiceMeta();
+    if (isS && typeof stuckOpen === "function") stuckOpen(); else if (typeof stuckClose === "function") stuckClose();
+    if (name === "orders" && typeof dashLoad === "function") dashLoad(false);
+    if (isS && typeof healthLoad === "function") healthLoad(false);
+    if (isS && typeof mrWatchLoad === "function") mrWatchLoad();
+    if (isS && typeof bkLoad === "function") bkLoad(false);
+    (function () {
+      const isL = name === "log";
+      const tl = document.getElementById("tabLog"); if (tl) tl.classList.toggle("on", isL);
+      const lp = document.getElementById("logPane"); if (lp) lp.style.display = isL ? "block" : "none";
+      if (isL && typeof loadAdminLog === "function") loadAdminLog();
+    })();
     if (isW) { /* ready */ }
   }
 
@@ -2455,7 +2660,8 @@
         (Number(priceMap[code]) > 0 ? "<span class='svc-badge disc' title='কাস্টম সেলিং প্রাইস'>💲 ৳" + esc(String(priceMap[code])) + "/1K</span>" : "") +
         (exemptSet.has(code) ? "<span class='svc-badge ex'>EXEMPT</span>" : "") +
         (stats[code] ? "<span class='svc-badge tm'>⏱ " + esc(stats[code].label) + " · " + stats[code].n + " অর্ডার</span>" : "") +
-        (limits[code] ? "<span class='svc-badge tm'>সীমা " + esc(String(limits[code])) + " ঘণ্টা</span>" : "");
+        (limits[code] ? "<span class='svc-badge tm'>সীমা " + esc(String(limits[code])) + " ঘণ্টা</span>" : "") +
+        (typeof healthBadge === "function" ? healthBadge(code) : "");
       const hideBtn = isHid
         ? "<button type='button' class='svc-btn-show' onclick=\"svcUnhide('" + code + "')\">👁 আনহাইড</button>"
         : "<button type='button' class='svc-btn-hide' onclick=\"svcHide('" + code + "')\">🚫 হাইড</button>";
@@ -2489,8 +2695,8 @@
   }
 
   // ---------- পরিবর্তনের লগ (কে, কখন, কী, আগে কী ছিল, কেন) ----------
-  const SVC_AUDIT_SUBS = new Set(["hide", "unhide", "set_price", "remove_price", "set_price_bulk", "set_discount", "remove_discount", "set_discount_bulk", "set_speed", "set_limit", "set_config", "add", "remove_custom"]);
-  const SVC_AUDIT_NAMES = { hide: "🚫 হাইড", unhide: "👁 আনহাইড", set_price: "💲 দাম সেট", remove_price: "✖ দাম রিসেট", set_price_bulk: "💲 বাল্ক দাম", set_discount: "🏷 ডিসকাউন্ট", remove_discount: "✖ ডিসকাউন্ট বন্ধ", set_discount_bulk: "🏷 বাল্ক ডিসকাউন্ট", set_speed: "⚡ স্পিড ট্যাগ", set_limit: "⏱ সময়-সীমা", set_config: "⚙ নিয়ম বদল", add: "➕ নতুন সার্ভিস", remove_custom: "🗑 কাস্টম মুছে ফেলা" };
+  const SVC_AUDIT_SUBS = new Set(["hide", "unhide", "set_price", "remove_price", "set_price_bulk", "set_price_map", "set_discount", "remove_discount", "set_discount_bulk", "set_speed", "set_limit", "set_config", "add", "remove_custom"]);
+  const SVC_AUDIT_NAMES = { hide: "🚫 হাইড", unhide: "👁 আনহাইড", set_price: "💲 দাম সেট", remove_price: "✖ দাম রিসেট", set_price_bulk: "💲 বাল্ক দাম", set_price_map: "📈 মার্জিন-রুল দাম", set_discount: "🏷 ডিসকাউন্ট", remove_discount: "✖ ডিসকাউন্ট বন্ধ", set_discount_bulk: "🏷 বাল্ক ডিসকাউন্ট", set_speed: "⚡ স্পিড ট্যাগ", set_limit: "⏱ সময়-সীমা", set_config: "⚙ নিয়ম বদল", add: "➕ নতুন সার্ভিস", remove_custom: "🗑 কাস্টম মুছে ফেলা" };
   let _svcAuditReason = "";   // বাল্ক মোডালে লেখা "কেন" — পরের লেখাটির সাথে যায়
   function svcActor() { try { return localStorage.getItem("pb_admin_actor") || ""; } catch (e) { return ""; } }
   function svcAuditBefore(sub, x) {
@@ -2538,6 +2744,7 @@
   function svcAuditTo(sub, to) {
     to = to || {};
     if (sub === "set_price" || sub === "set_price_bulk") return "৳" + svcEsc(to.price);
+    if (sub === "set_price_map") return "রুল: " + svcEsc(Object.keys(to.map || {}).length) + " টি · ন্যূনতম " + svcEsc(to.min_margin) + "%";
     if (sub === "set_discount" || sub === "set_discount_bulk") return svcAuditVal({ type: to.type, value: to.value }) + (to.until ? " · " + svcEsc(to.until) : "");
     if (sub === "set_speed") return svcEsc(to.speed);
     if (sub === "set_limit") return svcEsc(to.hours) + " ঘণ্টা";
@@ -3415,6 +3622,615 @@
       if (tries >= 30) { clearInterval(fundWatch); fundWatch = null; st.textContent = "সময় শেষ। পেমেন্ট করে থাকলে 🔄 চাপ দিয়ে ব্যালেন্স দেখুন।"; }
     }, 20000);
   }
+</script>
+<script>
+// ---------- ধাপ 1: চলমান সার্ভিস প্যানেল (admin_stuck) ----------
+var STUCK = { data: null, onlyOver: false, timer: null, busy: false, open: null };
+function stuckE(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function stuckHrs(h) { if (h == null) return "—"; if (h < 1) return Math.max(1, Math.round(h * 60)) + " মিনিট"; return (Math.round(h * 10) / 10) + " ঘণ্টা"; }
+function stuckSafeUrl(u) { var t = String(u || "").trim(); return /^https?:\/\//i.test(t) ? t : ""; }
+async function stuckCall(extra) {
+  var body = Object.assign({ action: "admin_stuck", token: ADMIN_TOKEN }, extra || {});
+  var res = await fetch(API, { method: "POST", mode: "cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
+  return res.json();
+}
+async function stuckLoad(force) {
+  if (STUCK.busy) return;
+  STUCK.busy = true;
+  var sum = document.getElementById("stuckSum");
+  try {
+    var r = await stuckCall(force ? { force: true } : {});
+    if (!r || !r.ok) { sum.textContent = "❌ লোড হয়নি: " + stuckE((r && (r.error || r.message)) || "unknown"); STUCK.busy = false; return; }
+    STUCK.data = r;
+    stuckRender();
+  } catch (e) { sum.textContent = "❌ নেটওয়ার্ক সমস্যা"; }
+  STUCK.busy = false;
+}
+function stuckRender() {
+  var d = STUCK.data; if (!d) return;
+  var th = d.threshold_hours;
+  document.getElementById("stuckOnlyOver").textContent = "⚠ শুধু " + th + "ঘণ্টা+";
+  document.getElementById("stuckOnlyOver").classList.toggle("on", STUCK.onlyOver);
+  document.getElementById("stuckSum").innerHTML = "চলমান অর্ডার <b>" + d.totals.running + "</b> · " + th + " ঘণ্টার বেশি <b>" + d.totals.over + "</b> · সার্ভিস " + d.totals.services +
+    ' · <a href="#" onclick="stuckSetThreshold();return false;" style="color:inherit;text-decoration:underline;">সীমা বদলান</a>';
+  var list = d.services.filter(function (s) { return !STUCK.onlyOver || s.over > 0; });
+  var el = document.getElementById("stuckList");
+  if (!list.length) { el.innerHTML = '<div class="st-meta">' + (STUCK.onlyOver ? "কোনো সার্ভিস " + th + " ঘণ্টা ছাড়ায়নি ✅" : "এখন কোনো অর্ডার চলমান নেই ✅") + "</div>"; return; }
+  el.innerHTML = list.map(function (s) {
+    var i = d.services.indexOf(s);
+    return '<div class="st-row' + (s.over > 0 ? " over" : "") + '" onclick="stuckOpenSheet(' + i + ')">' +
+      '<div class="st-top"><div class="st-name">' + stuckE(s.service_name || s.service_code) + '</div><div>' +
+      (s.over > 0 ? '<span class="st-badge">⚠ ' + th + ' ঘণ্টার বেশি · ' + s.over + "</span>" : "") +
+      (s.hidden ? '<span class="st-badge gray">লুকানো</span>' : "") + "</div></div>" +
+      '<div class="st-meta">#' + stuckE(s.service_code) + " · " + stuckE(s.platform) + " · চলমান " + s.running + " · সবচেয়ে পুরনো " + stuckHrs(s.oldest_hours) + "</div></div>";
+  }).join("");
+}
+function stuckToggleOver() { STUCK.onlyOver = !STUCK.onlyOver; stuckRender(); }
+async function stuckSetThreshold() {
+  var cur = STUCK.data ? STUCK.data.threshold_hours : 4;
+  var v = prompt("কত ঘণ্টার বেশি হলে 'আটকে' ধরবেন? (বর্তমান " + cur + ")", String(cur));
+  if (v == null) return;
+  var n = Number(v);
+  if (!(n > 0 && n <= 720)) { alert("সঠিক সংখ্যা দিন (০–৭২০)"); return; }
+  try { var r = await stuckCall({ set_threshold: n }); if (r && r.ok) { STUCK.data = r; stuckLoad(true); } else alert("সেভ হয়নি"); } catch (e) { alert("নেটওয়ার্ক সমস্যা"); }
+}
+function stuckOpenSheet(i) {
+  var d = STUCK.data; if (!d || !d.services[i]) return;
+  STUCK.open = d.services[i].service_code;
+  stuckSheetHtml(d.services[i]);
+  document.getElementById("stuckSheet").style.display = "block";
+}
+function stuckSheetHtml(s) {
+  var ords = s.orders.map(function (o) {
+    var u = stuckSafeUrl(o.link);
+    return '<div class="st-ord">' +
+      "<b>#" + stuckE(o.order_id) + "</b> · " + stuckE(o.status) + (o.over ? ' <span class="st-badge">⚠</span>' : "") + "<br>" +
+      "🔗 " + (u ? '<a href="' + stuckE(u) + '" target="_blank" rel="noopener noreferrer">' + stuckE(o.link) + "</a>" : stuckE(o.link)) + "<br>" +
+      "পরিমাণ: " + stuckE(o.quantity) + " · শুরু: " + stuckE(o.started_at ? o.started_at.replace("T", " ").slice(0, 16) : "—") + " · কতক্ষণ: <b>" + stuckHrs(o.hours) + "</b><br>" +
+      "প্রোভাইডার অর্ডার: " + stuckE(o.provider_order_id || "—") + "<br>" +
+      '<button type="button" class="st-btn svc-fbtn" data-link="' + stuckE(o.link) + '" onclick="stuckCopy(this)">কপি লিংক</button> ' +
+      '<button type="button" class="st-btn svc-fbtn" onclick="stuckRetry(\'' + stuckE(o.order_id).replace(/'/g, "") + '\')">রিট্রাই</button>' +
+      ((typeof BK !== "undefined" && BK.map[s.service_code] && o.status === "Processing") ? ' <button type="button" class="st-btn svc-fbtn" onclick="failoverStart(\'' + stuckE(o.order_id).replace(/'/g, "") + '\')">↪ ব্যাকআপে</button>' : "") +
+      "</div>";
+  }).join("");
+  document.getElementById("stuckCard").innerHTML =
+    '<div class="st-top"><div class="st-name">' + stuckE(s.service_name || s.service_code) + '<div class="st-meta">#' + stuckE(s.service_code) + " · " + stuckE(s.platform) + " · চলমান " + s.running + (s.truncated ? " (প্রথম " + s.orders.length + "টি দেখানো)" : "") + "</div></div>" +
+    '<button type="button" class="st-btn svc-fbtn" onclick="stuckCloseSheet()">✕</button></div>' +
+    '<div style="margin:10px 0;">' + (s.hidden
+      ? '<button type="button" class="st-btn svc-fbtn" id="stuckHideBtn" onclick="stuckToggleHide(false)">👁 ফেরান (সাইটে আবার দেখান)</button>'
+      : '<button type="button" class="st-btn danger" id="stuckHideBtn" onclick="stuckToggleHide(true)">🚫 সাইট থেকে সরান</button>') + "</div>" + ords;
+}
+function stuckCloseSheet() { document.getElementById("stuckSheet").style.display = "none"; STUCK.open = null; }
+function stuckCopy(btn) { var t = btn.getAttribute("data-link") || ""; try { navigator.clipboard.writeText(t); btn.textContent = "✔ কপি হয়েছে"; } catch (e) { prompt("কপি করুন:", t); } }
+function stuckRetry(oid) { if (typeof retryForward === "function") retryForward(oid); }
+var _stuckHideBusy = false;
+async function stuckToggleHide(hide) {
+  if (_stuckHideBusy || !STUCK.open) return;
+  var s = STUCK.data.services.find(function (x) { return x.service_code === STUCK.open; }); if (!s) return;
+  var msg = hide ? "“" + (s.service_name || s.service_code) + "” সাইট থেকে সরাবেন? গ্রাহক আর এটা দেখবে না।" : "“" + (s.service_name || s.service_code) + "” সাইটে আবার দেখাবেন?";
+  if (!confirm(msg)) return;
+  _stuckHideBusy = true;
+  var b = document.getElementById("stuckHideBtn"); if (b) b.disabled = true;
+  try {
+    var r = await svcApi(hide ? "hide" : "unhide", { code: s.service_code });
+    if (r && r.ok) { s.hidden = hide; stuckSheetHtml(s); stuckRender(); }
+    else alert("ব্যর্থ: " + ((r && (r.error || r.message)) || "unknown"));
+  } catch (e) { alert("নেটওয়ার্ক সমস্যা"); }
+  _stuckHideBusy = false;
+}
+function stuckOpen() {
+  stuckLoad(false);
+  if (STUCK.timer) clearInterval(STUCK.timer);
+  STUCK.timer = setInterval(function () { if (!document.hidden) stuckLoad(false); }, 60000);
+}
+function stuckClose() { if (STUCK.timer) { clearInterval(STUCK.timer); STUCK.timer = null; } }
+</script>
+<script>
+// ---------- ধাপ 2: হোম ড্যাশবোর্ড (admin_dashboard) — আয়/লাভ নেই ----------
+var DASH = { busy: false };
+function dashE(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+async function dashLoad(force) {
+  var op = document.getElementById("ordersPane");
+  if (!op || op.style.display === "none" || !ADMIN_TOKEN || DASH.busy) return;
+  DASH.busy = true;
+  var g = document.getElementById("dashGrid");
+  try {
+    var res = await fetch(API, { method: "POST", mode: "cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(force ? { action: "admin_dashboard", token: ADMIN_TOKEN, force: true } : { action: "admin_dashboard", token: ADMIN_TOKEN }) });
+    var d = await res.json();
+    if (!d || !d.ok) { g.innerHTML = '<div class="ds-note" style="grid-column:1/-1;">❌ ' + dashE((d && (d.error || d.message)) || "unknown") + "</div>"; DASH.busy = false; return; }
+    var cells = [
+      ["আজকের অর্ডার", d.today.orders, "", ""],
+      ["পেন্ডিং", d.live.pending, d.live.pending > 0 ? "warn" : "", ""],
+      ["চলমান", d.live.processing + d.live.partial, "", ""],
+      ["⚠ আটকে (" + d.stuck.threshold_hours + "ঘণ্টা+)", d.stuck.over, d.stuck.over > 0 ? "warn" : "", "services"],
+      ["টপ-আপ পেন্ডিং", d.topup.pending, d.topup.pending > 0 ? "warn" : "", ""],
+      ["খোলা টিকেট", d.tickets.open + d.tickets.in_progress, d.tickets.open > 0 ? "warn" : "", "tickets"]
+    ];
+    g.innerHTML = cells.map(function (c) {
+      return '<div class="ds-c ' + c[2] + (c[3] ? " tap" : "") + '"' + (c[3] ? ' onclick="showTab(\'' + c[3] + '\')"' : "") + "><b>" + dashE(c[1]) + "</b><span>" + dashE(c[0]) + "</span></div>";
+    }).join("");
+    document.getElementById("dashToday").textContent = "আজ: পেন্ডিং " + d.today.pending + " · প্রসেসিং " + d.today.processing + " · পার্শিয়াল " + d.today.partial + " · কমপ্লিট " + d.today.completed + " · রিজেক্ট " + d.today.rejected;
+    document.getElementById("dashTime").textContent = " · " + (d.now || "").replace("T", " ").slice(11, 16);
+  } catch (e) { g.innerHTML = '<div class="ds-note" style="grid-column:1/-1;">❌ নেটওয়ার্ক সমস্যা</div>'; }
+  DASH.busy = false;
+}
+async function dashBalances() {
+  var box = document.getElementById("dashBal");
+  box.innerHTML = '<div class="ds-note">ব্যালেন্স আনা হচ্ছে… (কয়েক সেকেন্ড লাগতে পারে)</div>';
+  try {
+    var res = await fetch(API, { method: "POST", mode: "cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action: "admin_balances", token: ADMIN_TOKEN, auto_retry: false }) });
+    var d = await res.json();
+    if (!d || !d.ok) { box.innerHTML = '<div class="ds-note">❌ ' + dashE((d && (d.error || d.message)) || "unknown") + "</div>"; return; }
+    var list = d.balances || [];
+    box.innerHTML = list.length ? list.map(function (b) {
+      return '<div class="ds-b"><span>' + dashE(b.provider) + "</span><b>" + (b.ok ? dashE(Math.round(Number(b.balance) * 100) / 100) + " " + dashE(b.currency || "") : "❌ " + dashE(b.error || "")) + "</b></div>";
+    }).join("") : '<div class="ds-note">কোনো প্রোভাইডার নেই</div>';
+  } catch (e) { box.innerHTML = '<div class="ds-note">❌ নেটওয়ার্ক সমস্যা</div>'; }
+}
+setTimeout(function () { dashLoad(false); }, 1500);
+setInterval(function () { if (!document.hidden) dashLoad(false); }, 60000);
+</script>
+<script>
+// ---------- ধাপ 3: বাল্ক অ্যাকশন + তারিখ-সীমা সার্চ (admin_bulk) ----------
+var BULK = { sel: {}, busy: false, last: null };
+var BULK_MAX = 25;
+var BULK_LABEL = { complete: "কমপ্লিট", retry: "রিট্রাই", refill: "রিফিল", cancel: "ক্যানসেল (Reject + ওয়ালেট রিফান্ড)" };
+function bulkE(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function bulkIds() { return Object.keys(BULK.sel); }
+// তারিখ-সীমাসহ অর্ডার তালিকা আনা (আগের fetchOrdersOnce-এর জায়গায়)
+fetchOrdersOnce = async function (status, wantLive, q) {
+  var f = document.getElementById("bulkFrom"), t = document.getElementById("bulkTo");
+  var body = { action: "admin_list", token: ADMIN_TOKEN, status: status, live: !!wantLive, q: q };
+  if (f && f.value) body.date_from = f.value;
+  if (t && t.value) body.date_to = t.value;
+  var res = await fetch(API, { method: "POST", mode: "cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
+  return await res.json();
+};
+// তালিকা আঁকার পর প্রতিটি কার্ডে টিক-বক্স বসানো (অটো-রিফ্রেশেও নির্বাচন থাকে)
+var _bulkShowOrders = showOrders;
+showOrders = function (orders, pmap) { _bulkShowOrders(orders, pmap); bulkDecorate(); };
+function bulkDecorate() {
+  var cards = document.querySelectorAll("#ordersList .card");
+  Array.prototype.forEach.call(cards, function (c) {
+    if (c.querySelector(".bulk-cb")) return;
+    var o = c.querySelector(".oid"); if (!o) return;
+    var id = (o.textContent || "").trim(); if (!id) return;
+    var cb = document.createElement("input");
+    cb.type = "checkbox"; cb.className = "bulk-cb"; cb.setAttribute("data-oid", id); cb.checked = !!BULK.sel[id];
+    cb.onchange = function () { bulkToggle(id, cb); };
+    o.parentNode.insertBefore(cb, o);
+  });
+  bulkRefreshBar();
+}
+function bulkToggle(id, cb) {
+  if (cb.checked) {
+    if (bulkIds().length >= BULK_MAX) { cb.checked = false; alert("একবারে সর্বোচ্চ " + BULK_MAX + "টি নির্বাচন করা যায়।"); return; }
+    BULK.sel[id] = 1;
+  } else delete BULK.sel[id];
+  bulkRefreshBar();
+}
+function bulkRefreshBar() {
+  var n = bulkIds().length;
+  document.getElementById("bulkCount").textContent = n;
+  document.getElementById("bulkBar").style.display = n > 0 ? "block" : "none";
+}
+function bulkSelectAll() {
+  var cbs = document.querySelectorAll("#ordersList .bulk-cb");
+  var skipped = false;
+  Array.prototype.forEach.call(cbs, function (cb) {
+    var id = cb.getAttribute("data-oid");
+    if (BULK.sel[id]) { cb.checked = true; return; }
+    if (bulkIds().length >= BULK_MAX) { skipped = true; return; }
+    BULK.sel[id] = 1; cb.checked = true;
+  });
+  bulkRefreshBar();
+  if (skipped) alert("সর্বোচ্চ " + BULK_MAX + "টি নেওয়া হয়েছে, বাকিগুলো বাদ।");
+}
+function bulkClear() {
+  BULK.sel = {};
+  Array.prototype.forEach.call(document.querySelectorAll("#ordersList .bulk-cb"), function (cb) { cb.checked = false; });
+  bulkRefreshBar();
+}
+function bulkCloseRes() { document.getElementById("bulkRes").style.display = "none"; }
+function bulkNewId() {
+  var a = new Uint8Array(12); (window.crypto || window.msCrypto).getRandomValues(a);
+  return "b" + Array.prototype.map.call(a, function (x) { return ("0" + x.toString(16)).slice(-2); }).join("");
+}
+async function bulkRun(op) {
+  if (BULK.busy) return;
+  var ids = bulkIds();
+  if (!ids.length) return;
+  var msg = ids.length + "টি অর্ডারে “" + BULK_LABEL[op] + "” চালাবেন?\n\n" + ids.slice(0, 12).join(", ") + (ids.length > 12 ? " …" : "");
+  if (op === "cancel") msg += "\n\n⚠ ওয়ালেটে পরিশোধিত অর্ডারের টাকা গ্রাহকের ওয়ালেটে ফেরত যাবে। প্রোভাইডারে পাঠানো অর্ডার এতে প্রোভাইডারের দিকে বাতিল হয় না।";
+  if (op === "complete") msg += "\n\n⚠ শুধু Processing/Partial/Approved অর্ডার কমপ্লিট হবে।";
+  if (!confirm(msg)) return;
+  // নেটওয়ার্ক ব্যর্থ হলে একই ব্যাচ-আইডি, তাই আবার চাপলেও ডবল হয় না
+  var key = op + "|" + ids.slice().sort().join(",");
+  if (!BULK.last || BULK.last.key !== key) BULK.last = { key: key, id: bulkNewId() };
+  BULK.busy = true;
+  var busyEl = document.getElementById("bulkBusy"); busyEl.textContent = " চলছে… অপেক্ষা করুন";
+  var btns = document.querySelectorAll("#bulkBar button"); Array.prototype.forEach.call(btns, function (b) { b.disabled = true; });
+  try {
+    var res = await fetch(API, { method: "POST", mode: "cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action: "admin_bulk", token: ADMIN_TOKEN, op: op, batch_id: BULK.last.id, order_ids: ids }) });
+    var d = await res.json();
+    bulkShowResult(op, d);
+    if (d && d.ok) { BULK.last = null; BULK.sel = {}; try { loadOrders(); } catch (e) {} try { dashLoad(true); } catch (e2) {} }
+  } catch (e) {
+    alert("নেটওয়ার্ক সমস্যা — ফল জানা যায়নি। আবার একই বাটন চাপলে একই ব্যাচ ধরা হবে (ডবল হবে না)। আগে অর্ডার তালিকা রিফ্রেশ করে দেখুন।");
+  }
+  busyEl.textContent = ""; BULK.busy = false;
+  Array.prototype.forEach.call(btns, function (b) { b.disabled = false; });
+  bulkDecorate();
+}
+function bulkShowResult(op, d) {
+  var h;
+  if (!d || !d.ok) {
+    h = '<b>❌ ব্যাচ চলেনি</b><div class="bk-l">' + bulkE((d && (d.message || d.error)) || "unknown") + "</div>";
+  } else {
+    h = "<b>" + bulkE(BULK_LABEL[op] || op) + " — ফল" + (d.duplicate ? " (আগের ব্যাচের ফলই দেখানো)" : "") + "</b>" +
+      '<div style="margin:6px 0;">✅ সফল ' + d.success.length + " · ❌ ব্যর্থ " + d.failed.length + " · ⏭ বাদ " + d.skipped.length + (d.refunded_total ? " · 💰 ফেরত ৳" + bulkE(d.refunded_total) : "") + "</div>" +
+      (d.partial ? '<div style="color:#f59e0b;margin-bottom:6px;">⚠ সবগুলো সফল হয়নি — নিচের তালিকা দেখুন।</div>' : "");
+    if (d.failed.length) h += "<b>❌ ব্যর্থ</b>" + d.failed.map(function (x) { return '<div class="bk-l">#' + bulkE(x.order_id) + " — " + bulkE(x.error) + "</div>"; }).join("");
+    if (d.skipped.length) h += '<div style="margin-top:6px;"><b>⏭ বাদ</b></div>' + d.skipped.map(function (x) { return '<div class="bk-l">#' + bulkE(x.order_id) + " — " + bulkE(x.reason) + "</div>"; }).join("");
+    if (d.success.length) h += '<div style="margin-top:6px;"><b>✅ সফল</b></div><div class="bk-l">' + d.success.map(function (x) { return "#" + bulkE(x.order_id); }).join(", ") + "</div>";
+  }
+  h += '<div style="margin-top:10px;"><button type="button" onclick="bulkCloseRes()" style="padding:8px 14px;">বন্ধ করুন</button></div>';
+  document.getElementById("bulkResCard").innerHTML = h;
+  document.getElementById("bulkRes").style.display = "block";
+}
+</script>
+<script>
+// ---------- ধাপ 4: অ্যাক্টিভিটি লগ — actor নাম ও দেখার পাতা ----------
+var LOG_ACTOR_KEY = "pb_admin_actor";
+function logGetActor() { try { return localStorage.getItem(LOG_ACTOR_KEY) || ""; } catch (e) { return ""; } }
+function logSetActor(v) { try { localStorage.setItem(LOG_ACTOR_KEY, v); } catch (e) {} }
+function logE(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function logAskActor(force) {
+  var cur = logGetActor();
+  if (cur && !force) return cur;
+  var v = prompt("এই ডিভাইসের একটি নাম দিন (লগে 'কে করেছে' দেখাতে), যেমন: Rafi-Phone", cur || "");
+  v = (v || "").replace(/[^\w\u0980-\u09FF .-]/g, "").trim().slice(0, 40);
+  if (v) logSetActor(v);
+  return logGetActor();
+}
+function logRename() { logAskActor(true); var el = document.getElementById("logActorName"); if (el) el.textContent = logGetActor() || "—"; }
+// সব admin_ অনুরোধে actor জুড়ে দেওয়া (টোকেন একটাই, তাই নাম ডিভাইস থেকে)
+(function () {
+  var _f = window.fetch;
+  window.fetch = function (url, opts) {
+    try {
+      if (typeof API !== "undefined" && url === API && opts && typeof opts.body === "string" && opts.body.indexOf('"admin_') !== -1) {
+        var b = JSON.parse(opts.body), a = logGetActor();
+        if (b && typeof b.action === "string" && b.action.indexOf("admin_") === 0 && a && !b.actor) {
+          b.actor = a;
+          opts = Object.assign({}, opts, { body: JSON.stringify(b) });
+        }
+      }
+    } catch (e) {}
+    return _f.call(this, url, opts);
+  };
+})();
+// প্রথমবার লগইনের পর নাম চাওয়া
+setTimeout(function () { try { if (typeof ADMIN_TOKEN !== "undefined" && ADMIN_TOKEN && !logGetActor()) logAskActor(false); } catch (e) {} }, 3000);
+var LOG_BUSY = false;
+async function loadAdminLog() {
+  if (LOG_BUSY) return; LOG_BUSY = true;
+  var list = document.getElementById("logList");
+  var nm = document.getElementById("logActorName"); if (nm) nm.textContent = logGetActor() || "— (এখনো দেননি)";
+  list.innerHTML = '<div class="muted">লোড হচ্ছে…</div>';
+  try {
+    var body = { action: "admin_log", limit: 200 };
+    var f = document.getElementById("logFrom").value, t = document.getElementById("logTo").value;
+    if (f) body.date_from = f; if (t) body.date_to = t;
+    var ac = document.getElementById("logActor").value; if (ac) body.actor_filter = ac;
+    var act = document.getElementById("logAct").value.trim(); if (act) body.act = act;
+    var q = document.getElementById("logQ").value.trim(); if (q) body.q = q;
+    var d = await adminApi(body);
+    if (!d || !d.ok) { list.innerHTML = '<div class="err">' + logE((d && (d.error || d.message)) || "লোড হয়নি") + "</div>"; LOG_BUSY = false; return; }
+    var sel = document.getElementById("logActor"), keep = sel.value;
+    sel.innerHTML = '<option value="">সব ব্যবহারকারী</option>' + (d.actors || []).map(function (a) { return '<option value="' + logE(a) + '"' + (a === keep ? " selected" : "") + ">" + logE(a) + "</option>"; }).join("");
+    document.getElementById("logCount").textContent = d.rows.length + "টি এন্ট্রি (সর্বশেষ " + d.scanned + "টির মধ্যে)";
+    if (!d.rows.length) { list.innerHTML = '<div class="empty">কোনো এন্ট্রি নেই।</div>'; LOG_BUSY = false; return; }
+    list.innerHTML = d.rows.map(function (r) {
+      var bad = /^FAIL/.test(r.note);
+      return '<div class="card"><div class="card-top"><span class="oid">' + logE(r.action) + '</span><span class="muted">' + logE(r.ts) + "</span></div>" +
+        '<div class="row"><b>👤 ' + logE(r.actor) + "</b>" + (r.target ? " · 🎯 " + logE(r.target) : "") + "</div>" +
+        (r.before || r.after ? '<div class="row">' + (r.before ? "আগে: <b>" + logE(r.before) + "</b> " : "") + (r.after ? "→ পরে: <b>" + logE(r.after) + "</b>" : "") + "</div>" : "") +
+        '<div class="row muted" style="' + (bad ? "color:#f87171;" : "") + '">' + logE(r.note) + "</div></div>";
+    }).join("");
+  } catch (e) { list.innerHTML = '<div class="err">' + logE(e && e.message || "নেটওয়ার্ক সমস্যা") + "</div>"; }
+  LOG_BUSY = false;
+}
+</script>
+<script>
+// ---------- ধাপ 5: সার্ভিস হেলথ স্কোর (admin_health) — শুধু প্রস্তাব, নিজে কিছু লুকায় না ----------
+var HEALTH = { data: null, map: {}, onlyBad: true, busy: false };
+function healthE(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function healthName(code) {
+  try { var c = (typeof _svcCatalog !== "undefined" ? _svcCatalog : []).find(function (x) { return String(x.code) === String(code); }); if (c && c.name) return c.name; } catch (e) {}
+  return "";
+}
+function healthBadge(code) {
+  var h = HEALTH.map[code]; if (!h || h.grade === "nodata") return "";
+  return "<span class='hl-b " + h.grade + "'>🩺 " + h.score + "</span>";
+}
+async function healthLoad(force) {
+  if (HEALTH.busy) return;
+  if (!force && HEALTH.data && Date.now() - (HEALTH.at || 0) < 60000) { healthRender(); return; }
+  HEALTH.busy = true;
+  var sum = document.getElementById("healthSum");
+  try {
+    var res = await fetch(API, { method: "POST", mode: "cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action: "admin_health", token: ADMIN_TOKEN }) });
+    var d = await res.json();
+    if (!d || !d.ok) { sum.textContent = "❌ লোড হয়নি: " + ((d && (d.error || d.message)) || "unknown"); HEALTH.busy = false; return; }
+    HEALTH.data = d; HEALTH.at = Date.now(); HEALTH.map = {};
+    d.services.forEach(function (x) { HEALTH.map[x.code] = x; });
+    healthRender();
+    try { if (typeof _svcCatalog !== "undefined" && _svcCatalog.length && typeof renderServiceCatalog === "function") renderServiceCatalog(); } catch (e) {}
+  } catch (e) { sum.textContent = "❌ নেটওয়ার্ক সমস্যা"; }
+  HEALTH.busy = false;
+}
+function healthToggleBad() { HEALTH.onlyBad = !HEALTH.onlyBad; healthRender(); }
+function healthRender() {
+  var d = HEALTH.data; if (!d) return;
+  var c = d.counts;
+  document.getElementById("healthOnlyBad").style.opacity = HEALTH.onlyBad ? "1" : "0.6";
+  document.getElementById("healthSum").innerHTML = "🟢 ভালো <b>" + c.good + "</b> · 🟠 মাঝারি <b>" + c.ok + "</b> · 🔴 খারাপ <b>" + c.bad + "</b> · ⚪ তথ্য কম " + c.nodata +
+    (d.suggest_hide ? ' · <b style="color:#f87171;">লুকানোর প্রস্তাব ' + d.suggest_hide + "</b>" : "") +
+    '<div style="opacity:.7;margin-top:2px;">স্কোর = সম্পন্ন-হার + ব্যর্থতা + গতি (সর্বশেষ ' + 20 + 'টি রেকর্ড; অন্তত ' + d.config.min_samples + 'টি লাগে)। এটা শুধু প্রস্তাব।</div>';
+  var list = d.services.filter(function (x) { return HEALTH.onlyBad ? x.grade === "bad" : x.grade !== "nodata"; });
+  var el = document.getElementById("healthList");
+  if (!list.length) { el.innerHTML = '<div class="hl-meta">' + (HEALTH.onlyBad ? "কোনো খারাপ সার্ভিস নেই ✅" : "কোনো তথ্য নেই") + "</div>"; return; }
+  el.innerHTML = list.slice(0, 30).map(function (x) {
+    var nm = healthName(x.code);
+    return '<div class="hl-row"><div class="hl-top"><div class="hl-name">' + healthE(nm || ("#" + x.code)) + "</div><div><span class='hl-b " + x.grade + "'>" + x.score + "</span>" + (x.hidden ? "<span class='hl-b nodata'>লুকানো</span>" : "") + (x.exempt ? "<span class='hl-b nodata'>ছাড়</span>" : "") + "</div></div>" +
+      '<div class="hl-meta">#' + healthE(x.code) + " · সম্পন্ন " + x.n + "/" + x.total + " · ব্যর্থ " + x.fail + " · পার্শিয়াল " + x.partial + " · মিডিয়ান " + healthE(x.med_label) + "</div>" +
+      (x.reasons.length ? '<div class="hl-meta" style="color:#fca5a5;">কারণ: ' + x.reasons.map(healthE).join(" · ") + "</div>" : "") +
+      (x.suggest_hide ? '<div style="margin-top:6px;"><button type="button" class="svc-btn-hide" style="font-size:12px;padding:7px 10px;border-radius:8px;" onclick="healthHide(\'' + healthE(x.code).replace(/'/g, "") + '\')">🚫 সাইট থেকে সরান (প্রস্তাব)</button></div>' : "") + "</div>";
+  }).join("") + (list.length > 30 ? '<div class="hl-meta">আরও ' + (list.length - 30) + 'টি আছে — সার্ভিস তালিকার ব্যাজ দেখুন।</div>' : "");
+}
+async function healthHide(code) {
+  var nm = healthName(code) || ("#" + code);
+  if (!confirm("“" + nm + "” সাইট থেকে সরাবেন? গ্রাহক আর এটা দেখবে না। (পরে আনহাইড করা যাবে)")) return;
+  try {
+    var r = await svcApi("hide", { code: code });
+    if (r && r.ok) { if (HEALTH.map[code]) { HEALTH.map[code].hidden = true; HEALTH.map[code].suggest_hide = false; } try { loadServiceCatalog(); } catch (e) {} healthRender(); }
+    else alert("ব্যর্থ: " + ((r && (r.error || r.message)) || "unknown"));
+  } catch (e) { alert("নেটওয়ার্ক সমস্যা"); }
+}
+</script>
+<script>
+// ---------- ধাপ 6: মার্জিন-রুল (set_price_map) + খরচ-বাড়ার সতর্কতা (admin_cost_watch) ----------
+var MR = { plan: null, busy: false };
+function mrE(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function mrInputs() {
+  var t = Number(document.getElementById("mrTarget").value), m = Number(document.getElementById("mrMin").value), st = Number(document.getElementById("mrStep").value);
+  return { target: t, min: m, step: st, over: document.getElementById("mrOver").checked, lower: document.getElementById("mrLower").checked,
+    ok: t > 0 && t < 90 && m >= 0 && m < 90 && m <= t && st > 0 };
+}
+function mrDisc(code) {
+  var d = ((_svcMeta || {}).discounts || {})[String(code)];
+  if (!d || !(Number(d.value) > 0)) return null;
+  if (d.until) { var t = Date.parse(d.until); if (!isNaN(t) && Date.now() > t) return null; }
+  return d;
+}
+function mrFinal(base, d) {
+  if (!d) return base;
+  var val = Number(d.value) || 0, off = d.type === "fixed" ? val : base * Math.min(val, 90) / 100;
+  return base - Math.max(0, Math.min(off, base * 0.9));
+}
+// লক্ষ্য মার্জিনে পৌঁছানো ন্যূনতম বেস দাম (ছাড় ধরে), ওপরের দিকে গোল। ফেরত: { base, final, margin }
+function mrCompute(cost, d, target, step) {
+  var F = cost / (1 - target / 100), B;
+  if (!d) B = F;
+  else if (d.type === "fixed") B = F + (Number(d.value) || 0);
+  else B = F / (1 - Math.min(Number(d.value) || 0, 90) / 100);
+  B = Math.ceil(Math.round(B / step * 1e6) / 1e6) * step;
+  var fin = 0, mg = -100;
+  for (var i = 0; i < 40; i++) {
+    B = Math.round(B * 100) / 100;
+    fin = mrFinal(B, d); mg = fin > 0 ? (fin - cost) / fin * 100 : -100;
+    if (mg >= target - 0.0001) break;
+    B += step;
+  }
+  return { base: B, final: fin, margin: mg };
+}
+function mrName(code) {
+  try { var r = (_svcCatalog.length ? _svcCatalog : (window._svcLastRows || [])).find(function (x) { return String(x.code) === String(code); }); if (r && r.name) return r.name; } catch (e) {}
+  try { var c = (_svcCatalog || []).find(function (x) { return String(x.code) === String(code); }); if (c && c.name) return c.name; } catch (e) {}
+  return "#" + code;
+}
+function mrPreview() {
+  var inp = mrInputs(), out = document.getElementById("mrOut");
+  if (!inp.ok) { out.innerHTML = '<div style="color:#f87171;">⚠ মান ঠিক নয়: লক্ষ্য ০–৯০%, ন্যূনতম ≤ লক্ষ্য হতে হবে।</div>'; return; }
+  var all = window._svcLastRows || [];
+  if (!all.length) { out.innerHTML = '<div class="mr-note">আগে সার্ভিস তালিকা লোড করুন।</div>'; return; }
+  var rows = all.slice(0, 200), hidden = {}, prices = (_svcMeta || {}).prices || {};
+  ((_svcMeta || {}).hidden || []).forEach(function (c) { hidden[String(c)] = 1; });
+  var plan = [], skip = { hidden: 0, nocost: 0, manual: 0, lower: 0, same: 0, blocked: 0 };
+  rows.forEach(function (p) {
+    var code = String(p.code), cost = svcCostBdt(p);
+    if (hidden[code]) { skip.hidden++; return; }
+    if (!(cost > 0)) { skip.nocost++; return; }
+    var hasManual = Number(prices[code]) > 0;
+    if (hasManual && !inp.over) { skip.manual++; return; }
+    var d = mrDisc(code), r = mrCompute(cost, d, inp.target, inp.step);
+    if (r.margin < inp.min) { skip.blocked++; return; }
+    var curBase = getBaseSellingPrice({ code: code, pricePerK: p.pricePerK });
+    if (r.base < curBase && !inp.lower) { skip.lower++; return; }
+    if (Math.abs(r.base - curBase) < 0.005) { skip.same++; return; }
+    plan.push({ code: code, name: p.name || code, cost: cost, cur: curBase, base: r.base, final: r.final, margin: r.margin, discounted: !!d, manual: hasManual });
+  });
+  MR.plan = { items: plan, inp: inp, skip: skip, total: all.length, cut: Math.max(0, all.length - 200) };
+  var sk = [];
+  if (skip.hidden) sk.push("লুকানো " + skip.hidden); if (skip.nocost) sk.push("খরচ নেই " + skip.nocost); if (skip.manual) sk.push("হাতে-বসানো " + skip.manual);
+  if (skip.lower) sk.push("দাম কমবে (বাদ) " + skip.lower); if (skip.same) sk.push("আগের সমান " + skip.same); if (skip.blocked) sk.push("ন্যূনতম মার্জিনে পৌঁছায় না " + skip.blocked);
+  var h = (MR.plan.cut ? '<div style="color:#fbbf24;margin-bottom:6px;">🚧 ফিল্টারে মোট ' + MR.plan.total + 'টি; প্রথম ২০০টি ধরা হয়েছে।</div>' : "") +
+    "<div><b>প্রয়োগ হবে: " + plan.length + "টি</b>" + (sk.length ? " · বাদ: " + sk.join(" · ") : "") + "</div>";
+  h += plan.slice(0, 40).map(function (x) {
+    return '<div class="mr-row"><b>' + mrE(x.name) + "</b><br>খরচ " + svcTaka(x.cost) + " · পুরনো " + svcTaka(x.cur) + " → <b>নতুন " + svcTaka(x.base) + "</b>" + (x.discounted ? " (ছাড়ের পর " + svcTaka(x.final) + ")" : "") + " · মার্জিন <b>" + x.margin.toFixed(1) + "%</b>" + (x.manual ? " · ⚠ হাতে-বসানো ছিল" : "") + "</div>";
+  }).join("");
+  if (plan.length > 40) h += '<div class="mr-note">আরও ' + (plan.length - 40) + "টি আছে (সবগুলোই প্রয়োগ হবে)।</div>";
+  if (plan.length) h += '<div style="margin-top:8px;"><button type="button" class="svc-btn-show" id="mrApplyBtn" onclick="mrApply()">✅ ' + plan.length + "টিতে প্রয়োগ করুন</button></div>";
+  out.innerHTML = h;
+}
+async function mrApply() {
+  if (MR.busy || !MR.plan || !MR.plan.items.length) return;
+  var pl = MR.plan, n = pl.items.length;
+  var msg = n + "টি সার্ভিসের দাম বদলাবে (লক্ষ্য " + pl.inp.target + "%, ন্যূনতম " + pl.inp.min + "%)।\n" + (pl.inp.over ? "⚠ হাতে-বসানো দামও ওভাররাইট হবে।\n" : "") + "পরে Undo করা যাবে। চালিয়ে যাবেন?";
+  if (!(await svcConfirm(msg, { okText: "প্রয়োগ করুন", title: "📈 মার্জিন-রুল" }))) return;
+  MR.busy = true;
+  var b = document.getElementById("mrApplyBtn"); if (b) b.disabled = true;
+  try {
+    await svcFreshMeta();
+    var codes = pl.items.map(function (x) { return x.code; });
+    var snap = svcSnapshot("price", codes, "মার্জিন-রুল " + pl.inp.target + "%");
+    var map = {}; pl.items.forEach(function (x) { map[x.code] = x.base; });
+    _svcAuditReason = "মার্জিন-রুল লক্ষ্য " + pl.inp.target + "% / ন্যূনতম " + pl.inp.min + "%";
+    var r = await svcApi("set_price_map", { map: map, min_margin: pl.inp.min, codes: codes });
+    if (!(r && r.ok)) { svcToast("ফেল: " + ((r && (r.message || r.error)) || "unknown"), true); }
+    else {
+      var okSet = {}; (r.applied || []).forEach(function (c) { okSet[c] = 1; });
+      snap.items = snap.items.filter(function (it) { return okSet[it.code]; });
+      if (snap.items.length) svcUndoOffer(snap);
+      var rej = r.rejected || [];
+      svcToast("✅ " + (r.applied || []).length + "টি বসেছে" + (rej.length ? " · ⚠ " + rej.length + "টি বাদ (সুরক্ষা)" : ""), rej.length > 0);
+      MR.plan = null;
+      document.getElementById("mrOut").innerHTML = '<div>✅ ' + (r.applied || []).length + "টি প্রয়োগ হয়েছে।</div>" + (rej.length ? '<div style="color:#fbbf24;">সার্ভার-সুরক্ষায় বাদ: ' + rej.slice(0, 20).map(function (x) { return mrE(x.code) + " (" + mrE(x.reason) + ")"; }).join(", ") + "</div>" : "");
+      try { loadServiceCatalog(); } catch (e) {}
+      mrWatchLoad(true);
+    }
+  } catch (e) { svcToast("নেটওয়ার্ক সমস্যা — Sheet দেখে নিশ্চিত হোন", true); }
+  MR.busy = false;
+}
+var MRW = { busy: false, at: 0, items: [] };
+async function mrWatchLoad(force) {
+  if (MRW.busy || !ADMIN_TOKEN) return;
+  if (!force && Date.now() - MRW.at < 60000) return;
+  MRW.busy = true;
+  var el = document.getElementById("mrWatch");
+  try {
+    var m = Number(document.getElementById("mrMin").value); if (!(m >= 0 && m < 90)) m = 10;
+    var res = await fetch(API, { method: "POST", mode: "cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action: "admin_cost_watch", token: ADMIN_TOKEN, min_margin: m }) });
+    var d = await res.json();
+    if (!d || !d.ok) { el.textContent = "❌ " + ((d && (d.error || d.message)) || "unknown"); MRW.busy = false; return; }
+    MRW.at = Date.now(); MRW.items = d.items || [];
+    if (!d.count) { el.innerHTML = "✅ রুলে বসানো কোনো সার্ভিসের খরচ বাড়েনি, মার্জিনও ন্যূনতমের (" + d.min_margin + "%) ওপরে।"; }
+    else el.innerHTML = '<div style="color:#fbbf24;">⚠ ' + d.count + "টি সার্ভিস দেখুন:</div>" + d.items.slice(0, 20).map(function (x) {
+      return '<div class="mr-row"><b>' + mrE(mrName(x.code)) + "</b>" + (x.hidden ? " (লুকানো)" : "") + "<br>" + (x.rose ? "খরচ $" + x.snap_usd + " → <b>$" + x.now_usd + "</b> (+" + x.rise_pct + "%) · " : "") + "দাম " + svcTaka(x.final_price) + " · এখন মার্জিন <b style='color:" + (x.margin_now < 0 ? "#f87171" : "#fbbf24") + "'>" + x.margin_now + "%</b>" +
+        '<br><button type="button" class="svc-btn-show" onclick="mrFix(\'' + mrE(x.code).replace(/'/g, "") + '\')">রুল অনুযায়ী দাম ঠিক করুন</button></div>';
+    }).join("");
+  } catch (e) { el.textContent = "❌ নেটওয়ার্ক সমস্যা"; }
+  MRW.busy = false;
+}
+async function mrFix(code) {
+  var inp = mrInputs(); if (!inp.ok) { svcToast("লক্ষ্য/ন্যূনতম মান ঠিক করুন", true); return; }
+  var p = (_svcCatalog.length ? _svcCatalog : (window._svcLastRows || [])).find(function (x) { return String(x.code) === String(code); });
+  if (!p) { svcToast("সার্ভিস তালিকা লোড করে আবার চেষ্টা করুন", true); return; }
+  var cost = svcCostBdt(p); if (!(cost > 0)) { svcToast("খরচ জানা নেই", true); return; }
+  await svcFreshMeta();
+  var r = mrCompute(cost, mrDisc(code), inp.target, inp.step);
+  if (r.margin < inp.min) { svcToast("এই ছাড়ে ন্যূনতম মার্জিনে পৌঁছানো যায় না — ছাড় কমান", true); return; }
+  var cur = getBaseSellingPrice({ code: code, pricePerK: p.pricePerK });
+  if (!(await svcConfirm(mrName(code) + "\nখরচ " + svcTaka(cost) + "\nপুরনো দাম " + svcTaka(cur) + " → নতুন " + svcTaka(r.base) + " (মার্জিন " + r.margin.toFixed(1) + "%)", { okText: "দাম বদলান", title: "📈 দাম ঠিক করুন" }))) return;
+  var snap = svcSnapshot("price", [code], "মার্জিন-রুল (১টি)");
+  _svcAuditReason = "খরচ বাড়ার পর মার্জিন-রুল";
+  var map = {}; map[code] = r.base;
+  var res = await svcApi("set_price_map", { map: map, min_margin: inp.min, codes: [code] });
+  if (res && res.ok && (res.applied || []).length) { svcUndoOffer(snap); try { loadServiceCatalog(); } catch (e) {} mrWatchLoad(true); }
+  else svcToast("ফেল: " + ((res && (res.message || res.error || (res.rejected && res.rejected[0] && res.rejected[0].reason))) || "unknown"), true);
+}
+</script>
+<script>
+// ---------- ধাপ 7: ব্যাকআপ প্রোভাইডার (ম্যানুয়াল ফেইলওভার) ----------
+var BK = { map: {}, providers: [], at: 0, busy: false };
+function bkE(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function bkSvc(code) { try { return (_svcCatalog || []).find(function (x) { return String(x.code) === String(code); }) || null; } catch (e) { return null; } }
+async function bkPost(body) {
+  var res = await fetch(API, { method: "POST", mode: "cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(Object.assign({ token: ADMIN_TOKEN }, body)) });
+  return res.json();
+}
+async function bkLoad(force) {
+  if (!ADMIN_TOKEN || (!force && Date.now() - BK.at < 60000)) return;
+  try {
+    var r = await svcApi("backup_info", {});
+    if (!r || !r.ok) return;
+    BK.map = r.backup || {}; BK.providers = r.providers || []; BK.at = Date.now();
+    var sel = document.getElementById("bkProv");
+    if (sel) sel.innerHTML = BK.providers.map(function (p) { return '<option value="' + bkE(p) + '">' + bkE(p) + "</option>"; }).join("");
+    bkRender();
+  } catch (e) {}
+}
+function bkRender() {
+  var el = document.getElementById("bkList"); if (!el) return;
+  var codes = Object.keys(BK.map);
+  el.innerHTML = codes.length ? codes.map(function (c) {
+    var m = BK.map[c], p = bkSvc(c);
+    return '<div class="bk-row"><b>' + bkE(p ? p.name : "#" + c) + "</b><br>#" + bkE(c) + " → ব্যাকআপ <b>" + bkE(m.provider) + "</b> · আইডি <b>" + bkE(m.service_id) +
+      '</b> <button type="button" class="svc-fbtn" onclick="bkRemove(\'' + bkE(c).replace(/'/g, "") + '\')">✕ মুছুন</button></div>';
+  }).join("") : '<div class="bk-note">এখনো কোনো ব্যাকআপ বসানো নেই।</div>';
+}
+function bkName() {
+  var c = document.getElementById("bkCode").value.trim(), p = bkSvc(c);
+  document.getElementById("bkNm").textContent = p ? "✔ " + p.name : (c ? "এই কোডের সার্ভিস তালিকায় পাওয়া যায়নি" : "");
+}
+async function bkCheck() {
+  var code = document.getElementById("bkCode").value.trim(), prov = document.getElementById("bkProv").value, sid = document.getElementById("bkSid").value.trim();
+  var out = document.getElementById("bkChk");
+  if (!code || !prov || !sid) { out.innerHTML = '<div style="color:#f87171;">কোড, প্রোভাইডার ও আইডি—তিনটাই দিন।</div>'; return; }
+  out.innerHTML = '<div class="bk-note">যাচাই হচ্ছে…</div>';
+  var r = await svcApi("set_backup", { code: code, provider: prov, service_id: sid, dry_run: true });
+  if (!r || !r.ok) { out.innerHTML = '<div style="color:#f87171;">❌ ' + bkE((r && (r.message || r.error)) || "unknown") + "</div>"; return; }
+  var ours = bkSvc(code), ck = r.check || {}, warn = [];
+  if (ours && ck.min != null && Number(ck.min) > Number(ours.min)) warn.push("ব্যাকআপের Min (" + ck.min + ") আমাদের Min (" + ours.min + ")-এর চেয়ে বেশি");
+  if (ours && ck.max != null && Number(ck.max) < Number(ours.max)) warn.push("ব্যাকআপের Max (" + ck.max + ") আমাদের Max (" + ours.max + ")-এর চেয়ে কম");
+  out.innerHTML = '<div class="bk-row"><b>মিলিয়ে দেখুন:</b><br>আমাদের: ' + bkE(ours ? ours.name : "#" + code) + (ours ? " · Min " + bkE(ours.min) + " – Max " + bkE(ours.max) : "") +
+    "<br>ব্যাকআপ (" + bkE(prov) + "): <b>" + bkE(ck.name || "(নাম জানা যায়নি)") + "</b> · রেট " + bkE(ck.rate) + " · Min " + bkE(ck.min) + " – Max " + bkE(ck.max) +
+    (warn.length ? '<br><span style="color:#fbbf24;">⚠ ' + warn.map(bkE).join(" · ") + "</span>" : "") +
+    '<br><button type="button" class="svc-btn-show" onclick="bkSave()">✅ ঠিক আছে — সেভ করুন</button></div>';
+}
+async function bkSave() {
+  var code = document.getElementById("bkCode").value.trim(), prov = document.getElementById("bkProv").value, sid = document.getElementById("bkSid").value.trim();
+  var r = await svcApi("set_backup", { code: code, provider: prov, service_id: sid });
+  if (r && r.ok) { document.getElementById("bkChk").innerHTML = '<div>✅ সেভ হয়েছে।</div>'; document.getElementById("bkSid").value = ""; bkLoad(true); }
+  else document.getElementById("bkChk").innerHTML = '<div style="color:#f87171;">❌ ' + bkE((r && (r.message || r.error)) || "unknown") + "</div>";
+}
+async function bkRemove(code) {
+  var p = bkSvc(code);
+  if (!(await svcConfirm("“" + (p ? p.name : "#" + code) + "”-এর ব্যাকআপ মুছবেন?", { okText: "মুছুন", title: "↪ ব্যাকআপ" }))) return;
+  var r = await svcApi("remove_backup", { code: code });
+  if (r && r.ok) bkLoad(true);
+}
+var BK_ERR = { topup: "টপ-আপ সারিতে ব্যাকআপ চলে না।", no_backup: "এই সার্ভিসের ব্যাকআপ বসানো নেই।", already_failed_over: "এই অর্ডার আগেই ব্যাকআপে সরানো হয়েছে (একবারই হয়)।",
+  no_primary: "প্রাইমারি প্রোভাইডার জানা নেই।", same_provider: "ব্যাকআপ আর প্রাইমারি একই প্রোভাইডার।", no_backup_key: "ব্যাকআপ প্রোভাইডারের API কী নেই।",
+  primary_completed: "প্রাইমারিতে অর্ডার সম্পন্ন হয়ে গেছে — ব্যাকআপ লাগবে না।", order_not_found: "অর্ডার পাওয়া যায়নি।", unauthorized: "অনুমতি নেই।" };
+function bkErr(r) {
+  if (!r) return "অজানা সমস্যা";
+  var e = String(r.error || "");
+  if (BK_ERR[e]) return BK_ERR[e];
+  if (e.indexOf("status_") === 0) return "এই স্ট্যাটাসে (" + e.slice(7) + ") ব্যাকআপ চলে না — শুধু Pending/Approved/Processing।";
+  return (r.message ? r.message + " " : "") + (e ? "(" + e + ")" : "ব্যাকআপে পাঠানো যায়নি");
+}
+async function failoverStart(oid) {
+  if (BK.busy) return; BK.busy = true;
+  try {
+    var chk = await bkPost({ action: "admin_failover_check", order_id: oid });
+    if (!chk || !chk.ok) { alert(bkErr(chk)); return; }
+    var msg = "অর্ডার #" + chk.order_id + " ব্যাকআপে নতুন করে পাঠাবেন?\n\nপ্রাইমারি: " + chk.primary + (chk.provider_order_id ? " (অর্ডার " + chk.provider_order_id + ", অবস্থা: " + (chk.primary_status || "অজানা") + ")" : " (এখনো যায়নি)") +
+      "\nব্যাকআপ: " + chk.backup + " (সার্ভিস আইডি " + chk.backup_service_id + ")\nপরিমাণ: " + chk.qty + (chk.qty !== chk.orig_qty ? " (মূল " + chk.orig_qty + "-এর বাকি অংশ)" : "") +
+      (chk.dead ? "\n\nপ্রাইমারিতে অর্ডার বাতিল/ব্যর্থ — নিরাপদ।" : "");
+    if (!(await svcConfirm(msg, { okText: chk.needs_confirm ? "পরের ধাপ" : "ব্যাকআপে পাঠান", title: "↪ ব্যাকআপে পাঠান" }))) return;
+    var conf = false;
+    if (chk.needs_confirm) {
+      if (!(await svcConfirm("⚠ প্রাইমারিতে অর্ডারটি " + (chk.primary_status ? "এখনো “" + chk.primary_status + "” অবস্থায় আছে" : "চলছে কিনা জানা যায়নি") + "।\nব্যাকআপে পাঠালে দুই জায়গাতেই ডেলিভারি হয়ে খরচ ডবল হতে পারে।\n\nপ্রোভাইডার প্যানেলে দেখে আপনি কি নিশ্চিত যে ওটা আটকে আছে/আর চলবে না?", { okText: "হ্যাঁ, নিশ্চিত — পাঠান", title: "⚠ ডুপ্লিকেটের ঝুঁকি" }))) return;
+      conf = true;
+    }
+    var r = await bkPost({ action: "admin_failover", order_id: oid, confirm_primary_dead: conf });
+    if (r && r.ok) { svcToast("✅ ব্যাকআপে গেছে (নতুন অর্ডার " + r.provider_order_id + ")", false); try { stuckLoad(true); } catch (e1) {} try { dashLoad(true); } catch (e2) {} }
+    else alert(bkErr(r));
+  } catch (e) { alert("নেটওয়ার্ক সমস্যা — ফল জানা যায়নি। আগে অর্ডার তালিকা/প্রোভাইডার প্যানেল দেখে নিন, তারপর আবার চেষ্টা করুন।"); }
+  finally { BK.busy = false; }
+}
 </script>
 </body>
 </html>
