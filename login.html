@@ -8,13 +8,20 @@
 <meta name="theme-color" content="#0b1020" />
 <link rel="icon" type="image/svg+xml" href="favicon.svg?v=20261030a" />
   <link rel="preload" href="fonts/hind-siliguri-v14-bengali_latin-regular.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="design/fonts.css?v=20261029y" />
+  <link rel="preload" href="fonts/InterVariable-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="design/fonts.css?v=20261110h" />
 <script src="design/theme.js?v=20261030a"></script>
 <link rel="stylesheet" href="design/tokens.css?v=20261029a" />
 <link rel="stylesheet" href="design/pages.css?v=20261030a" />
 <link rel="stylesheet" href="design/home.css?v=20261026r" />
 <link rel="stylesheet" href="design/a11y.css?v=20261029a" />
+<style>
+.lg-hint{margin:6px 2px 0;font-size:.82rem;color:#8b94b8;line-height:1.5}
+.lg-hint b{color:#b9c0e6;font-weight:600}
+.lg-gender{display:flex;gap:10px}
+.lg-gbtn{flex:1;min-height:48px;border-radius:14px;border:1px solid #2a3150;background:#0a0d1a;color:#cfd5f2;font:inherit;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.lg-gbtn[aria-checked="true"]{border-color:#6366f1;background:#1c2150;color:#fff;box-shadow:0 0 0 2px rgba(99,102,241,.35)}
+</style>
 </head>
 <body>
 <a class="skip-link" href="#main">মূল অংশে যান</a>
@@ -44,9 +51,15 @@
 
     <div class="lg-panel" id="lgPanel-register" hidden>
       <div class="lg-field"><label for="lgRegName">User name (নাম বা মোবাইল নম্বর)</label>
-        <input class="lg-in" id="lgRegName" type="text" maxlength="30" placeholder="যেমন: rahim_ahmed বা 01XXXXXXXXX" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" /></div>
+        <input class="lg-in" id="lgRegName" type="text" maxlength="30" placeholder="যেমন: rahim_ahmed বা 01XXXXXXXXX" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" />
+        <div class="lg-hint">উদাহরণ: <b>rahim_ahmed</b> · <b>sakib75</b> · <b>01712345678</b></div></div>
       <div class="lg-field"><label for="lgRegPin">পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
-        <div class="lg-in-wrap"><input class="lg-in" id="lgRegPin" type="password" maxlength="32" autocomplete="new-password" /><button type="button" class="lg-eye" id="lgEyeReg" aria-label="পিন দেখান/লুকান">👁</button></div></div>
+        <div class="lg-in-wrap"><input class="lg-in" id="lgRegPin" type="password" maxlength="32" placeholder="যেমন: boost@2026" autocomplete="new-password" /><button type="button" class="lg-eye" id="lgEyeReg" aria-label="পিন দেখান/লুকান">👁</button></div></div>
+      <div class="lg-field"><label>আপনি (ঐচ্ছিক, প্রোফাইল ছবির জন্য)</label>
+        <div class="lg-gender" id="lgGender" role="radiogroup" aria-label="জেন্ডার">
+          <button type="button" class="lg-gbtn" data-g="m" role="radio" aria-checked="false">👦 ছেলে</button>
+          <button type="button" class="lg-gbtn" data-g="f" role="radio" aria-checked="false">👧 মেয়ে</button>
+        </div></div>
       <button type="button" class="lg-btn" id="lgBtnRegister">অ্যাকাউন্ট খুলুন</button>
     </div>
 
@@ -69,6 +82,7 @@
   <p class="lg-note">লগইন ছাড়াও সার্ভিস ও দাম দেখা যায়। <a href="index.html">সার্ভিস লিস্টে ফিরুন</a></p>
 </main>
 <footer class="pg-foot">&copy; 2026 boostplus। · <a href="terms.html">শর্তাবলী</a> · <a href="privacy.html">গোপনীয়তা</a> · <a href="refund.html">রিফান্ড ও রিফিল</a></footer>
-<script src="login.js?v=20261106b"></script>
+<script src="login.js?v=20261106d"></script>
+  <script src="design/site-notice.js?v=20261110a" data-api="https://script.google.com/macros/s/AKfycbxacUqhDDc_2kRsedBF_x8zTrqUhNloQryVEkKuJzDC7SAyh_po6BbxX2F0ZLrrPmhV/exec" defer></script>
 </body>
 </html>

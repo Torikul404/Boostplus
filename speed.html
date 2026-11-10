@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>স্পিড ট্র্যাকার</title>
 <script>try{var t=localStorage.getItem("pb_admin_theme");if(!t)t=matchMedia("(prefers-color-scheme: light)").matches?"light":"premium";document.documentElement.setAttribute("data-theme",t==="light"?"light":"premium");}catch(e){document.documentElement.setAttribute("data-theme","premium");}</script>
-  <link rel="stylesheet" href="design/fonts.css?v=20261029y" />
+  <link rel="stylesheet" href="design/fonts.css?v=20261110h" />
 <link rel="stylesheet" href="design/tokens.css?v=20261029a">
 <link rel="stylesheet" href="design/a11y.css?v=20261029a">
 <style>
@@ -315,5 +315,6 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
 (async () => { if (!TOKEN){ const t = await tkIdb("get"); if (t){ TOKEN = t; try { localStorage.setItem(TK, t); } catch(e){} } } else tkIdb("set", TOKEN); if (TOKEN) load(); else $("login").hidden = false; })();
 TIMER = setInterval(()=>{ if(TOKEN && !document.hidden) load(); }, 60000);
 </script>
+  <script src="design/site-notice.js?v=20261110a" data-api="https://script.google.com/macros/s/AKfycbxacUqhDDc_2kRsedBF_x8zTrqUhNloQryVEkKuJzDC7SAyh_po6BbxX2F0ZLrrPmhV/exec" defer></script>
 </body>
 </html>

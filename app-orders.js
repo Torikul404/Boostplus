@@ -29,11 +29,20 @@
   // ---------- sidebar account card (ছবি + নাম + ব্যালেন্স) ----------
   const photoKey = () => 'pb_acct_photo_' + mobile();
   const getPhoto = () => { try { return localStorage.getItem(photoKey()) || ''; } catch (e) { return ''; } };
+  // জেন্ডার অনুযায়ী ডিফল্ট ছবি (m = ছেলে, f = মেয়ে)। নিজের ছবি তুললে সেটাই আগে দেখায়।
+  const AV_SVG = {
+    m: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#4f8cff'/><stop offset='1' stop-color='#6d5dfc'/></linearGradient></defs><rect width='96' height='96' fill='url(#g)'/><path d='M12 96c2-21 17-31 36-31s34 10 36 31z' fill='#1e293b'/><path d='M40 60h16v11c-3 4-13 4-16 0z' fill='#e6ad82'/><circle cx='48' cy='40' r='17' fill='#f2c4a0'/><path d='M30 39c-2-15 8-24 19-24s20 8 17 24c-3-8-8-11-17-11s-16 3-19 11z' fill='#2b1d14'/><circle cx='42' cy='42' r='1.9' fill='#2b1d14'/><circle cx='54' cy='42' r='1.9' fill='#2b1d14'/><path d='M43 49q5 4 10 0' stroke='#b4572f' stroke-width='2' fill='none' stroke-linecap='round'/></svg>",
+    f: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#f472b6'/><stop offset='1' stop-color='#8b5cf6'/></linearGradient></defs><rect width='96' height='96' fill='url(#g)'/><path d='M26 46c-3-19 7-31 22-31s25 12 22 31c-1 12 2 23 7 31H19c5-8 8-19 7-31z' fill='#3a1f1a'/><path d='M12 96c2-21 17-31 36-31s34 10 36 31z' fill='#be185d'/><path d='M40 60h16v11c-3 4-13 4-16 0z' fill='#e6ad82'/><circle cx='48' cy='42' r='16' fill='#f5cba8'/><path d='M31 41c1-13 10-19 18-19 9 0 16 6 17 19-5-6-10-9-17-9s-12 3-18 9z' fill='#3a1f1a'/><circle cx='42' cy='44' r='1.9' fill='#3a1f1a'/><circle cx='54' cy='44' r='1.9' fill='#3a1f1a'/><path d='M43 51q5 4 10 0' stroke='#c2410c' stroke-width='2' fill='none' stroke-linecap='round'/><circle cx='34' cy='52' r='2.2' fill='#fde68a'/><circle cx='62' cy='52' r='2.2' fill='#fde68a'/></svg>"
+  };
+  const genderOf = () => { try { const g = localStorage.getItem('pb_wallet_gender') || ''; return g === 'm' || g === 'f' ? g : ''; } catch (e) { return ''; } };
+  const genderSrc = (g) => 'data:image/svg+xml;utf8,' + encodeURIComponent(AV_SVG[g]);
   function paintAvatar(name) {
     const img = $('pbAcctImg'), ini = $('pbAcctInit');
     if (!img || !ini) return;
     const p = token() ? getPhoto() : '';
+    const g = token() ? genderOf() : '';
     if (p) { img.src = p; img.hidden = false; ini.hidden = true; }
+    else if (g) { img.src = genderSrc(g); img.hidden = false; ini.hidden = true; }
     else {
       img.hidden = true; img.removeAttribute('src'); ini.hidden = false;
       const s = String(name || '').trim();
@@ -57,7 +66,7 @@
       if (login) login.hidden = true;
       paintAvatar(nm);
     } else {
-      num.textContent = 'Not logged in';
+      num.textContent = 'লগইন করা নেই';
       if (mob) { mob.textContent = ''; mob.hidden = true; }
       bal.textContent = '—';
       if (bb) bb.hidden = true;
@@ -65,6 +74,7 @@
       paintAvatar('');
     }
   }
+  document.addEventListener('pb:avatar-refresh', () => { try { paintAccount(); } catch (e) {} });
   // ছবি বদলানো: ১৬০px এ ছোট করে শুধু এই ডিভাইসে (localStorage) রাখা হয়
   function pickPhoto(file) {
     if (!file || !/^image\//.test(file.type) || !token()) return;

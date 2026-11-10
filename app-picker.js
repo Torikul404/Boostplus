@@ -18,10 +18,10 @@
     root = document.createElement("div");
     root.id = "pkRoot"; root.className = "pk";
     root.innerHTML =
-      '<div class="dd-label pk-lbl" id="pkCatLbl">Category</div>' +
+      '<div class="dd-label pk-lbl" id="pkCatLbl">ক্যাটাগরি</div>' +
       '<div class="pk-sel"><button type="button" class="pk-trig" id="pkCatBtn" aria-haspopup="dialog" aria-labelledby="pkCatLbl pkCatTxt"><span class="pk-trig-txt" id="pkCatTxt"></span></button>' +
       '<select id="pkCat" class="pk-select pk-native" aria-hidden="true" tabindex="-1"></select></div>' +
-      '<div class="dd-label pk-lbl" id="pkSvcLbl">Service <span class="pk-count" id="pkCount"></span></div>' +
+      '<div class="dd-label pk-lbl" id="pkSvcLbl">সার্ভিস <span class="pk-count" id="pkCount"></span></div>' +
       '<div class="pk-sel"><button type="button" class="pk-trig" id="pkSvcBtn" aria-haspopup="dialog" aria-labelledby="pkSvcLbl pkSvcTxt"><span class="pk-trig-txt" id="pkSvcTxt"></span></button>' +
       '<select id="pkSvc" class="pk-select pk-native" aria-hidden="true" tabindex="-1"></select></div>' +
       '<div class="pk-facts" id="pkFacts"></div>';
@@ -55,7 +55,7 @@
   }
 
   /* ধাপ ১৯: নাম সর্বোচ্চ ৪০ অক্ষর (ইমোজি না ভেঙে); পুরো নাম title/বিবরণে */
-  var NAME_MAX = 400; /* নাম আর কাটা হয় না — পুরো নাম দেখায় */
+  var NAME_MAX = 40;
   function trunc(s, n) { var a = Array.from(String(s || "")); return a.length <= n ? a.join("") : a.slice(0, n - 1).join("").replace(/[\s·,\-–|]+$/, "") + "…"; }
 
   /* ফেভারিট সার্ভিস (শুধু এই ডিভাইসে, localStorage; না চললে চুপচাপ বাদ) */
@@ -276,7 +276,7 @@
       var t = splitTags(nm), tg = [];
       t.tags.forEach(function (x) { String(x).split(/\s*·\s*/).forEach(function (y) { y = y.trim(); if (y && !tg.some(function (z) { return z.toLowerCase() === y.toLowerCase(); })) tg.push(y); }); });
       try { (Array.isArray(p.tags) ? p.tags : []).forEach(function (x) { x = String(x || "").trim(); if (x && !tg.some(function (y) { return y.toLowerCase() === x.toLowerCase(); })) tg.push(x); }); } catch (e) {}
-      tg = tg.slice(0, 2); /* ট্যাগ সর্বোচ্চ ২টা */
+      var more = tg.length > 3 ? tg.length - 3 : 0; tg = tg.slice(0, 3); if (more) tg.push("+" + more);
       return { v: String(p.code), name: trunc(t.name, NAME_MAX), full: (function () { try { return decodeEntities(String(p.name || "")).normalize("NFKC").replace(/\s{2,}/g, " ").trim(); } catch (e) { return String(p.name || ""); } })() || t.name, tags: tg, price: price };
     });
     syncTriggers();

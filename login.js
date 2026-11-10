@@ -21,7 +21,12 @@
     var t = setTimeout(function () { if (ctrl) ctrl.abort(); }, 30000);
     try {
       var res = await fetch(API, { method: "POST", mode: "cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body), signal: ctrl ? ctrl.signal : undefined });
-      return await res.json();
+      var d = await res.json();
+      // পুরনো সার্ভার ভার্সনের এরর চিনে পরিষ্কার জানানো (নতুন সার্ভার এই এরর কখনও দেয় না)
+      if (d && d.ok === false && (d.error === "name_required" || (body && body.sub === "register" && (d.error === "invalid_mobile" || d.error === "invalid_name")))) {
+        d.message = "সার্ভার এখনও পুরনো ভার্সনে চলছে। (অ্যাডমিন: Apps Script-এ Code.gs বসিয়ে Deploy → Manage deployments → Edit → New version দিন)";
+      }
+      return d;
     } finally { clearTimeout(t); }
   }
   function netErr(e) { return (e && e.name === "AbortError") ? "সার্ভার সাড়া দিচ্ছে না। একটু পর আবার চেষ্টা করুন।" : "নেটওয়ার্ক সমস্যা। ইন্টারনেট চেক করে আবার চেষ্টা করুন।"; }
@@ -38,7 +43,7 @@
     try { await fn(); } finally { btn.disabled = false; btn.textContent = old; }
   }
   function done(d, mobile, text) {
-    try { localStorage.setItem(LS_TOKEN, d.token); localStorage.setItem(LS_MOBILE, d.mobile || mobile); if (d.name) localStorage.setItem("pb_wallet_name", d.name); } catch (e) { msg("error", "ব্রাউজারে সেশন সেভ করা যায়নি (প্রাইভেট মোড বন্ধ করে দেখুন)।"); return; }
+    try { localStorage.setItem(LS_TOKEN, d.token); localStorage.setItem(LS_MOBILE, d.mobile || mobile); if (d.name) localStorage.setItem("pb_wallet_name", d.name); localStorage.setItem("pb_wallet_gender", d.gender === "m" || d.gender === "f" ? d.gender : ""); } catch (e) { msg("error", "ব্রাউজারে সেশন সেভ করা যায়নি (প্রাইভেট মোড বন্ধ করে দেখুন)।"); return; }
     msg("success", text);
     setTimeout(function () { location.replace(dest()); }, 500);
   }
@@ -64,6 +69,18 @@
     b.addEventListener("click", function () { var i = $(x[0]); i.type = i.type === "password" ? "text" : "password"; });
   });
 
+  // ---- জেন্ডার বাছাই (ঐচ্ছিক; আবার চাপলে বাতিল) ----
+  var regGender = "";
+  Array.prototype.forEach.call(document.querySelectorAll("#lgGender .lg-gbtn"), function (b) {
+    b.addEventListener("click", function () {
+      var g = b.getAttribute("data-g");
+      regGender = regGender === g ? "" : g;
+      Array.prototype.forEach.call(document.querySelectorAll("#lgGender .lg-gbtn"), function (x) {
+        x.setAttribute("aria-checked", x.getAttribute("data-g") === regGender ? "true" : "false");
+      });
+    });
+  });
+
   // ---- লগইন ----
   $("lgBtnLogin").addEventListener("click", async function () {
     var mobile = val("lgLoginMobile"), pin = $("lgLoginPin").value;
@@ -85,7 +102,7 @@
     if (!pwOk(pin)) return msg("info", "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
     await busy($("lgBtnRegister"), "অপেক্ষা করুন…", async function () {
       try {
-        var d = await post({ action: "wallet_auth", sub: "register", username: name, pin: pin });
+        var d = await post({ action: "wallet_auth", sub: "register", username: name, pin: pin, gender: regGender });
         if (!d || !d.ok) {
           if (d && (d.error === "exists" || (d.message && d.message.indexOf("আগেই") !== -1))) return msg("error", "এই User name আগেই নেওয়া হয়েছে। অন্য User name দিন, অথবা আপনার হলে লগইন করুন।");
           return msg("error", (d && d.message) || (d && d.error) || "রেজিস্টার ব্যর্থ");

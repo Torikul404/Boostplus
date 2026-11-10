@@ -63,12 +63,33 @@
     em.disabled = true;
     try {
       const d = await post({ action: 'wallet_auth', sub: 'account_get', token: token() });
-      if (d && d.ok) { paintProfile(d.name || ls(LS_NAME), d.mobile || ls(LS_MOBILE)); em.value = d.email || ''; }
+      if (d && d.ok) { paintProfile(d.name || ls(LS_NAME), d.mobile || ls(LS_MOBILE)); em.value = d.email || ''; setGender(d.gender || ''); }
       else if (d && d.error === 'auth') { paintGuest(true); toast('error', d.message || 'আবার লগইন করুন'); }
       else toast('error', (d && d.message) || 'তথ্য আনা যায়নি');
     } catch (e) { toast('error', netMsg); }
     em.disabled = false;
   }
+
+  // ---------- জেন্ডার (প্রোফাইল ছবি) ----------
+  const gBtns = Array.prototype.slice.call(document.querySelectorAll('#accGender .pb-gbtn'));
+  function setGender(g) {
+    g = g === 'm' || g === 'f' ? g : '';
+    try { localStorage.setItem('pb_wallet_gender', g); } catch (e) {}
+    gBtns.forEach((b) => b.setAttribute('aria-checked', b.getAttribute('data-g') === g ? 'true' : 'false'));
+    document.dispatchEvent(new Event('pb:avatar-refresh'));
+  }
+  gBtns.forEach((b) => b.addEventListener('click', async () => {
+    const cur = (gBtns.filter((x) => x.getAttribute('aria-checked') === 'true')[0] || {}).dataset;
+    const want = b.getAttribute('data-g');
+    const next = cur && cur.g === want ? '' : want;
+    gBtns.forEach((x) => { x.disabled = true; });
+    try {
+      const d = await post({ action: 'wallet_auth', sub: 'account_save', token: token(), gender: next });
+      if (d && d.ok) { setGender(d.gender || ''); toast('success', d.message || 'সেভ হয়েছে'); }
+      else toast('error', (d && d.message) || 'সেভ করা যায়নি');
+    } catch (e) { toast('error', netMsg); }
+    gBtns.forEach((x) => { x.disabled = false; });
+  }));
 
   // ---------- ইমেইল ----------
   const saveBtn = $('accEmailSave');

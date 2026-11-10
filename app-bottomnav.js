@@ -40,13 +40,7 @@
 
   function act(k) {
     if (k === "new") { go("new-order"); try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (_) {} }
-    else if (k === "services") {
-      go("new-order");
-      setTimeout(function () {
-        var s = $("searchInput");
-        if (s) { try { s.scrollIntoView({ behavior: "smooth", block: "center" }); s.focus({ preventScroll: true }); } catch (_) {} }
-      }, 120);
-    }
+    else if (k === "services") go("services");   // সার্ভিস লিস্ট পাতা (app-svclist.js)
     else if (k === "funds") { var w = $("navWalletBtn"); if (w) w.click(); }   // গেস্ট হলে app-gate.js লগইন পেজে পাঠায়
     else if (k === "orders") go("orders");
     else if (k === "support") go("tickets");
@@ -58,9 +52,11 @@
     if (!bar) return;
     var cur = "new";
     if (shown("orders-view")) cur = "orders";
+    else if (shown("svclist-view")) cur = "services";
     else if (shown("wallet-view")) cur = "funds";
     else if (shown("tickets-view")) cur = "support";
-    else if (shown("contact-view") || shown("rules-view")) cur = "";
+    else if (shown("topup-view")) cur = "funds";
+    else if (shown("contact-view") || shown("rules-view") || shown("account-view") || shown("pin-view")) cur = "";
     else if (document.activeElement && document.activeElement.id === "searchInput") cur = "services";
     bar.querySelectorAll(".pb-bnav-btn").forEach(function (b) {
       var on = b.getAttribute("data-bn") === cur;
@@ -70,11 +66,18 @@
   }
 
   // কীবোর্ড খোলা থাকলে বার লুকাও (ইনপুট ঢাকা পড়া ঠেকাতে)
-  document.addEventListener("focusin", function (e) {
-    var t = e.target; if (t && /^(INPUT|TEXTAREA)$/.test(t.tagName)) document.body.classList.add("pb-kb");
-  });
+  // ধাপ ২৪: শুধু যেসব ফিল্ডে কীবোর্ড ওঠে (টেক্সট-ধরনের input, textarea, contenteditable)।
+  // checkbox/radio/button/file/range আর select-এ নয় — সেখানে কীবোর্ড ওঠে না (select-এ নেটিভ পিকার ওঠে), আর বার লুকালে ট্যাপের পর আটকে থাকত।
+  var NO_KB = /^(checkbox|radio|button|submit|reset|file|range|color|image|hidden)$/i;
+  function kbField(t) {
+    if (!t || !t.tagName) return false;
+    if (t.tagName === "TEXTAREA") return true;
+    if (t.tagName === "INPUT") return !NO_KB.test(t.type || "text");
+    return !!t.isContentEditable;
+  }
+  document.addEventListener("focusin", function (e) { if (kbField(e.target)) document.body.classList.add("pb-kb"); });
   document.addEventListener("focusout", function () { setTimeout(function () {
-    var a = document.activeElement; if (!a || !/^(INPUT|TEXTAREA)$/.test(a.tagName)) document.body.classList.remove("pb-kb");
+    if (!kbField(document.activeElement)) document.body.classList.remove("pb-kb");
   }, 60); });
 
   build(); sync();

@@ -154,7 +154,7 @@
   function clearSession() {
     localStorage.removeItem(LS_TOKEN);
     localStorage.removeItem(LS_MOBILE);
-    try { localStorage.removeItem("pb_wallet_name"); } catch (e) {}
+    try { localStorage.removeItem("pb_wallet_name"); localStorage.removeItem("pb_wallet_gender"); } catch (e) {}
     const box = document.getElementById("userDash");
     if (box) box.style.display = "none";
     const g = document.getElementById("userDashGuest");
@@ -174,7 +174,7 @@
     if (box) box.style.display = "block";
     const name = document.getElementById("userDashName");
     let savedName = "";
-    try { if (d.name) localStorage.setItem("pb_wallet_name", d.name); savedName = localStorage.getItem("pb_wallet_name") || ""; } catch (e) {}
+    try { if (d.gender !== undefined) localStorage.setItem("pb_wallet_gender", d.gender === "m" || d.gender === "f" ? d.gender : ""); if (d.name) localStorage.setItem("pb_wallet_name", d.name); savedName = localStorage.getItem("pb_wallet_name") || ""; } catch (e) {}
     if (name) name.textContent = d.name || savedName || d.mobile || getMobile() || "User";
     const b = document.getElementById("udBalance");
     if (b) b.textContent = "৳" + (Number(d.balance) || 0).toLocaleString("en-BD", { maximumFractionDigits: 2 });
@@ -486,56 +486,204 @@
   }
 
 
+  // ============ টপ-আপ ফ্লো (v16 রিডিজাইন) ============
+  // A অ্যামাউন্ট+মেথড → B নম্বর → C পেমেন্ট+TrxID → R ফলাফল (সফল / পেন্ডিং / ব্যর্থ / সময় শেষ)
+  // মার্কআপ: index.html #topup-view, স্টাইল: design/topup.css। ব্যাকএন্ড: আগের wallet_topup (বদলায়নি)।
   const TF_PAY_NUMBERS = {
     bKash: "01921018882",
     Nagad: "01921018882",
     Rocket: "01921018882"
   };
+  const TF_NAGAD_VIRTUAL = "9856 000883905438";                 // শুধু Nagad-এ দেখায়; ফাঁকা রাখলে সারিটি লুকানো থাকবে
+  const TF_QR = { bKash: "qr-bkash.png", Rocket: "qr-rocket.png" }; // Nagad/NPSB-তে QR নেই
+  const TF_WINDOW_MS = 15 * 60 * 1000;                          // পেমেন্টের সময়সীমা
+  const TF_POLL_MS = 8000;
+  const TF_FAIL_STATUS = ["failed", "rejected", "cancelled", "canceled", "refunded"];
+  const TP_COLORS = { bKash: "#e2136e", Nagad: "#e8532a", Rocket: "#a23ea6", NPSB: "#4f46e5" };
+  const TP_LOGOS = { bKash: "bKash-sm.png", Nagad: "nagad-sm.png", Rocket: "rocket-sm.png", NPSB: "npsb.svg" };
+  const TP_CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  const TP_RES = {
+    success: { ic: "M22 37l10 10 18-20", t: "টপ-আপ সম্পন্ন", d: "আপনার ওয়ালেটে ব্যালেন্স যোগ হয়েছে।" },
+    pending: { ic: "M36 20v18l10 6", t: "পেমেন্ট যাচাই চলছে", d: "আপনার টপ-আপ জমা হয়েছে। যাচাই হলেই ব্যালেন্স নিজে থেকে যোগ হবে। এই পেজ বন্ধ করলেও সমস্যা নেই।" },
+    failed: { ic: "M24 24l24 24M48 24L24 48", t: "যাচাই ব্যর্থ", d: "টপ-আপ রিকোয়েস্টটি গ্রহণ করা যায়নি। Transaction ID ঠিক আছে কিনা দেখে আবার চেষ্টা করুন, অথবা সাপোর্টে জানান।" },
+    expired: { ic: "M24 24l24 24M48 24L24 48", t: "সময় শেষ", d: "১৫ মিনিট পার হয়েছে। টাকা পাঠিয়ে থাকলে Transaction ID দিয়ে জমা দিন; না পাঠালে নতুন করে শুরু করুন।" }
+  };
 
-  let tfState = { method: "", amount: 0, sender: "", orderId: "", endsAt: 0 };
+  // method = A-তে যেটা বাছা হয়েছে (bKash/Nagad/Rocket/NPSB); wallet = আসল গন্তব্য ওয়ালেট (NPSB হলে B-তে বাছা হয়)
+  function tpFreshState() {
+    return { method: "", wallet: "", amount: 0, sender: "", orderId: "", trx: "", newBal: null, endsAt: 0, cur: "tfStepA", done: false };
+  }
+  let tfState = tpFreshState();
   let tfCountdownIv = null;
   let tfPollIv = null;
+
+  function tpEl(id) { return document.getElementById(id); }
+  function tpMoney(n) { return "৳" + (Number(n) || 0).toLocaleString("en-US", { maximumFractionDigits: 2 }); }
+  function tpWallet() { return tfState.method === "NPSB" ? tfState.wallet : tfState.method; }
+  function tpPaidFrom() { return tfState.method === "NPSB" ? (tfState.wallet + " (NPSB)") : tfState.method; }
 
   function showTopupView() {
     document.querySelectorAll(".view-section").forEach(function (el) { el.style.display = "none"; });
     const v = document.getElementById("topup-view");
     if (v) v.style.display = "block";
     window.scrollTo(0, 0);
+    if (tfState.done || tfState.cur === "tfStepR") tpReset();
     tfShow("tfStepA");
     loadWalletHistory();
   }
   window.goTopup = showTopupView;
 
   function tfShow(step) {
-    ["tfStepA", "tfStepB", "tfStepC", "tfStepD"].forEach(function (id) {
-      const el = document.getElementById(id);
-      if (el) el.style.display = id === step ? "block" : "none";
+    tfState.cur = step;
+    ["tfStepA", "tfStepB", "tfStepC", "tfStepR"].forEach(function (id) {
+      const el = tpEl(id);
+      if (el) el.style.display = id === step ? "flex" : "none";
     });
+    const bal = tpMoney(window._walletBalance || 0);
+    document.querySelectorAll("#topup-view .tp-bal-v").forEach(function (el) { el.textContent = bal; });
+    const cur = tpEl(step);
+    const h = cur && cur.querySelector("[data-tp-focus]");
+    if (h) { try { h.focus({ preventScroll: true }); } catch (e) {} }
+    window.scrollTo(0, 0);
   }
 
+  function tfStopCountdown() { if (tfCountdownIv) { clearInterval(tfCountdownIv); tfCountdownIv = null; } }
   function tfStopTimers() {
-    if (tfCountdownIv) { clearInterval(tfCountdownIv); tfCountdownIv = null; }
+    tfStopCountdown();
     if (tfPollIv) { clearInterval(tfPollIv); tfPollIv = null; }
   }
 
-  function tfStartCountdown() {
+  function tpReset() {
     tfStopTimers();
-    tfState.endsAt = Date.now() + 15 * 60 * 1000;
+    tfState = tpFreshState();
+    const a = tpEl("walTopAmount");
+    if (a) { a.value = ""; try { a.dispatchEvent(new Event("input", { bubbles: true })); } catch (e) {} }
+    ["walTopSender", "walTopTxn"].forEach(function (id) { const e = tpEl(id); if (e) e.value = ""; });
+    ["tpSenderErr", "tpTxnErr"].forEach(function (id) { const e = tpEl(id); if (e) e.textContent = ""; });
+    document.querySelectorAll(".tf-method").forEach(function (b) { b.classList.remove("selected"); b.setAttribute("aria-checked", "false"); });
+    document.querySelectorAll(".tp-w").forEach(function (b) { b.setAttribute("aria-checked", "false"); });
+    tpSyncGo();
+  }
+
+  function tpSyncGo() {
+    const v = Number((tpEl("walTopAmount") || {}).value) || 0;
+    const go = tpEl("tfGoPayer");
+    if (go) go.disabled = !(v >= MIN_TOPUP && tfState.method);
+    const h = tpEl("tpHint");
+    if (h) h.classList.toggle("bad", v > 0 && v < MIN_TOPUP);
+  }
+
+  function tpSyncB() {
+    const npsb = tfState.method === "NPSB";
+    const ok = npsb ? !!tfState.wallet : /^01\d{9}$/.test(((tpEl("walTopSender") || {}).value || "").trim());
+    const b = tpEl("tfGoWait");
+    if (b) b.disabled = !ok;
+  }
+
+  // ---- ধাপ A ----
+  function tfSelectMethod(method) {
+    tfState.method = method;
+    if (method !== "NPSB") tfState.wallet = method;
+    else if (!/^(bKash|Nagad|Rocket)$/.test(tfState.wallet)) tfState.wallet = "";
+    document.querySelectorAll(".tf-method").forEach(function (b) {
+      const on = b.getAttribute("data-method") === method;
+      b.classList.toggle("selected", on);
+      b.setAttribute("aria-checked", on ? "true" : "false");
+    });
+    tpSyncGo();
+  }
+
+  function tfGoToPayer() {
+    const amount = Number((tpEl("walTopAmount") || {}).value);
+    if (!amount || amount < MIN_TOPUP || !tfState.method) { tpSyncGo(); return; }
+    tfState.amount = amount;
+    tpPaintB();
+    tfShow("tfStepB");
+  }
+
+  // ---- ধাপ B: নম্বর (সাইটের নামসহ, মেথডের রঙে) ----
+  function tpPaintB() {
+    const npsb = tfState.method === "NPSB";
+    const w = tpWallet();
+    const key = npsb ? "NPSB" : w;
+    const box = tpEl("tpSendBox");
+    if (box) box.style.setProperty("--mc", TP_COLORS[key] || TP_COLORS.NPSB);
+    const logo = tpEl("tpSendLogo");
+    if (logo) { logo.src = TP_LOGOS[key] || TP_LOGOS.bKash; if (npsb) { logo.style.width = "56px"; } else { logo.style.width = ""; } }
+    const m = tpEl("tpSendMethod"); if (m) m.textContent = npsb ? "NPSB ট্রান্সফার" : w;
+    const a = tpEl("tpSendAmt"); if (a) a.textContent = tpMoney(tfState.amount);
+    const pn = tpEl("tfPayerMethodName"); if (pn) pn.textContent = w;
+    const sb = tpEl("tpSenderBox"); if (sb) sb.hidden = npsb;
+    const nb = tpEl("tpNpsbBox"); if (nb) nb.hidden = !npsb;
+    document.querySelectorAll(".tp-w").forEach(function (b) {
+      b.setAttribute("aria-checked", b.getAttribute("data-w") === tfState.wallet ? "true" : "false");
+    });
+    const sn = tpEl("walTopSender"); if (sn && !npsb) sn.value = tfState.sender || sn.value;
+    const e = tpEl("tpSenderErr"); if (e) e.textContent = "";
+    tpSyncB();
+  }
+
+  // ---- ধাপ C: পেমেন্ট + TrxID ----
+  function tpPaintC() {
+    const npsb = tfState.method === "NPSB";
+    const w = tpWallet();
+    const h = tpEl("tpHC"); if (h) h.textContent = npsb ? "NPSB ট্রান্সফার" : (w + " দিয়ে Send Money");
+    const big = tpEl("tpPayAmtBig"); if (big) big.textContent = tpMoney(tfState.amount);
+    const qr = !npsb && TF_QR[w];
+    const qb = tpEl("tpQrBox"), nt = tpEl("tpNote");
+    if (qb) qb.hidden = !qr;
+    if (qr) { const img = tpEl("tpQrImg"); if (img) { img.src = qr; img.alt = w + " পেমেন্ট QR কোড"; } }
+    if (nt) {
+      nt.hidden = !!qr;
+      if (!qr) nt.textContent = npsb
+        ? ("ব্যাংক অ্যাপে NPSB দিয়ে নিচের " + w + " নম্বরে পাঠান, ঠিক এই অ্যামাউন্ট")
+        : (w + " অ্যাপ খুলে নিচের নম্বরে Send Money করুন, ঠিক এই অ্যামাউন্ট");
+    }
+    const lb = tpEl("tpNumLb"); if (lb) lb.textContent = w + " পারসোনাল নম্বর (Send Money)";
+    const num = tpEl("tfPayNumber"); if (num) num.textContent = TF_PAY_NUMBERS[w] || "01921018882";
+    const vr = tpEl("tpVirtRow");
+    const showV = w === "Nagad" && !!TF_NAGAD_VIRTUAL;
+    if (vr) { vr.hidden = !showV; if (showV) { const vn = tpEl("tpVirtNum"); if (vn) vn.textContent = TF_NAGAD_VIRTUAL; } }
+    const amt = tpEl("tfPayAmtCopy"); if (amt) amt.textContent = tpMoney(tfState.amount);
+    const tx = tpEl("walTopTxn"); if (tx) tx.value = "";
+    const er = tpEl("tpTxnErr"); if (er) er.textContent = "";
+  }
+
+  function tfCreatePendingAndWait() {
+    const err = tpEl("tpSenderErr");
+    if (!getToken()) { if (err) err.textContent = "আগে লগইন করুন"; return; }
+    if (tfState.method === "NPSB") {
+      if (!tfState.wallet) { if (err) err.textContent = "গন্তব্য ওয়ালেট বাছুন"; return; }
+      tfState.sender = "";
+    } else {
+      const digits = ((tpEl("walTopSender") || {}).value || "").replace(/\D/g, "");
+      if (!/^01\d{9}$/.test(digits)) { if (err) err.textContent = "০১ দিয়ে শুরু ১১ অঙ্কের নম্বর দিন"; return; }
+      tfState.sender = digits;
+    }
+    tfState.orderId = "";
+    tpPaintC();
+    tfShow("tfStepC");
+    tfStartCountdown();
+    tfStartPoll();
+  }
+
+  function tfStartCountdown() {
+    tfStopCountdown();
+    tfState.endsAt = Date.now() + TF_WINDOW_MS;
+    const el = tpEl("tfCountdown");
     const tick = function () {
       const left = Math.max(0, tfState.endsAt - Date.now());
-      const sec = Math.floor(left / 1000);
-      const m = Math.floor(sec / 60);
-      const s = sec % 60;
-      const el = document.getElementById("tfCountdown");
-      if (el) el.textContent = m + "m " + (s < 10 ? "0" : "") + s + "s বাকি";
-      if (left <= 0 && tfCountdownIv) {
-        clearInterval(tfCountdownIv);
-        tfCountdownIv = null;
-      }
+      const sec = Math.ceil(left / 1000);
+      if (el) el.textContent = ("0" + Math.floor(sec / 60)).slice(-2) + ":" + ("0" + (sec % 60)).slice(-2) + " মিনিটের মধ্যে পেমেন্ট করুন";
+      if (left <= 0) { tfStopTimers(); tpResult("expired"); }
     };
     tick();
     tfCountdownIv = setInterval(tick, 1000);
-    // Poll order status every 8s
+  }
+
+  // প্রতি ৮ সেকেন্ডে দেখে: অর্ডার Completed/ব্যর্থ হয়েছে কিনা, বা ব্যালেন্স বেড়েছে কিনা
+  function tfStartPoll() {
+    if (tfPollIv) { clearInterval(tfPollIv); tfPollIv = null; }
     let startBal = null;
     tfPollIv = setInterval(async function () {
       try {
@@ -550,212 +698,192 @@
           if (url) {
             const res = await fetch(url + "?order_id=" + encodeURIComponent(tfState.orderId));
             const data = await res.json();
-            if (data && String(data.status || "").toLowerCase() === "completed") {
-              tfStopTimers();
-              const msg = document.getElementById("walletTopMsg");
-              if (msg) msg.innerHTML = "✅ টপ-আপ সফল!";
-              refreshWalletUI();
-              refreshUserDash();
-              tfShow("tfStepA");
-              showWalletView();
-              alert("টপ-আপ ভেরিফাই হয়েছে। ব্যালেন্স আপডেট হয়েছে।");
-              return;
-            }
+            const st = String((data && data.status) || "").toLowerCase();
+            if (st === "completed") { tpDone("success", bal); return; }
+            if (TF_FAIL_STATUS.indexOf(st) >= 0) { tpDone("failed"); return; }
           }
         }
-        // Balance increased while waiting
-        if (startBal !== null && bal > startBal + 0.01) {
-          tfStopTimers();
-          refreshWalletUI();
-          refreshUserDash();
-          tfShow("tfStepA");
-          showWalletView();
-          alert("টপ-আপ সফল! নতুন ব্যালেন্স: ৳" + bal.toFixed(2));
-        }
+        if (bal > startBal + 0.01) tpDone("success", bal);
       } catch (e) {}
-    }, 8000);
+    }, TF_POLL_MS);
   }
 
-  function tfSelectMethod(method) {
-    tfState.method = method;
-    document.querySelectorAll(".tf-method").forEach(function (b) {
-      const on = b.getAttribute("data-method") === method;
-      b.classList.toggle("selected", on);
-      b.setAttribute("aria-checked", on ? "true" : "false");
-    });
-    const go = document.getElementById("tfGoPayer");
-    if (go) go.disabled = !(Number(document.getElementById("walTopAmount").value) >= MIN_TOPUP && method);
+  function tpDone(kind, bal) {
+    tfStopTimers();
+    if (kind === "success") {
+      if (bal != null && !isNaN(bal)) { tfState.newBal = Number(bal); window._walletBalance = Number(bal); }
+      refreshWalletUI();
+      refreshUserDash();
+    }
+    tpResult(kind);
   }
 
-  function tfGoToPayer() {
-    const amount = Number((document.getElementById("walTopAmount") || {}).value);
-    if (!amount || amount < MIN_TOPUP) {
-      alert("সর্বনিম্ন " + MIN_TOPUP + " টাকা");
-      return;
+  // ---- ধাপ R: ফলাফল ----
+  function tpRow(label, value) {
+    const row = document.createElement("div");
+    const s = document.createElement("span"); s.textContent = label;
+    const b = document.createElement("b"); b.textContent = value;
+    row.appendChild(s); row.appendChild(b);
+    return row;
+  }
+  function tpBtn(text, ghost, fn) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tp-btn" + (ghost ? " ghost" : "");
+    b.textContent = text;
+    b.addEventListener("click", fn);
+    return b;
+  }
+  function tpResult(kind) {
+    const r = TP_RES[kind] || TP_RES.failed;
+    const res = tpEl("tpRes"); if (res) res.setAttribute("data-kind", kind);
+    const path = tpEl("tpResPath"); if (path) path.setAttribute("d", r.ic);
+    const t = tpEl("tpResTitle"); if (t) t.textContent = r.t;
+    const d = tpEl("tpResDesc"); if (d) d.textContent = r.d;
+    const card = tpEl("tfStepR");
+    if (card) {
+      const last = card.querySelector(".tp-st:last-child");
+      if (last) {
+        last.classList.toggle("done", kind === "success");
+        last.classList.toggle("cur", kind !== "success");
+        const ic = last.querySelector("i");
+        if (ic) { if (kind === "success") ic.innerHTML = TP_CHECK; else ic.textContent = "3"; }
+      }
     }
-    if (!tfState.method) {
-      alert("মেথড বেছে নিন");
-      return;
+    const det = tpEl("tpResDet");
+    if (det) {
+      det.textContent = "";
+      if (kind === "success" || kind === "pending") {
+        det.appendChild(tpRow(kind === "success" ? "যোগ হয়েছে" : "যোগ হবে", tpMoney(tfState.amount)));
+        if (kind === "success" && tfState.newBal != null) det.appendChild(tpRow("নতুন ব্যালেন্স", tpMoney(tfState.newBal)));
+        if (kind === "pending") det.appendChild(tpRow("অবস্থা", "অপেক্ষমাণ"));
+        det.appendChild(tpRow("মেথড", tfState.method === "NPSB" ? (tfState.wallet + " (NPSB)") : tfState.method));
+        if (tfState.trx) det.appendChild(tpRow("Transaction ID", tfState.trx));
+        if (tfState.orderId) det.appendChild(tpRow("টপ-আপ ID", tfState.orderId));
+      }
     }
-    tfState.amount = amount;
-    const n = document.getElementById("tfPayerMethodName");
-    if (n) n.textContent = tfState.method;
-    tfShow("tfStepB");
+    const act = tpEl("tpResActions");
+    if (act) {
+      act.textContent = "";
+      const toWallet = function () { tfStopTimers(); tfState.done = true; showWalletView(); };
+      const again = function () { tpReset(); tfShow("tfStepA"); };
+      const backToPay = function () { tpPaintC(); tfShow("tfStepC"); tfStartCountdown(); tfStartPoll(); };
+      if (kind === "success") { act.appendChild(tpBtn("নতুন টপ-আপ", false, again)); act.appendChild(tpBtn("ওয়ালেটে ফিরুন", true, toWallet)); }
+      else if (kind === "pending") { act.appendChild(tpBtn("ওয়ালেটে ফিরুন", false, toWallet)); }
+      else if (kind === "failed") { act.appendChild(tpBtn("আবার চেষ্টা করুন", false, backToPay)); act.appendChild(tpBtn("ওয়ালেটে ফিরুন", true, toWallet)); }
+      else { act.appendChild(tpBtn("আমি টাকা পাঠিয়েছি, Transaction ID দিন", false, backToPay)); act.appendChild(tpBtn("নতুন করে শুরু করুন", true, again)); }
+    }
+    tfState.done = kind === "success" || kind === "expired";
+    tfShow("tfStepR");
   }
 
-  async function tfCreatePendingAndWait() {
-    const sender = ((document.getElementById("walTopSender") || {}).value || "").trim();
-    const msg = document.getElementById("walletTopMsg");
-    const token = getToken();
-    if (!token) {
-      if (msg) msg.textContent = "আগে লগইন করুন";
-      return;
-    }
-    const digits = sender.replace(/\D/g, "");
-    if (digits.length < 10) {
-      alert("যে নম্বর থেকে পাঠাবেন সেটি লিখুন");
-      return;
-    }
-    tfState.sender = digits.slice(0, 11);
-    tfState.orderId = "";
-    // Show Paymently-style wait screen (order created when TrxID submitted or SMS matched after submit)
-    const num = TF_PAY_NUMBERS[tfState.method] || "01921018882";
-    ["tfWaitMethod", "tfWaitMethod2"].forEach(function (id) {
-      const el = document.getElementById(id);
-      if (el) el.textContent = tfState.method;
-    });
-    ["tfWaitAmount", "tfWaitAmount2"].forEach(function (id) {
-      const el = document.getElementById(id);
-      if (el) el.textContent = String(tfState.amount);
-    });
-    const pn = document.getElementById("tfPayNumber");
-    if (pn) pn.textContent = num;
-    const pn2 = document.getElementById("tfPayNumber2");
-    if (pn2) pn2.textContent = num;
-    const pa = document.getElementById("tfPayAmtCopy");
-    if (pa) pa.textContent = tfState.amount + " BDT";
-    const pa2 = document.getElementById("tfPayAmt2");
-    if (pa2) pa2.textContent = tfState.amount + " BDT";
-    const pid = document.getElementById("tfPendingId");
-    if (pid) pid.textContent = "পেমেন্ট পাঠানোর পর নিচে থেকে TrxID সাবমিট করুন, অথবা SMS অটো-ভেরিফাইয়ের জন্য অপেক্ষা করুন।";
-    if (msg) msg.textContent = "";
-    tfShow("tfStepC");
-    tfStartCountdown();
-  }
-
+  // ---- যাচাই: TrxID জমা ----
   async function doTopup() {
-    // Manual TrxID submit (step D) — update existing pending or create with real trx
-    const amount = tfState.amount || Number((document.getElementById("walTopAmount") || {}).value);
-    const method = tfState.method || "bKash";
-    const txn = ((document.getElementById("walTopTxn") || {}).value || "").trim();
-    const msg = document.getElementById("walletTopMsg");
-    const token = getToken();
-    if (!token) {
-      if (msg) msg.textContent = "আগে লগইন করুন";
-      return;
-    }
-    if (!amount || amount < MIN_TOPUP) {
-      if (msg) msg.textContent = "সর্বনিম্ন " + MIN_TOPUP + " টাকা";
-      return;
-    }
-    if (!txn || txn.length < 6) {
-      if (msg) msg.textContent = "সঠিক TrxID দিন";
-      return;
-    }
-    if (msg) msg.textContent = "জমা হচ্ছে…";
+    const amount = tfState.amount || Number((tpEl("walTopAmount") || {}).value);
+    const txn = ((tpEl("walTopTxn") || {}).value || "").trim();
+    const err = tpEl("tpTxnErr");
+    const btn = tpEl("walBtnTopup");
+    const say = function (m) { if (err) err.textContent = m; };
+    if (!getToken()) { say("আগে লগইন করুন"); return; }
+    if (!amount || amount < MIN_TOPUP) { say("সর্বনিম্ন " + MIN_TOPUP + " টাকা"); return; }
+    if (!txn || txn.length < 6) { say("সঠিক Transaction ID দিন (কমপক্ষে ৬ অক্ষর)"); return; }
+    say("");
+    const label = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "যাচাই হচ্ছে…"; }
     try {
       const d = await walletPost({
         action: "wallet_topup",
-        token: token,
+        token: getToken(),
         amount: amount,
-        paid_from: method,
+        paid_from: tpPaidFrom(),
         txn_id: txn,
         sender: tfState.sender || "",
-        comments: tfState.sender ? ("sender:" + tfState.sender) : "",
+        comments: tfState.method === "NPSB" ? "via:NPSB" : (tfState.sender ? ("sender:" + tfState.sender) : ""),
         replace_order_id: tfState.orderId || ""
       });
-      if (!d || !d.ok) {
-        if (msg) msg.textContent = (d && d.message) || (d && d.error) || "টপ-আপ ব্যর্থ";
-        return;
-      }
-      tfStopTimers();
-      if (msg) {
-        msg.innerHTML = "টপ-আপ ID: <b>" + esc(d.order_id) + "</b><br>" +
-          esc(d.message || "") +
-          (d.status === "Completed" ? "<br>নতুন ব্যালেন্স: ৳" + (Number(d.balance) || 0) : "<br>ভেরিফাই হলে ব্যালেন্স যোগ হবে।");
-      }
-      if (d.status === "Completed") {
-        if (d.balance != null) window._walletBalance = Number(d.balance);
-        refreshWalletUI();
-        refreshUserDash();
-        tfShow("tfStepA");
-      } else {
-        tfState.orderId = d.order_id || tfState.orderId;
-        tfShow("tfStepC");
-        tfStartCountdown();
-      }
+      if (!d || !d.ok) { say((d && (d.message || d.error)) || "টপ-আপ ব্যর্থ"); return; }
+      tfState.orderId = d.order_id || tfState.orderId;
+      tfState.trx = txn;
+      tfStopCountdown();
+      if (d.status === "Completed") tpDone("success", d.balance != null ? Number(d.balance) : null);
+      else { tpResult("pending"); tfStartPoll(); }
       // টপ-আপ অর্ডার নয়: lastOrderId (Track Order) এ সেভ করা হয় না
     } catch (e) {
-      if (msg) msg.textContent = netErrMsg(e);
+      say(netErrMsg(e));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = label; }
     }
   }
 
   function wireTopupFlow() {
     document.querySelectorAll(".tf-method").forEach(function (b) {
-      b.addEventListener("click", function () {
-        tfSelectMethod(b.getAttribute("data-method"));
-      });
+      b.addEventListener("click", function () { tfSelectMethod(b.getAttribute("data-method")); });
       b.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          tfSelectMethod(b.getAttribute("data-method"));
-        }
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tfSelectMethod(b.getAttribute("data-method")); }
       });
     });
-    const amt = document.getElementById("walTopAmount");
-    if (amt) amt.addEventListener("input", function () {
-      const go = document.getElementById("tfGoPayer");
-      if (go) go.disabled = !(Number(amt.value) >= MIN_TOPUP && tfState.method);
-    });
-    const goP = document.getElementById("tfGoPayer");
+    const amt = tpEl("walTopAmount");
+    if (amt) amt.addEventListener("input", tpSyncGo);
+    const goP = tpEl("tfGoPayer");
     if (goP) goP.addEventListener("click", tfGoToPayer);
-    ["tfBackA", "tfBackA2"].forEach(function (id) {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener("click", function () { tfStopTimers(); tfShow("tfStepA"); });
+    [["tfBackA", "tfStepA"], ["tfBackA2", "tfStepA"], ["tfBackB", "tfStepB"], ["tfBackB2", "tfStepA"]].forEach(function (p) {
+      const el = tpEl(p[0]);
+      if (el) el.addEventListener("click", function () { tfStopTimers(); tfShow(p[1]); });
     });
-    const goW = document.getElementById("tfGoWait");
+    const goW = tpEl("tfGoWait");
     if (goW) goW.addEventListener("click", tfCreatePendingAndWait);
-    const backB = document.getElementById("tfBackB");
-    if (backB) backB.addEventListener("click", function () { tfStopTimers(); tfShow("tfStepB"); });
-    const backC = document.getElementById("tfBackC");
-    if (backC) backC.addEventListener("click", function () { tfShow("tfStepC"); tfStartCountdown(); });
-    const fb = document.getElementById("tfFallbackLink");
-    if (fb) fb.addEventListener("click", function (e) {
-      e.preventDefault();
-      tfShow("tfStepD");
+    document.querySelectorAll(".tp-w").forEach(function (b) {
+      b.addEventListener("click", function () { tfState.wallet = b.getAttribute("data-w"); tpPaintB(); });
     });
-    function copyText(t) {
-      try {
-        navigator.clipboard.writeText(t);
-        alert("কপি হয়েছে");
-      } catch (e) {
-        const ta = document.createElement("textarea");
-        ta.value = t;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-        alert("কপি হয়েছে");
-      }
+    const sn = tpEl("walTopSender");
+    if (sn) {
+      sn.addEventListener("input", function () {
+        let dg = sn.value.replace(/\D/g, "");
+        if (/^8801/.test(dg) && dg.length > 11) dg = dg.slice(2);   // +880 1XXXXXXXXX পেস্ট করলে 01XXXXXXXXX
+        sn.value = dg.slice(0, 11);
+        const e = tpEl("tpSenderErr"); if (e) e.textContent = "";
+        tpSyncB();
+      });
+      sn.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); tfCreatePendingAndWait(); } });
     }
-    const cn = document.getElementById("tfCopyNum");
-    if (cn) cn.addEventListener("click", function () {
-      copyText((document.getElementById("tfPayNumber") || {}).textContent || "");
-    });
-    const ca = document.getElementById("tfCopyAmt");
-    if (ca) ca.addEventListener("click", function () {
-      copyText(String(tfState.amount || ""));
-    });
+    const tx = tpEl("walTopTxn");
+    if (tx) {
+      tx.addEventListener("input", function () { const e = tpEl("tpTxnErr"); if (e) e.textContent = ""; });
+      tx.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); doTopup(); } });
+    }
+    const vf = tpEl("walBtnTopup");
+    if (vf) vf.addEventListener("click", doTopup);
+
+    function copyText(text, btn) {
+      const ok = function () {
+        if (!btn) return;
+        const o = btn.getAttribute("data-l") || btn.textContent;
+        btn.setAttribute("data-l", o);
+        btn.textContent = "কপি হয়েছে";
+        btn.classList.add("ok");
+        setTimeout(function () { btn.textContent = o; btn.classList.remove("ok"); }, 1500);
+      };
+      const fallback = function () {
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          ok();
+        } catch (e) {}
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fallback);
+        else fallback();
+      } catch (e) { fallback(); }
+    }
+    const cn = tpEl("tfCopyNum");
+    if (cn) cn.addEventListener("click", function () { copyText((tpEl("tfPayNumber") || {}).textContent || "", cn); });
+    const ca = tpEl("tfCopyAmt");
+    if (ca) ca.addEventListener("click", function () { copyText(String(tfState.amount || ""), ca); });
+    const cv = tpEl("tpCopyVirt");
+    if (cv) cv.addEventListener("click", function () { copyText(((tpEl("tpVirtNum") || {}).textContent || "").replace(/\s/g, ""), cv); });
   }
 
 
@@ -1024,7 +1152,6 @@
     const btnLogin = document.getElementById("walBtnLogin");
     const btnSetPin = document.getElementById("walBtnSetPin");
     const btnLogout = document.getElementById("walBtnLogout");
-    const btnTop = document.getElementById("walBtnTopup");
     if (btnReg) btnReg.addEventListener("click", doRegister);
     if (btnLogin) btnLogin.addEventListener("click", doLogin);
     if (btnSetPin) btnSetPin.addEventListener("click", doSetPin);
@@ -1049,7 +1176,7 @@
       walShowAuthTab("forgot");
     });
     on("walBtnForgotBack", function () { walShowAuthTab("login"); });
-    if (btnTop) btnTop.addEventListener("click", doTopup);
+    // (walBtnTopup-এর ক্লিক এখন wireTopupFlow-এ বাঁধা — এখানে দ্বিতীয়বার বাঁধলে দুইবার জমা হতো)
 
     const tabLogin = document.getElementById("walTabBtnLogin");
     const tabReg = document.getElementById("walTabBtnRegister");
@@ -1113,7 +1240,7 @@
         if (a) a.textContent = money(v);
         if (f) f.textContent = money(0);
         if (t) t.textContent = money(v);
-        if (goBtn) goBtn.textContent = v >= MIN_TOPUP ? "Pay ৳" + v.toFixed(2) : "Pay";
+        tpSyncGo();
         document.querySelectorAll(".tf-qamt").forEach(function (b) {
           b.classList.toggle("active", Number(b.getAttribute("data-amt")) === v);
         });

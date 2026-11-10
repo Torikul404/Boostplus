@@ -116,6 +116,13 @@
         setActive('new-order');
         requestAnimationFrame(scrollToApp);
         break;
+      case 'services':
+        showExtraView('svclist-view');
+        setHash('services');
+        setActive('services');
+        document.dispatchEvent(new CustomEvent('pb:svclist-open'));
+        requestAnimationFrame(scrollToApp);
+        break;
       case 'orders':
         showExtraView('orders-view');
         setHash('orders');
@@ -176,7 +183,7 @@
   // Deep links: /#tickets, /#contact and /#rules
   function routeFromHash() {
     const h = (location.hash || '').replace('#', '');
-    if (h === 'tickets' || h === 'contact' || h === 'rules' || h === 'orders' || h === 'account') go(h);
+    if (h === 'tickets' || h === 'contact' || h === 'rules' || h === 'orders' || h === 'account' || h === 'services') go(h);
   }
   window.addEventListener('hashchange', routeFromHash);
   routeFromHash();
