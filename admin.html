@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="theme-color" content="#007bff" />
+<meta name="theme-color" content="#0b1020" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -328,6 +328,7 @@
 <link rel="stylesheet" href="design/admin-fonts.css?v=20261029x" />
 <link rel="stylesheet" href="design/tokens.css?v=20261026r" />
 <link rel="stylesheet" href="design/admin.css?v=20261026r" />
+<link rel="stylesheet" href="design/admin-v4.css?v=20261110f" />
 <style>
 /* PB:INBOX (ধাপ ২৩) */
 #panelView.wide { max-width: 1240px; }
@@ -367,8 +368,13 @@
 <div id="loginView" class="login-box">
   <img src="icons/admin-logo.png?v=20261030" alt="Boost plus Admin Panel" width="180" height="180" style="display:block;width:180px;height:180px;max-width:70%;height:auto;margin:0 auto 6px;">
   <h1>🔐 Admin Login</h1>
-  <input id="tokenInput" type="password" placeholder="Admin token দিন" autocomplete="off" />
-  <button onclick="doLogin()">প্রবেশ করুন</button>
+  <input id="loginUser" type="text" placeholder="ইউজারনেম" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="30" />
+  <input id="loginPass" type="password" placeholder="পাসওয়ার্ড" autocomplete="current-password" maxlength="100" onkeydown="if(event.key==='Enter')doUserLogin()" />
+  <button id="loginBtn" onclick="doUserLogin()">লগইন</button>
+  <details id="tokenBox" class="lg-alt"><summary>Admin token দিয়ে ঢুকুন</summary>
+    <input id="tokenInput" type="password" placeholder="Admin token দিন" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()" />
+    <button onclick="doLogin()">প্রবেশ করুন</button>
+  </details>
   <div id="loginErr" class="err"></div>
 </div>
 
@@ -399,20 +405,32 @@
 <div id="panelView" class="wrap" style="display:none;">
   <div class="admin-brand" style="display:flex;align-items:center;gap:10px;margin:0 0 10px;"><img src="icons/admin-192.png?v=20261030" alt="" width="34" height="34" style="width:34px;height:34px;border-radius:8px;"><b style="font-size:15px;">Boost plus <span style="color:var(--muted);font-weight:400;">Admin Panel</span></b></div>
   <div class="tabs">
-    <button type="button" id="tabOrders" class="on" onclick="showTab('orders')">📋 অর্ডার</button>
-    <button type="button" id="tabInbox" onclick="showTab('inbox')">📥 ইনবক্স</button>
-    <button type="button" id="tabTickets" onclick="showTab('tickets')">🎫 টিকিট</button>
-    <button type="button" id="tabServices" onclick="showTab('services')">🛠 সার্ভিস</button>
-    <button type="button" id="tabWallet" onclick="showTab('wallet')">💰 ওয়ালেট</button>
-    <button type="button" id="tabRefund" onclick="showTab('refund')">↩️ রিফান্ড হিস্ট্রি</button>
-    <button type="button" id="tabActions" onclick="showTab('actions')">🧾 OrderActions</button>
-    <button type="button" id="tabLog" onclick="showTab('log')">📜 অ্যাক্টিভিটি লগ</button>
-    <button type="button" id="tabPT" onclick="showTab('pt')">🛰 Provider টিকেট</button>
-    <button type="button" id="tabSpeed" onclick="showTab('speed')">⚡ স্পিড টেস্টার</button>
-    <button type="button" id="tabTheme" onclick="showTab('theme')">🎨 থিম</button>
-    <button type="button" class="adm-theme" id="admThemeBtn" onclick="admToggleTheme()" aria-label="লাইট/ডার্ক বদলান" title="লাইট/ডার্ক বদলান">🌓</button>
+    <span class="tg">দৈনন্দিন কাজ</span>
+    <button type="button" id="tabOrders" class="on" onclick="showTab('orders')"><svg viewBox="0 0 24 24"><path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1zM7 6H5v14h14V6h-2M9 12h6M9 16h4"/></svg>অর্ডার</button>
+    <button type="button" id="tabInbox" onclick="showTab('inbox')"><svg viewBox="0 0 24 24"><path d="M4 13l2-8h12l2 8M4 13v6h16v-6M4 13h5l1 2h4l1-2h5"/></svg>ইনবক্স</button>
+    <button type="button" id="tabTickets" onclick="showTab('tickets')"><svg viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 0 0 8v2h16v-2a2 2 0 0 1 0-8V6H4zM13 6v12"/></svg>সাপোর্ট টিকিট</button>
+    <span class="tg">টাকা-পয়সা</span>
+    <button type="button" id="tabWallet" onclick="showTab('wallet')"><svg viewBox="0 0 24 24"><path d="M4 7h14v-1a2 2 0 0 0-2-2H5a1 1 0 0 0-1 1zM4 7v12h16V9H5M16 14h2"/></svg>ওয়ালেট</button>
+    <button type="button" id="tabRefund" onclick="showTab('refund')"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4"/></svg>রিফান্ড হিস্ট্রি</button>
+    <button type="button" id="tabProfit" onclick="showTab('profit')"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15l3-4 3 2 5-6"/></svg>লাভের রিপোর্ট</button>
+    <span class="tg">ক্যাটালগ</span>
+    <button type="button" id="tabServices" onclick="showTab('services')"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>সার্ভিস</button>
+    <button type="button" id="tabTheme" onclick="showTab('theme')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16"/></svg>সাইট থিম</button>
+    <button type="button" id="tabNotice" onclick="showTab('notice')"><svg viewBox="0 0 24 24"><path d="M4 10v4h3l5 4V6L7 10zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>নোটিশ ব্যানার</button>
+    <span class="tg">প্রোভাইডার</span>
+    <button type="button" id="tabSpeed" onclick="showTab('speed')"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></svg>স্পিড টেস্টার</button>
+    <button type="button" id="tabPT" onclick="showTab('pt')"><svg viewBox="0 0 24 24"><path d="M3 11l18-7-7 18-3-8z"/></svg>Provider টিকেট</button>
+    <button type="button" id="tabActions" onclick="showTab('actions')"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM9 11h6M9 15h6"/></svg>OrderActions লগ</button>
+    <button type="button" id="tabLog" onclick="showTab('log')"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>অ্যাক্টিভিটি লগ</button>
+    <button type="button" id="tabCred" onclick="showTab('cred')"><svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="3.5"/><path d="M11.5 12H21M18 12v3M15 12v2"/></svg>অ্যাডমিন লগইন</button>
+    <button type="button" class="adm-theme" id="admThemeBtn" onclick="admToggleTheme()" aria-label="লাইট/ডার্ক বদলান" title="লাইট/ডার্ক বদলান">🌓 লাইট / ডার্ক</button>
   </div>
   <div id="ordersPane">
+  <h1>📋 অর্ডার ম্যানেজমেন্ট</h1>
+  <p class="muted" style="font-size:12px;margin:0 0 8px;">📱 নতুন অর্ডারের নোটিফ: Telegram (Apps Script → setupTelegram_)</p>
+  <div id="pinReqBox" style="display:none;margin:0 0 12px;padding:12px;border-radius:12px;border:1px solid #6ee7b7;background:rgba(110,231,183,0.10);"></div>
+  <div id="adminAlertsBox" style="display:none;margin:0 0 12px;padding:12px;border-radius:12px;border:1px solid #f59e0b;background:rgba(245,158,11,0.12);"></div>
+
   <style>
     #dashBox { border:1px solid var(--border,#334155); border-radius:12px; padding:10px; margin:0 0 12px; }
     #dashBox summary { cursor:pointer; font-weight:600; font-size:14px; }
@@ -435,48 +453,20 @@
     </div>
     <div id="dashBal" style="margin-top:6px;"></div>
   </details>
-  <h1>📋 অর্ডার ম্যানেজমেন্ট</h1>
-  <p class="muted" style="font-size:12px;margin:0 0 8px;">📱 নতুন অর্ডারের নোটিফ: Telegram (Apps Script → setupTelegram_)</p>
-  <div id="pinReqBox" style="display:none;margin:0 0 12px;padding:12px;border-radius:12px;border:1px solid #6ee7b7;background:rgba(110,231,183,0.10);"></div>
-  <div id="adminAlertsBox" style="display:none;margin:0 0 12px;padding:12px;border-radius:12px;border:1px solid #f59e0b;background:rgba(245,158,11,0.12);"></div>
 
+  <div class="queue"><div class="qbar" id="qbar"></div>
   <div class="dash" id="dashStats">
+    <div class="d all" onclick="filterBy('All')"><div class="n" id="stAll">—</div><div class="l">সব</div></div>
     <div class="d pending" onclick="filterBy('Pending')"><div class="n" id="stPending">—</div><div class="l">Pending</div></div>
     <div class="d processing" onclick="filterBy('Processing')"><div class="n" id="stProcessing">—</div><div class="l">Processing</div></div>
-    <div class="d partial" onclick="filterBy('Partial')"><div class="n" id="stPartial">—</div><div class="l">Partial</div></div>
     <div class="d completed" onclick="filterBy('Completed')"><div class="n" id="stCompleted">—</div><div class="l">Completed</div></div>
     <div class="d rejected" onclick="filterBy('Rejected')"><div class="n" id="stRejected">—</div><div class="l">Rejected</div></div>
+    <div class="d partial" onclick="filterBy('Partial')"><div class="n" id="stPartial">—</div><div class="l">Partial</div></div>
     <div class="d today"><div class="n" id="stToday">—</div><div class="l">আজকের অর্ডার</div></div>
   </div>
-
-  <div class="acct-title">📊 আজকের হিসাব <span id="acctDate" class="muted"></span></div>
-  <div class="dash acct">
-    <div class="d cust"><div class="n" id="stCust">—</div><div class="l">👤 কাস্টমার বিল</div></div>
-    <div class="d cost"><div class="n" id="stCost">—</div><div class="l">🏭 প্রোভাইডার খরচ</div></div>
-    <div class="d profit"><div class="n" id="stProfit">—</div><div class="l">📈 লাভ</div></div>
-  </div>
-  <div class="acct-note muted" id="acctNote"></div>
-
-  <div class="acct-title">🗓 শুরু থেকে এখন পর্যন্ত <span id="allFrom" class="muted"></span></div>
-  <div class="dash acct">
-    <div class="d cust"><div class="n" id="alCust">—</div><div class="l">👤 কাস্টমার বিল</div></div>
-    <div class="d cost"><div class="n" id="alCost">—</div><div class="l">🏭 প্রোভাইডার খরচ</div></div>
-    <div class="d profit"><div class="n" id="alProfit">—</div><div class="l">📈 লাভ</div></div>
-  </div>
-  <div class="acct-note muted" id="alNote"></div>
-
-  <div class="acct-title">💰 টপ-আপ <span class="muted">(অর্ডারের হিসাব থেকে আলাদা)</span></div>
-  <div class="dash acct">
-    <div class="d topup"><div class="n" id="stTopCredit">—</div><div class="l">আজ ক্রেডিট হয়েছে</div></div>
-    <div class="d pending"><div class="n" id="stTopPending">—</div><div class="l">টপ-আপ Pending</div></div>
   </div>
 
-  <details class="acct-days" open>
-    <summary>📅 প্রথম থেকে প্রতিদিনের হিসাব</summary>
-    <div style="overflow:auto;max-height:420px;">
-      <table id="dailyTable"><thead><tr><th>তারিখ</th><th>অর্ডার</th><th>কাস্টমার</th><th>খরচ</th><th>লাভ</th></tr></thead><tbody></tbody></table>
-    </div>
-  </details>
+  <div class="ord-cols"><div class="ord-main">
   <div class="search-row">
     <input id="orderSearch" type="search" placeholder="🔍 Order ID, মোবাইল, TrxID, সার্ভিস কোড..." onkeydown="if(event.key==='Enter')loadOrders()" />
     <button type="button" onclick="loadOrders()">খুঁজুন</button>
@@ -506,14 +496,14 @@
     <button type="button" onclick="bulkSelectAll()">সব নির্বাচন</button>
     <button type="button" onclick="bulkClear()">বাতিল</button>
   </div>
-  <div id="bulkRes" onclick="if(event.target===this)bulkCloseRes()"><div class="bk-card" id="bulkResCard"></div></div>
+    <div id="bulkRes" onclick="if(event.target===this)bulkCloseRes()"><div class="bk-card" id="bulkResCard"></div></div>
   <div class="toolbar">
     <select id="statusFilter" onchange="loadOrders()">
       <option value="Pending">Pending</option>
       <option value="Processing">Processing</option>
-      <option value="Partial">Partial</option>
       <option value="Completed">Completed</option>
       <option value="Rejected">Rejected</option>
+      <option value="Partial">Partial</option>
       <option value="All">All</option>
     </select>
     <button onclick="loadOrders()">🔄 রিফ্রেশ</button>
@@ -521,6 +511,40 @@
     <span class="muted" id="autoRefreshNote">প্রতি ৬০ সেকেন্ডে অটো-রিফ্রেশ</span>
     <span class="muted" id="countNote" style="margin-left:auto;"></span>
   </div>
+  <div id="ordersList"></div>
+  </div><aside class="ord-aside"><div class="money">
+<div class="mg" data-t="আজ">
+  <div class="acct-title">📊 আজকের হিসাব <span id="acctDate" class="muted"></span></div>
+  <div class="dash acct">
+    <div class="d cust"><div class="n" id="stCust">—</div><div class="l">👤 কাস্টমার বিল</div></div>
+    <div class="d cost"><div class="n" id="stCost">—</div><div class="l">🏭 প্রোভাইডার খরচ</div></div>
+    <div class="d profit"><div class="n" id="stProfit">—</div><div class="l">📈 লাভ</div></div>
+  </div>
+  <div class="acct-note muted" id="acctNote"></div>
+
+</div><div class="mg" data-t="শুরু থেকে">
+  <div class="acct-title">🗓 শুরু থেকে এখন পর্যন্ত <span id="allFrom" class="muted"></span></div>
+  <div class="dash acct">
+    <div class="d cust"><div class="n" id="alCust">—</div><div class="l">👤 কাস্টমার বিল</div></div>
+    <div class="d cost"><div class="n" id="alCost">—</div><div class="l">🏭 প্রোভাইডার খরচ</div></div>
+    <div class="d profit"><div class="n" id="alProfit">—</div><div class="l">📈 লাভ</div></div>
+  </div>
+  <div class="acct-note muted" id="alNote"></div>
+
+</div><div class="mg" data-t="টপ-আপ">
+  <div class="acct-title">💰 টপ-আপ <span class="muted">(অর্ডারের হিসাব থেকে আলাদা)</span></div>
+  <div class="dash acct">
+    <div class="d topup"><div class="n" id="stTopCredit">—</div><div class="l">আজ ক্রেডিট হয়েছে</div></div>
+    <div class="d pending"><div class="n" id="stTopPending">—</div><div class="l">টপ-আপ Pending</div></div>
+  </div>
+
+</div></div>
+  <details class="acct-days" open>
+    <summary>📅 প্রথম থেকে প্রতিদিনের হিসাব</summary>
+    <div style="overflow:auto;max-height:420px;">
+      <table id="dailyTable"><thead><tr><th>তারিখ</th><th>অর্ডার</th><th>কাস্টমার</th><th>খরচ</th><th>লাভ</th></tr></thead><tbody></tbody></table>
+    </div>
+  </details>
   <div class="balance-panel" id="balancePanel">
     <h3>💰 Provider Balance
       <button type="button" class="bal-toggle" onclick="loadBalances(true)">🔄</button>
@@ -529,7 +553,7 @@
     </h3>
     <div class="balance-grid" id="balanceGrid"><div class="muted">🔄 চাপলে ব্যালেন্স লোড হবে</div></div>
   </div>
-  <div id="ordersList"></div>
+  </aside></div>
   </div>
 
   
@@ -739,7 +763,7 @@
     <h1>↩️ রিফান্ড হিস্ট্রি</h1>
     <p class="muted" style="font-size:12px;">কাস্টমারের মোবাইল নম্বর দিয়ে খুঁজুন → রিফান্ড হিস্ট্রি ও অর্ডার হিস্ট্রি দেখুন।</p>
     <div class="search-row">
-      <input id="rhMobile" placeholder="01XXXXXXXXX" inputmode="numeric" maxlength="13" onkeydown="if(event.key==='Enter')rhLookup()" />
+      <input id="rhMobile" placeholder="ইউজারনেম বা 01XXXXXXXXX" inputmode="text" autocapitalize="none" maxlength="40" onkeydown="if(event.key==='Enter')rhLookup()" />
       <button type="button" onclick="rhLookup()">খুঁজুন</button>
     </div>
     <div id="rhResult" style="display:none;">
@@ -774,7 +798,7 @@
     <h1>💰 ওয়ালেট / ব্যালেন্স</h1>
     <p class="muted" style="font-size:12px;">মোবাইল দিয়ে খুঁজুন → ব্যালেন্স +/- করুন। প্রতি পরিবর্তন Ledger-এ সেভ হয়।</p>
     <div class="search-row">
-      <input id="walMobile" placeholder="01XXXXXXXXX" inputmode="numeric" maxlength="11" />
+      <input id="walMobile" placeholder="ইউজারনেম বা 01XXXXXXXXX" inputmode="text" autocapitalize="none" maxlength="40" />
       <button type="button" onclick="walLookup()">খুঁজুন</button>
       <button type="button" onclick="walInitSheets()" title="Users/Ledger শীট তৈরি">Init sheets</button>
     </div>
@@ -825,6 +849,27 @@
     <h3 style="font-size:14px;margin:16px 0 8px;">সব ইউজার (সাম্প্রতিক)</h3>
     <button type="button" onclick="walListUsers()" style="margin-bottom:8px;">লিস্ট লোড</button>
     <div id="walUsers" class="muted">—</div>
+  </div>
+
+    <div id="profitPane" style="display:none;"></div>
+  <div id="credPane" style="display:none;"></div>
+  <div id="noticePane" style="display:none;">
+    <h1>📢 নোটিশ ব্যানার</h1>
+    <p class="muted">কাস্টমার সাইটের ওপরে একটি নোটিশ দেখাবে (যেমন "Subscriber সার্ভিসে ড্রপ সমস্যা চলছে")। সেভ করার পর কাস্টমারের পরের লোডেই আসবে।</p>
+    <div id="noticeState" class="ntc-state"></div>
+    <label class="ntc-sw"><input type="checkbox" id="noticeOn" /><span class="ntc-track" aria-hidden="true"></span><b>ব্যানার চালু</b></label>
+    <select id="noticeLevel"><option value="info">তথ্য</option><option value="warn">সতর্কতা</option><option value="bad">সমস্যা</option></select>
+    <div class="ntc-chips" id="noticeLevels" role="group" aria-label="ধরন"></div>
+    <textarea id="noticeText" rows="3" maxlength="200" placeholder="কাস্টমারকে কী জানাতে চান…"></textarea>
+    <div class="ntc-count"><span id="noticeCount">0/200</span></div>
+    <div class="ntc-chips" id="noticeQuick" role="group" aria-label="দ্রুত বাক্য"></div>
+    <div class="ntc-h">কাস্টমার যেভাবে দেখবে</div>
+    <div id="noticePrev" class="ntc-banner"></div>
+    <div class="ntc-actions">
+      <button type="button" id="noticeSaveBtn" onclick="noticeSave()">💾 সেভ করুন</button>
+      <button type="button" id="noticeOffBtn" class="ntc-off" onclick="noticeSave(true)">⏹ বন্ধ করুন</button>
+    </div>
+    <div id="noticeMsg"></div>
   </div>
 
   <div id="logPane" style="display:none;">
@@ -1153,6 +1198,24 @@
       const tl = document.getElementById("tabLog"); if (tl) tl.classList.toggle("on", isL);
       const lp = document.getElementById("logPane"); if (lp) lp.style.display = isL ? "block" : "none";
       if (isL && typeof loadAdminLog === "function") loadAdminLog();
+    })();
+    (function () {
+      const isN = name === "notice";
+      const tn = document.getElementById("tabNotice"); if (tn) tn.classList.toggle("on", isN);
+      const np = document.getElementById("noticePane"); if (np) np.style.display = isN ? "block" : "none";
+      if (isN && typeof noticeLoad === "function") noticeLoad();
+    })();
+    (function () {
+      const isP = name === "profit";
+      const tp = document.getElementById("tabProfit"); if (tp) tp.classList.toggle("on", isP);
+      const pp = document.getElementById("profitPane"); if (pp) pp.style.display = isP ? "block" : "none";
+      if (isP && typeof profitLoad === "function") profitLoad();
+    })();
+    (function () {
+      const isC = name === "cred";
+      const tc = document.getElementById("tabCred"); if (tc) tc.classList.toggle("on", isC);
+      const cp = document.getElementById("credPane"); if (cp) cp.style.display = isC ? "block" : "none";
+      if (isC && typeof credLoad === "function") credLoad();
     })();
     if (isW) { /* ready */ }
   }
@@ -1749,6 +1812,7 @@
     set("stPartial", c.Partial || 0);
     set("stCompleted", c.Completed || 0);
     set("stRejected", c.Rejected || 0);
+    set("stAll", (c.Pending || 0) + (c.Processing || 0) + (c.Partial || 0) + (c.Completed || 0) + (c.Rejected || 0));
     const t = data.today || {};
     set("stToday", t.orders || 0);
     set("acctDate", t.date ? "(" + t.date + ")" : "");
@@ -1963,7 +2027,7 @@
         </div>`;
     }
     return `
-      <div class="card">
+      <div class="card st-${stLower}">
         <div class="card-top">
           <span class="oid">#${esc(o.order_id)}</span>
           <span class="status-pill ${statusClass(st)}">${esc(st)}</span>
@@ -3401,8 +3465,9 @@
   }
 
   function walOpenFor(m) {
-    let n = String(m || "").replace(/\D/g, "");
-    if (n.length === 10 && n.charAt(0) === "1") n = "0" + n;   // sheet may drop the leading 0
+    let n = String(m || "").trim();
+    if (/[^0-9\s+\-]/.test(n)) n = n.toLowerCase();   // ইউজারনেম (অক্ষর আছে) যেমন আছে তেমন রাখি
+    else { n = n.replace(/\D/g, ""); if (n.length === 10 && n.charAt(0) === "1") n = "0" + n; }   // sheet may drop the leading 0
     showTab("wallet");
     const inp = document.getElementById("walMobile");
     if (inp) inp.value = n;
@@ -4232,5 +4297,6 @@ async function failoverStart(oid) {
   finally { BK.busy = false; }
 }
 </script>
+<script src="design/admin-v4.js?v=20261110e"></script>
 </body>
 </html>
