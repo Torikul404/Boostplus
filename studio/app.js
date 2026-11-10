@@ -248,6 +248,28 @@ async function collect(p,btn){
 const PLAT=[['instagram',/insta(?!nt)|\big\b/i],['facebook',/facebook|\bfb\b/i],['tiktok',/tik.?tok/i],['youtube',/youtube|\byt\b/i],['telegram',/telegram|\btg\b/i],['twitter',/twitter|\bx\b/i],['whatsapp',/whatsapp/i],['other',/./]];
 const guess=s=>{s=nk(s);return (PLAT.find(p=>p[1].test(s))||PLAT[7])[0]};
 let provTok=0,selProv=null;
+/* এক ক্লিকে প্রভাইডারের সব চালু সার্ভিস সাইট থেকে বন্ধ/লুকানো (ফিল্টার যা-ই থাকুক, ওই প্রভাইডারের সবগুলো)।
+   সার্ভারের আগের svc_bulk (on:false) ব্যবহার করে — PtServices.gs বদলাতে হয় না। ফেরান = svc_site_hide (on:true), নাম/ক্যাটেগরি যেমন ছিল তেমনই ফেরে। */
+async function provOff(p){
+  if(busy)return;
+  if(!navigator.onLine)return toast('এই কাজে ইন্টারনেট লাগবে');
+  const b=()=>document.getElementById('pOff');
+  const reset=()=>{busy=false;const x=b();if(x){x.disabled=false;x.textContent='⏻ সব বন্ধ'}};
+  busy=true;{const x=b();if(x){x.disabled=true;x.textContent='খোঁজা হচ্ছে…'}}
+  try{
+    const codes=[];let off=0,tot=1;
+    while(off<tot){const d=await api('svc_list',{provider:p,q:'',state:'on',category:'',platform:'',offset:off,limit:200});tot=d.total;if(!d.rows.length)break;d.rows.forEach(r=>{if(r.state==='on')codes.push(String(r.service_id))});off+=d.rows.length}
+    if(!codes.length){toast(p+'-এর কোনো সার্ভিস সাইটে চালু নেই');return reset()}
+    if(!confirm(p+'-এর '+bn(codes.length)+'টি চালু সার্ভিস সাইট থেকে বন্ধ (লুকানো) হবে। চালিয়ে যাবেন?\n(পরে ফেরান বোতামে বা আলাদা করে আবার চালু করা যাবে)')){return reset()}
+    let done=0,skipped=0,i=0;const parts=chunks(codes,100);
+    for(const c of parts){i++;const x=b();if(x)x.textContent='বন্ধ হচ্ছে… '+bn(i)+'/'+bn(parts.length);
+      const q=await api('svc_bulk',{provider:p,codes:c,on:false,category:'',markup:'',force:true});done+=q.done||0;skipped+=q.skipped||0}
+    sel.clear();bulkBar();
+    try{await catSyncNow()}catch(_){}
+    reset();if(cur===p)provider(p);
+    toastU(bn(done)+'টি বন্ধ হয়েছে'+(skipped?' · '+bn(skipped)+'টি বাদ (অন্য প্রভাইডারের/নিজে যোগ নয়)':''),async()=>{for(const c of chunks(codes,200))await api('svc_site_hide',{codes:c,on:true});if(cur===p)provider(p)});
+  }catch(e){if(!authFail(e))toast(e.message);reset()}
+}
 async function provider(p,more){
   cur=p;$('#title').textContent=p;$('#back').hidden=false;const el=$('#main');
   const hq=!more&&document.activeElement&&document.activeElement.id==='q',my=more?provTok:++provTok;
@@ -257,13 +279,13 @@ async function provider(p,more){
     if(my!==provTok)return;
     if(!more){lastList=d;
       el.innerHTML=tiles(d.platforms||[],st.plat||'')+`<div class="bar"><input id="q" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি খুঁজুন" value="${esc(st.q)}" aria-label="খুঁজুন"></div><div id="cats">${catUI(catsFor(d.categories,st.plat),st)}</div>
-      <div class="chips" role="group" aria-label="অবস্থা">${[['all','সব'],['on','চালু'],['off','বন্ধ'],['conflict','জট']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${st.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="sa">সব বাছুন</button><button class="chip" id="csv">⤓ CSV</button></div>
+      <div class="chips" role="group" aria-label="অবস্থা">${[['all','সব'],['on','চালু'],['off','বন্ধ'],['conflict','জট']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${st.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="sa">সব বাছুন</button><button class="chip" id="csv">⤓ CSV</button><button class="chip dg" id="pOff">⏻ সব বন্ধ</button></div>
       <p class="sub" id="cnt"></p><div class="list" id="rows"></div><div id="moreWrap"></div>`;
       $('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{st.q=e.target.value;provider(p)},350)};
       if(hq){const qi=$('#q');qi.focus();try{qi.setSelectionRange(qi.value.length,qi.value.length)}catch(_){}}
       bindCat($('#cats'),st,()=>provider(p));
       el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{st.state=b.dataset.s;provider(p)});
-      $('#csv').onclick=()=>dl(p);bindTiles(el,l=>{st.plat=l;st.cat='';provider(p)});$('#sa').onclick=()=>el.querySelectorAll('.sel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange()}});
+      $('#csv').onclick=()=>dl(p);$('#pOff').onclick=()=>provOff(p);bindTiles(el,l=>{st.plat=l;st.cat='';provider(p)});$('#sa').onclick=()=>el.querySelectorAll('.sel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange()}});
     }else lastList.rows=lastList.rows.concat(d.rows);
     $('#cnt').textContent=`মোট ${bn(d.total)}টি${d.fx?'':' · USD→৳ রেট সেট নেই (দাম USD-তে দিন)'}`;
     const box=$('#rows');if(!more)box.innerHTML='';
