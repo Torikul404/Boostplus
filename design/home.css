@@ -72,11 +72,3 @@ body.pb-guest #abOrderFields{display:none !important}
   .hiw-step p{display:block;font-size:12.5px;line-height:1.5}
 }
 
-
-/* ডেস্কটপে সার্চ, ফিল্টার ও ক্যাটাগরি/সার্ভিস ড্রপডাউন একই প্রস্থে (প্ল্যাটফর্ম চিপের সারির সমান, ৬৪০px) */
-@media (min-width: 900px) {
-  #services-view .toolbar,
-  #services-view .active-filters,
-  #services-view .dropdown-picker { max-width: 640px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
-  #services-view .dropdown-picker { padding-left: 0; padding-right: 0; }
-}

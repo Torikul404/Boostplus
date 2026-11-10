@@ -48,11 +48,6 @@
   background: rgb(255 255 255 / .25); color: #fff; font: 700 20px/1 inherit;
 }
 .pb-acct-login { width: 100%; margin-top: 8px; }
-/* গেস্ট (লগইন করা নেই): ছোট এক সারির কার্ড, নিচে লগইন বাটন */
-body.pb-guest .pb-acct { flex-direction: row; flex-wrap: wrap; text-align: left; align-items: center; gap: 6px 12px; padding: 12px; margin: 4px 0 8px; }
-body.pb-guest .pb-acct-avatar { width: 44px; height: 44px; border-width: 2px; font-size: 18px; box-shadow: none; flex: none; }
-body.pb-guest .pb-acct-num { margin-top: 0; flex: 1; min-width: 0; font-size: 1rem; }
-body.pb-guest .pb-acct-login { flex: 1 1 100%; margin-top: 4px; }
 
 /* মেনু আইটেম — রাউন্ড আইকন বক্স */
 .pb-side-item { border: 0; padding: 10px; border-radius: 16px; }
