@@ -32,12 +32,24 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=20261030a" />
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=20261030a" />
   <link rel="preload" href="fonts/hind-siliguri-v14-bengali_latin-regular.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="preload" href="fonts/InterVariable-latin.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="design/site.css?v=20261110k" />
+  <link rel="preload" href="fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="design/fonts.css?v=20261029y" />
   <script src="design/theme.js?v=20261030a"></script>
-<!-- সব CSS এখন design/site.css-এ (build-css.py দিয়ে বানানো)। নতুন CSS যোগ করলে build-css.py-র ORDER-এ লিখে আবার চালান। -->
+  <link rel="stylesheet" href="design/tokens.css?v=20261029b" />
+  <link rel="stylesheet" href="styles.css?v=20261030a" />
+  <link rel="stylesheet" href="support.css?v=20261030b" />
+  <link rel="stylesheet" href="design/theme.css?v=20261030a" />
+  <link rel="stylesheet" href="design/picker.css?v=20261029e" />
+<link rel="stylesheet" href="design/home.css?v=20261026r" />
+  <link rel="stylesheet" href="design/bottomnav.css?v=20261029e" />
+  <link rel="stylesheet" href="design/svclist.css?v=20261108a" />
+  <link rel="stylesheet" href="design/sidebar.css?v=20261029u" />
+  <link rel="stylesheet" href="design/account.css?v=20261106a" />
 <!-- PB:CSS-L2 : লেন ২ এখানে নিজের নতুন CSS লিংক বসাবে -->
 <!-- PB:CSS-L1 : লেন ১ এখানে নিজের নতুন CSS লিংক বসাবে -->
+  <link rel="stylesheet" href="design/orders.css?v=20261029e" />
+  <link rel="stylesheet" href="design/currency.css?v=20261029e" />
+  <link rel="stylesheet" href="design/a11y.css?v=20261110a" />
 <!-- PB:END-CSS : এর পরে শুধু R0 বদলায় -->
   <link rel="preload" href="app-l1-catalog/index.json" as="fetch" crossorigin="anonymous" />
   <!-- Structured data — helps Google show a richer search result -->
@@ -606,23 +618,23 @@
 
       <!-- STEP 4 — Payment Pending / Verification -->
       <div id="pending-view" style="display:none;">
-        <div class="gateway-details pb-u13">
+        <div class="gateway-details" style="padding:12px;">
           <div class="status-icon-circle status-icon-pending">🕐</div>
           <div class="status-title">Payment Pending</div>
           <div class="status-sub">We are verifying your payment.</div>
           <div id="pendingDetailBox"></div>
-          <button class="track-submit pb-u14" onclick="goToTrack()">Track Order</button>
+          <button class="track-submit" style="margin-top:16px; width:100%;" onclick="goToTrack()">Track Order</button>
         </div>
       </div>
 
       <!-- FINAL — Payment Successful -->
       <div id="success-view" style="display:none;">
-        <div class="gateway-details pb-u13">
+        <div class="gateway-details" style="padding:12px;">
           <div class="status-icon-circle status-icon-success">✅</div>
           <div class="status-title">Payment Successful!</div>
           <div class="status-sub">Your payment has been verified.</div>
           <div id="successDetailBox"></div>
-          <button class="track-submit pb-u14" onclick="goToTrack()">View Order Details</button>
+          <button class="track-submit" style="margin-top:16px; width:100%;" onclick="goToTrack()">View Order Details</button>
         </div>
       </div>
     </div>
@@ -631,73 +643,73 @@
     <!-- Wallet View -->
 <!-- PB:ZONE wallet-view [L1 ওয়ালেট] -->
     <div id="wallet-view" class="view-section dark-section" style="display:none;">
-      <div class="track-box pb-u7">
+      <div class="track-box" style="max-width:480px;margin:0 auto;">
         <div style="text-align:center;position:relative;margin-bottom:14px;">
-          <div class="pb-u19"></div>
+          <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);width:120px;height:120px;background:radial-gradient(circle,rgba(110,231,183,0.18) 0%,rgba(110,231,183,0) 70%);pointer-events:none;"></div>
           <h2 style="margin:0;position:relative;">💰 ওয়ালেট</h2>
         </div>
-        <div id="walletMsg" class="pb-u20"></div>
+        <div id="walletMsg" style="text-align:center;color:#fbbf24;font-size:13px;min-height:1.2em;margin:8px 0;"></div>
 
         <div id="walletGuest">
           <div style="display:flex;gap:6px;background:#0b0f14;border:1px solid #2a3a4a;border-radius:10px;padding:4px;margin-bottom:16px;">
-            <button type="button" id="walTabBtnLogin" class="pb-u21">লগইন</button>
-            <button type="button" id="walTabBtnRegister" class="pb-u22">নতুন অ্যাকাউন্ট</button>
+            <button type="button" id="walTabBtnLogin" style="flex:1;padding:9px 0;border-radius:7px;border:none;background:#6ee7b7;color:#0b0f14;font-weight:700;font-size:13px;cursor:pointer;">লগইন</button>
+            <button type="button" id="walTabBtnRegister" style="flex:1;padding:9px 0;border-radius:7px;border:none;background:transparent;color:#94a3b8;font-weight:700;font-size:13px;cursor:pointer;">নতুন অ্যাকাউন্ট</button>
           </div>
 
           <div id="walPanelLogin" style="display:grid;gap:10px;">
-            <div class="pb-u1">
-              <span class="pb-u2">📱</span>
-              <input id="walLoginMobile" type="text" maxlength="30" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="User name" class="pb-u8" />
+            <div style="position:relative;">
+              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">📱</span>
+              <input id="walLoginMobile" type="text" maxlength="30" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="User name" style="width:100%;padding:12px 12px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
             </div>
-            <div class="pb-u1">
-              <span class="pb-u2">🔒</span>
-              <input id="walLoginPin" type="password" maxlength="32" placeholder="পাসওয়ার্ড" class="pb-u3" />
-              <button type="button" id="walToggleLoginPin" aria-label="পিন দেখান/লুকান" class="pb-u4">👁</button>
+            <div style="position:relative;">
+              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔒</span>
+              <input id="walLoginPin" type="password" maxlength="32" placeholder="পাসওয়ার্ড" style="width:100%;padding:12px 40px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
+              <button type="button" id="walToggleLoginPin" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:15px;cursor:pointer;padding:4px;">👁</button>
             </div>
-            <button type="button" id="walBtnLogin" class="track-submit pb-u5">লগইন</button>
-            <button type="button" id="walBtnSetPin" class="pb-u23">পিন সেট (নতুন/পুরনো ইউজার)</button>
-            <button type="button" id="walBtnForgot" class="pb-u24">পিন ভুলে গেছেন?</button>
+            <button type="button" id="walBtnLogin" class="track-submit" style="width:100%;">লগইন</button>
+            <button type="button" id="walBtnSetPin" style="width:100%;padding:11px;border-radius:10px;border:1px solid #2a3a4a;background:transparent;color:#94a3b8;font-size:13px;">পিন সেট (নতুন/পুরনো ইউজার)</button>
+            <button type="button" id="walBtnForgot" style="background:none;border:none;color:#38bdf8;font-size:13px;cursor:pointer;padding:4px;text-decoration:underline;">পিন ভুলে গেছেন?</button>
           </div>
 
           <div id="walPanelRegister" style="display:none;gap:10px;">
-            <div class="pb-u1">
-              <span class="pb-u2">📱</span>
-              <input id="walRegMobile" type="text" maxlength="30" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="User name" class="pb-u8" />
+            <div style="position:relative;">
+              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">📱</span>
+              <input id="walRegMobile" type="text" maxlength="30" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="User name" style="width:100%;padding:12px 12px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
             </div>
-            <div class="pb-u1">
-              <span class="pb-u2">🔒</span>
-              <input id="walRegPin" type="password" maxlength="32" placeholder="নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" class="pb-u3" />
-              <button type="button" id="walToggleRegPin" aria-label="পিন দেখান/লুকান" class="pb-u4">👁</button>
+            <div style="position:relative;">
+              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔒</span>
+              <input id="walRegPin" type="password" maxlength="32" placeholder="নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" style="width:100%;padding:12px 40px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
+              <button type="button" id="walToggleRegPin" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:15px;cursor:pointer;padding:4px;">👁</button>
             </div>
-            <button type="button" id="walBtnRegister" class="track-submit pb-u5">রেজিস্টার</button>
+            <button type="button" id="walBtnRegister" class="track-submit" style="width:100%;">রেজিস্টার</button>
           </div>
 
           <div id="walPanelForgot" style="display:none;gap:10px;">
             <div style="font-size:13px;font-weight:700;text-align:center;">🔑 পিন রিকভারি</div>
-            <div class="muted pb-u15">কোড মোবাইলে যাবে না — এডমিন যাচাই করে আপনাকে ৬ ডিজিটের কোড দেবেন (WhatsApp/সাপোর্টে)।</div>
-            <div class="pb-u1">
-              <span class="pb-u2">📱</span>
-              <input id="walForgotMobile" type="text" maxlength="30" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="মোবাইল নম্বর বা User name" class="pb-u8" />
+            <div class="muted" style="font-size:12px;text-align:center;">কোড মোবাইলে যাবে না — এডমিন যাচাই করে আপনাকে ৬ ডিজিটের কোড দেবেন (WhatsApp/সাপোর্টে)।</div>
+            <div style="position:relative;">
+              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">📱</span>
+              <input id="walForgotMobile" type="text" maxlength="30" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="মোবাইল নম্বর বা User name" style="width:100%;padding:12px 12px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
             </div>
-            <button type="button" id="walBtnForgotSend" class="track-submit pb-u5">এডমিনের কাছে কোড চান</button>
+            <button type="button" id="walBtnForgotSend" class="track-submit" style="width:100%;">এডমিনের কাছে কোড চান</button>
             <div id="walForgotStep2" style="display:none;gap:10px;">
-              <input id="walForgotCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="এডমিনের দেওয়া ৬ ডিজিটের কোড" class="pb-u25" />
-              <div class="pb-u1">
-              <span class="pb-u2">🔒</span>
-              <input id="walForgotNewPin" type="password" maxlength="32" autocomplete="off" placeholder="নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" class="pb-u3" />
-              <button type="button" id="walToggleForgotNew" aria-label="পিন দেখান/লুকান" class="pb-u4">👁</button>
+              <input id="walForgotCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="এডমিনের দেওয়া ৬ ডিজিটের কোড" style="width:100%;padding:12px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;letter-spacing:4px;text-align:center;" />
+              <div style="position:relative;">
+              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔒</span>
+              <input id="walForgotNewPin" type="password" maxlength="32" autocomplete="off" placeholder="নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" style="width:100%;padding:12px 40px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
+              <button type="button" id="walToggleForgotNew" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:15px;cursor:pointer;padding:4px;">👁</button>
             </div>
-              <div class="pb-u1">
-              <span class="pb-u2">🔒</span>
-              <input id="walForgotConfirmPin" type="password" maxlength="32" autocomplete="off" placeholder="নতুন পিন আবার দিন" class="pb-u3" />
-              <button type="button" id="walToggleForgotConfirm" aria-label="পিন দেখান/লুকান" class="pb-u4">👁</button>
+              <div style="position:relative;">
+              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔒</span>
+              <input id="walForgotConfirmPin" type="password" maxlength="32" autocomplete="off" placeholder="নতুন পিন আবার দিন" style="width:100%;padding:12px 40px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;" />
+              <button type="button" id="walToggleForgotConfirm" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:15px;cursor:pointer;padding:4px;">👁</button>
             </div>
-              <button type="button" id="walBtnForgotReset" class="track-submit pb-u5">নতুন পিন সেট করুন</button>
+              <button type="button" id="walBtnForgotReset" class="track-submit" style="width:100%;">নতুন পিন সেট করুন</button>
             </div>
-            <button type="button" id="walBtnForgotBack" class="pb-u26">← লগইনে ফিরে যান</button>
+            <button type="button" id="walBtnForgotBack" style="background:none;border:none;color:#94a3b8;font-size:13px;cursor:pointer;padding:4px;">← লগইনে ফিরে যান</button>
           </div>
 
-          <div class="pb-u27">🔒 আপনার তথ্য এনক্রিপ্টেড ও নিরাপদ</div>
+          <div style="text-align:center;margin-top:16px;font-size:11px;color:#64748b;">🔒 আপনার তথ্য এনক্রিপ্টেড ও নিরাপদ</div>
         </div>
 
         <div id="walletHome" style="display:none;">
@@ -720,115 +732,127 @@
     <!-- Top-up View: every step is its own page -->
 <!-- PB:ZONE topup-view [L1 টপ-আপ] -->
     <div id="topup-view" class="view-section dark-section" style="display:none;">
-      <div class="tp-wrap">
+      <div class="track-box" style="max-width:480px;margin:0 auto;">
         <button type="button" id="tfBackWallet" class="af-back">← ব্যালেন্স</button>
-          <!-- টপ-আপ ফ্লো v16: A অ্যামাউন্ট+মেথড → B নম্বর → C পেমেন্ট+TrxID → R ফলাফল। JS: app-wallet.js, CSS: design/topup.css -->
-          <section id="tfStepA" class="tp-card" aria-labelledby="tpHA">
-            <div class="tp-top"><div class="tp-brand"><img src="logo-mark.svg?v=20261030a" alt="" width="36" height="36"><span>boost<b>plus</b></span></div><span class="tp-bal">ব্যালেন্স <b class="tp-bal-v">৳0</b></span></div>
-            <ol class="tp-steps" aria-label="ধাপ"><li class="tp-st cur" aria-current="step"><i>1</i><span>অ্যামাউন্ট</span></li><li class="tp-st "><i>2</i><span>পেমেন্ট</span></li><li class="tp-st "><i>3</i><span>প্রসেসিং</span></li></ol>
-            <div><h2 id="tpHA" class="tp-h1" tabindex="-1" data-tp-focus>ব্যালেন্স যোগ করুন</h2><p class="tp-mu">অ্যামাউন্ট লিখুন, তারপর পেমেন্ট মেথড বেছে নিন</p></div>
-            <div class="tf-bonus" id="tfBonusBanner" hidden></div>
-            <div>
-              <label class="tp-lb" for="walTopAmount">অ্যামাউন্ট (BDT)</label>
-              <div class="tp-in"><b aria-hidden="true">৳</b><input id="walTopAmount" type="number" min="20" step="1" inputmode="numeric" placeholder="0" autocomplete="off" /></div>
-              <div class="tp-mu tp-hint" id="tpHint">ন্যূনতম টপ-আপ ৳20</div>
-            </div>
-            <div id="tfQuickAmts" class="tp-quick" role="group" aria-label="দ্রুত অ্যামাউন্ট">
-              <button type="button" class="tp-chip tf-qamt" data-amt="50">৳50</button>
-              <button type="button" class="tp-chip tf-qamt" data-amt="100">৳100</button>
-              <button type="button" class="tp-chip tf-qamt" data-amt="200">৳200</button>
-              <button type="button" class="tp-chip tf-qamt" data-amt="500">৳500</button>
-              <button type="button" class="tp-chip tf-qamt" data-amt="1000">৳1000</button>
-              <button type="button" class="tp-chip tf-qamt" data-amt="2000">৳2000</button>
-            </div>
-            <div>
-              <div class="tp-lb" id="tpMethodLb">পেমেন্ট মেথড</div>
-              <div class="tp-methods" id="tfMethodGrid" role="radiogroup" aria-labelledby="tpMethodLb">
-                <div class="tf-method tp-m" data-method="bKash" role="radio" aria-checked="false" tabindex="0"><img src="bKash-sm.png" alt="" width="40" height="40" loading="lazy" decoding="async"><span>bKash</span></div>
-                <div class="tf-method tp-m" data-method="Nagad" role="radio" aria-checked="false" tabindex="0"><img src="nagad-sm.png" alt="" width="40" height="40" loading="lazy" decoding="async"><span>Nagad</span></div>
-                <div class="tf-method tp-m" data-method="Rocket" role="radio" aria-checked="false" tabindex="0"><img src="rocket-sm.png" alt="" width="40" height="40" loading="lazy" decoding="async"><span>Rocket</span></div>
-                <div class="tf-method tp-m" data-method="NPSB" role="radio" aria-checked="false" tabindex="0"><img src="npsb.svg" class="tp-npsb" alt="" width="56" height="40" loading="lazy" decoding="async"><span>NPSB</span></div>
+          <!-- STEP A: amount + method (Add Funds card) -->
+          <div id="tfStepA" class="af-card">
+            <div class="af-head">
+              <div class="af-head-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.2" fill="currentColor"/></svg>
+              </div>
+              <div>
+                <div class="af-title">Add Funds</div>
+                <div class="af-sub">অ্যাকাউন্টে ব্যালেন্স যোগ করুন</div>
               </div>
             </div>
-            <div class="af-summary" aria-live="polite">
-              <div><span>AMOUNT</span><b id="afSumAmount">৳0.00</b></div>
-              <div><span>FEE</span><b class="af-green" id="afSumFee">৳0.00</b></div>
-              <div id="afSumBonusCell" hidden><span>BONUS 🎁</span><b class="af-green" id="afSumBonus">+৳0</b></div>
-              <div><span>YOU GET</span><b id="afSumTotal">৳0.00</b></div>
-            </div>
-            <button type="button" id="tfGoPayer" class="tp-btn" disabled>এগিয়ে যান</button>
-          </section>
 
-          <section id="tfStepB" class="tp-card" style="display:none;" aria-labelledby="tpHB">
-            <div class="tp-top"><div class="tp-brand"><img src="logo-mark.svg?v=20261030a" alt="" width="36" height="36"><span>boost<b>plus</b></span></div><span class="tp-bal">ব্যালেন্স <b class="tp-bal-v">৳0</b></span></div>
-            <ol class="tp-steps" aria-label="ধাপ"><li class="tp-st done"><i><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i><span>অ্যামাউন্ট</span></li><li class="tp-st cur" aria-current="step"><i>2</i><span>পেমেন্ট</span></li><li class="tp-st "><i>3</i><span>প্রসেসিং</span></li></ol>
-            <button type="button" id="tfBackA" class="tp-link">← ফিরে যান</button>
-            <div class="tp-send" id="tpSendBox">
-              <div class="tp-send-head">
-                <img id="tpSendLogo" src="bKash-sm.png" alt="" width="40" height="40">
-                <div><div class="tp-send-k">টপ-আপ</div><h2 id="tpHB" class="tp-send-m" tabindex="-1" data-tp-focus><span id="tpSendMethod">bKash</span></h2></div>
-                <b class="tp-send-amt" id="tpSendAmt">৳0</b>
+            <div class="af-body">
+              <div class="tf-bonus" id="tfBonusBanner" hidden></div>
+              <div class="af-label">Payment Method</div>
+              <div class="payment-grid af-methods" id="tfMethodGrid" role="radiogroup" aria-label="টপ-আপ পেমেন্ট মেথড">
+                <div class="tf-method pay-card" data-method="bKash" role="radio" aria-checked="false" tabindex="0"><img src="bKash.png" loading="lazy" decoding="async" alt="bKash" class="pay-logo-img"><span>bKash</span></div>
+                <div class="tf-method pay-card" data-method="Nagad" role="radio" aria-checked="false" tabindex="0"><img src="nagad.png" loading="lazy" decoding="async" alt="Nagad" class="pay-logo-img"><span>Nagad</span></div>
+                <div class="tf-method pay-card" data-method="Rocket" role="radio" aria-checked="false" tabindex="0"><img src="rocket.png" loading="lazy" decoding="async" alt="Rocket" class="pay-logo-img"><span>Rocket</span></div>
               </div>
-              <div class="tp-send-body" id="tpSenderBox">
-                <label class="tp-lb" for="walTopSender">আপনার <span id="tfPayerMethodName">bKash</span> অ্যাকাউন্ট নম্বর</label>
-                <p class="tp-mu">যে নম্বর থেকে টাকা পাঠাবেন, সেটি লিখুন</p>
-                <input id="walTopSender" class="tp-field" type="tel" inputmode="numeric" placeholder="01XXXXXXXXX" autocomplete="tel" aria-describedby="tpSenderErr" />
-                <div class="tp-e" id="tpSenderErr" role="alert"></div>
-              </div>
-              <div class="tp-send-body" id="tpNpsbBox" hidden>
-                <div class="tp-lb">টাকা কোন ওয়ালেটে যাবে?</div>
-                <p class="tp-mu">ব্যাংক অ্যাপ থেকে NPSB দিয়ে নিচের যেকোনো ওয়ালেট নম্বরে পাঠানো যায়</p>
-                <div class="tp-wallets" role="radiogroup" aria-label="গন্তব্য ওয়ালেট">
-                  <button type="button" class="tp-m tp-w" data-w="bKash" role="radio" aria-checked="false"><img src="bKash-sm.png" alt="" width="36" height="36"><span>bKash</span></button>
-                  <button type="button" class="tp-m tp-w" data-w="Nagad" role="radio" aria-checked="false"><img src="nagad-sm.png" alt="" width="36" height="36"><span>Nagad</span></button>
-                  <button type="button" class="tp-m tp-w" data-w="Rocket" role="radio" aria-checked="false"><img src="rocket-sm.png" alt="" width="36" height="36"><span>Rocket</span></button>
-                </div>
-              </div>
-            </div>
-            <div class="tp-pair">
-              <button type="button" id="tfBackA2" class="tp-btn ghost">বাতিল</button>
-              <button type="button" id="tfGoWait" class="tp-btn" disabled>নিশ্চিত করুন</button>
-            </div>
-          </section>
 
-          <section id="tfStepC" class="tp-card" style="display:none;" aria-labelledby="tpHC">
-            <div class="tp-top"><div class="tp-brand"><img src="logo-mark.svg?v=20261030a" alt="" width="36" height="36"><span>boost<b>plus</b></span></div><span class="tp-bal">ব্যালেন্স <b class="tp-bal-v">৳0</b></span></div>
-            <ol class="tp-steps" aria-label="ধাপ"><li class="tp-st done"><i><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i><span>অ্যামাউন্ট</span></li><li class="tp-st cur" aria-current="step"><i>2</i><span>পেমেন্ট</span></li><li class="tp-st "><i>3</i><span>প্রসেসিং</span></li></ol>
-            <button type="button" id="tfBackB" class="tp-link">← ফিরে যান</button>
-            <div class="tp-pay-h">
-              <div><div class="tp-mu">boostplus · ব্যালেন্স যোগ</div><h2 id="tpHC" class="tp-h1 tp-h1-s" tabindex="-1" data-tp-focus>bKash দিয়ে Send Money</h2></div>
-              <b class="tp-pay-amt" id="tpPayAmtBig">৳0</b>
-            </div>
-            <div class="tp-qr" id="tpQrBox" hidden><img id="tpQrImg" src="qr-bkash.png" alt="পেমেন্ট QR কোড" width="220" height="220"><span id="tpQrCap">QR স্ক্যান করুন, অথবা নিচের নম্বরে Send Money করুন</span></div>
-            <div class="tp-note" id="tpNote" hidden></div>
-            <div class="tp-row"><div><div class="tp-mu" id="tpNumLb">bKash পারসোনাল নম্বর (Send Money)</div><b id="tfPayNumber">01921018882</b></div><button type="button" class="tp-copy" id="tfCopyNum">কপি</button></div>
-            <div class="tp-row" id="tpVirtRow" hidden><div><div class="tp-mu">Nagad ভার্চুয়াল নম্বর</div><b id="tpVirtNum">—</b></div><button type="button" class="tp-copy" id="tpCopyVirt">কপি</button></div>
-            <div class="tp-row"><div><div class="tp-mu">ঠিক এই পরিমাণ পাঠান</div><b id="tfPayAmtCopy">৳0</b></div><button type="button" class="tp-copy" id="tfCopyAmt">কপি</button></div>
-            <div class="tp-timer" role="timer"><span class="tp-dot" aria-hidden="true"></span><span id="tfCountdown">15:00 মিনিটের মধ্যে পেমেন্ট করুন</span></div>
-            <div>
-              <label class="tp-lb" for="walTopTxn">Transaction ID</label>
-              <input id="walTopTxn" class="tp-field" type="text" placeholder="যেমন 8N7002M4RB" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="tpTxnErr" />
-              <p class="tp-mu tp-auto">টাকা পাঠানোর পর SMS-এর Transaction ID দিন। মিলে গেলে ব্যালেন্স নিজে থেকেই যোগ হবে।</p>
-              <div class="tp-e" id="tpTxnErr" role="alert"></div>
-            </div>
-            <div class="tp-actions">
-              <button type="button" id="walBtnTopup" class="tp-btn">পেমেন্ট যাচাই করুন</button>
-              <button type="button" id="tfBackB2" class="tp-btn ghost">অন্য মেথড বাছুন</button>
-            </div>
-            <span id="tfPendingId" hidden></span>
-          </section>
+              <div class="af-note">ন্যূনতম টপ-আপ <b>৳20</b>। পেমেন্ট মেথড বেছে নিয়ে অ্যামাউন্ট লিখুন।</div>
 
-          <section id="tfStepR" class="tp-card" style="display:none;" aria-labelledby="tpResTitle">
-            <div class="tp-top"><div class="tp-brand"><img src="logo-mark.svg?v=20261030a" alt="" width="36" height="36"><span>boost<b>plus</b></span></div><span class="tp-bal">ব্যালেন্স <b class="tp-bal-v">৳0</b></span></div>
-            <ol class="tp-steps" aria-label="ধাপ"><li class="tp-st done"><i><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i><span>অ্যামাউন্ট</span></li><li class="tp-st done"><i><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i><span>পেমেন্ট</span></li><li class="tp-st cur" aria-current="step"><i>3</i><span>প্রসেসিং</span></li></ol>
-            <div class="tp-res" id="tpRes" data-kind="success" aria-live="polite">
-              <svg class="tp-res-ic" width="76" height="76" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="34"/><path id="tpResPath" d="M22 37l10 10 18-20"/></svg>
-              <h2 id="tpResTitle" class="tp-h1" tabindex="-1" data-tp-focus>টপ-আপ সম্পন্ন</h2>
-              <p class="tp-mu" id="tpResDesc"></p>
+              <label class="af-label" for="walTopAmount">Amount, BDT</label>
+              <div class="af-input-wrap">
+                <span class="af-input-prefix">৳</span>
+                <input id="walTopAmount" class="af-input" type="number" min="20" step="1" inputmode="numeric" placeholder="0.00" />
+              </div>
+
+              <div class="af-label">Quick Amount</div>
+              <div id="tfQuickAmts" class="af-quick">
+                <button type="button" class="tf-qamt" data-amt="50">৳50</button>
+                <button type="button" class="tf-qamt" data-amt="100">৳100</button>
+                <button type="button" class="tf-qamt" data-amt="200">৳200</button>
+                <button type="button" class="tf-qamt" data-amt="500">৳500</button>
+                <button type="button" class="tf-qamt" data-amt="1000">৳1000</button>
+                <button type="button" class="tf-qamt" data-amt="2000">৳2000</button>
+              </div>
+
+              <div class="af-summary" aria-live="polite">
+                <div><span>AMOUNT</span><b id="afSumAmount">৳0.00</b></div>
+                <div><span>FEE</span><b class="af-green" id="afSumFee">৳0.00</b></div>
+                <div id="afSumBonusCell" hidden><span>BONUS 🎁</span><b class="af-green" id="afSumBonus">+৳0</b></div>
+                <div><span>YOU GET</span><b id="afSumTotal">৳0.00</b></div>
+              </div>
+
+              <button type="button" id="tfGoPayer" class="af-pay-btn" disabled>Pay</button>
             </div>
-            <div class="tp-det" id="tpResDet"></div>
-            <div class="tp-actions" id="tpResActions"></div>
-          </section>
+          </div>
+
+          <!-- STEP B: payer number -->
+          <div id="tfStepB" class="af-card" style="display:none;"><div class="af-head"><div class="af-head-icon" aria-hidden="true">💳</div><div><div class="af-title">Sender Number</div><div class="af-sub">যে নম্বর থেকে টাকা পাঠাবেন</div></div></div><div class="af-body">
+            <button type="button" id="tfBackA" style="background:none;border:none;color:#94a3b8;margin-bottom:8px;cursor:pointer;">← ফিরে যান</button>
+            <div style="background:#e2136e;color:#fff;border-radius:14px;padding:18px;text-align:center;">
+              <p style="margin:0 0 12px;font-size:14px;line-height:1.4;">যে <span id="tfPayerMethodName">bKash</span> নম্বর থেকে টাকা পাঠাবেন, সেই নম্বরটি এখানে লিখুন।</p>
+              <input id="walTopSender" type="tel" inputmode="numeric" maxlength="11" placeholder="যেমন: 01XXXXXXXXX" style="width:100%;padding:14px;border-radius:10px;border:none;font-size:16px;text-align:center;" />
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <button type="button" id="tfBackA2" style="flex:1;padding:12px;border-radius:10px;border:1px solid #2a3a4a;background:#1e293b;color:#e5e7eb;">বাতিল</button>
+              <button type="button" id="tfGoWait" style="flex:1;padding:12px;border-radius:10px;border:none;background:#a16207;color:#fff;font-weight:700;">জমা দিন</button>
+            </div>
+            </div>
+          </div>
+
+          <!-- STEP C: instructions + waiting -->
+          <div id="tfStepC" class="af-card" style="display:none;"><div class="af-head"><div class="af-head-icon" aria-hidden="true">💳</div><div><div class="af-title">পেমেন্ট</div><div class="af-sub">পেমেন্ট সম্পন্ন করুন</div></div></div><div class="af-body">
+            <button type="button" id="tfBackB" style="background:none;border:none;color:#94a3b8;margin-bottom:8px;cursor:pointer;">← ফিরে যান</button>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <div style="font-weight:700;"><span id="tfWaitMethod">bKash</span></div>
+              <div style="font-weight:800;color:#6ee7b7;"><span id="tfWaitAmount">0</span> BDT</div>
+            </div>
+            <div style="background:#1e293b;border-radius:12px;padding:12px;font-size:13px;margin-bottom:10px;line-height:1.5;">
+              <span id="tfWaitMethod2">bKash</span> অ্যাপ খুলুন, <b>Send Money</b> বেছে নিন, তারপর ঠিক <b id="tfWaitAmount2">0</b> BDT পাঠান।
+            </div>
+            <div style="background:#0b0f14;border:1px solid #2a3a4a;border-radius:12px;padding:12px;margin-bottom:8px;">
+              <div class="muted" style="font-size:11px;">SEND MONEY করুন এই নম্বরে</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <b id="tfPayNumber" style="font-size:18px;letter-spacing:0.5px;">01921018882</b>
+                <button type="button" id="tfCopyNum" style="padding:6px 12px;border-radius:8px;border:1px solid #2a3a4a;background:#1e293b;color:#e5e7eb;">কপি</button>
+              </div>
+            </div>
+            <div style="background:#0b0f14;border:1px solid #2a3a4a;border-radius:12px;padding:12px;margin-bottom:12px;">
+              <div class="muted" style="font-size:11px;">ঠিক এই পরিমাণ পাঠান</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <b id="tfPayAmtCopy" style="font-size:18px;">0 BDT</b>
+                <button type="button" id="tfCopyAmt" style="padding:6px 12px;border-radius:8px;border:1px solid #2a3a4a;background:#1e293b;color:#e5e7eb;">কপি</button>
+              </div>
+            </div>
+            <div style="background:#1e3a5f;border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div style="font-size:13px;">● আপনার পেমেন্টের জন্য অপেক্ষা করছি…</div>
+              <div id="tfCountdown" style="font-weight:800;font-variant-numeric:tabular-nums;">15m 00s</div>
+            </div>
+            <p class="muted" style="font-size:12px;text-align:center;">অনুগ্রহ করে অপেক্ষা করুন। পেমেন্ট স্বয়ংক্রিয়ভাবে ভেরিফাই হবে।</p>
+            <p style="text-align:center;font-size:13px;margin-top:8px;">
+              <a href="#" id="tfFallbackLink" style="color:#38bdf8;">ভেরিফাই হতে বেশি সময় নিচ্ছে? Transaction ID সাবমিট করুন</a>
+            </p>
+            <div id="tfPendingId" class="muted" style="font-size:11px;text-align:center;margin-top:6px;"></div>
+            </div>
+          </div>
+
+          <!-- STEP D: manual TrxID fallback -->
+          <div id="tfStepD" class="af-card" style="display:none;"><div class="af-head"><div class="af-head-icon" aria-hidden="true">💳</div><div><div class="af-title">Verify Transaction</div><div class="af-sub">ট্রানজেকশন আইডি দিন</div></div></div><div class="af-body">
+            <button type="button" id="tfBackC" style="background:none;border:none;color:#94a3b8;margin-bottom:8px;cursor:pointer;">← স্বয়ংক্রিয় যাচাইতে ফিরে যান</button>
+            <div style="background:#0b0f14;border:1px solid #2a3a4a;border-radius:12px;padding:12px;margin-bottom:8px;">
+              <div class="muted" style="font-size:11px;">SEND MONEY নম্বর</div>
+              <b id="tfPayNumber2">01921018882</b>
+            </div>
+            <div style="background:#0b0f14;border:1px solid #2a3a4a;border-radius:12px;padding:12px;margin-bottom:12px;">
+              <div class="muted" style="font-size:11px;">পরিমাণ</div>
+              <b id="tfPayAmt2">0 BDT</b>
+            </div>
+            <label style="font-size:13px;">ট্রানজেকশন আইডি দিন *</label>
+            <input id="walTopTxn" type="text" placeholder="যেমন: 8N7002M4RB" style="width:100%;padding:12px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;margin:8px 0;" />
+            <button type="button" id="walBtnTopup" class="track-submit" style="width:100%;background:#2563eb;">জমা দিন</button>
+            </div>
+          </div>
+
+          <div id="walletTopMsg" style="margin-top:10px;font-size:13px;color:#94a3b8;text-align:center;"></div>
+
 
           <div id="tfFundHistory" class="af-card">
             <div class="af-head">
@@ -838,7 +862,7 @@
                 <div class="af-sub">সাম্প্রতিক ডিপোজিট সমূহ</div>
               </div>
             </div>
-            <div class="af-body"><div id="walletFundHistory" class="muted pb-u10">লোড হচ্ছে…</div></div>
+            <div class="af-body"><div id="walletFundHistory" class="muted" style="font-size:13px;">লোড হচ্ছে…</div></div>
           </div>
       </div>
     </div>
@@ -846,7 +870,7 @@
     <!-- Change PIN page -->
 <!-- PB:ZONE pin-view [L2 লগইন/পিন] -->
     <div id="pin-view" class="view-section dark-section" style="display:none;">
-      <div class="track-box pb-u7">
+      <div class="track-box" style="max-width:480px;margin:0 auto;">
         <button type="button" id="pinBackWallet" class="af-back">← ব্যালেন্স</button>
         <div class="af-card">
           <div class="af-head">
@@ -857,20 +881,20 @@
           <label class="af-label" for="walOldPin">পুরনো পিন</label>
           <div class="af-input-wrap">
             <span class="af-input-prefix">🔒</span>
-            <input id="walOldPin" class="af-input pb-u11" type="password" maxlength="32" autocomplete="off" placeholder="পুরনো পিন" />
-            <button type="button" id="walToggleOldPin" aria-label="পিন দেখান/লুকান" class="pb-u12">👁</button>
+            <input id="walOldPin" class="af-input" type="password" maxlength="32" autocomplete="off" placeholder="পুরনো পিন" style="padding-right:44px;" />
+            <button type="button" id="walToggleOldPin" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:16px;cursor:pointer;">👁</button>
           </div>
           <label class="af-label" for="walNewPin">নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
           <div class="af-input-wrap">
             <span class="af-input-prefix">🔒</span>
-            <input id="walNewPin" class="af-input pb-u11" type="password" maxlength="32" autocomplete="off" placeholder="নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" />
-            <button type="button" id="walToggleNewPin" aria-label="পিন দেখান/লুকান" class="pb-u12">👁</button>
+            <input id="walNewPin" class="af-input" type="password" maxlength="32" autocomplete="off" placeholder="নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" style="padding-right:44px;" />
+            <button type="button" id="walToggleNewPin" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:16px;cursor:pointer;">👁</button>
           </div>
           <label class="af-label" for="walConfirmPin">নতুন পিন আবার দিন</label>
           <div class="af-input-wrap">
             <span class="af-input-prefix">🔒</span>
-            <input id="walConfirmPin" class="af-input pb-u11" type="password" maxlength="32" autocomplete="off" placeholder="নতুন পিন আবার দিন" />
-            <button type="button" id="walToggleConfirmPin" aria-label="পিন দেখান/লুকান" class="pb-u12">👁</button>
+            <input id="walConfirmPin" class="af-input" type="password" maxlength="32" autocomplete="off" placeholder="নতুন পিন আবার দিন" style="padding-right:44px;" />
+            <button type="button" id="walToggleConfirmPin" aria-label="পিন দেখান/লুকান" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:16px;cursor:pointer;">👁</button>
           </div>
             <button type="button" id="walBtnChangePin" class="af-pay-btn">পিন পরিবর্তন করুন</button>
           </div>
@@ -1374,7 +1398,7 @@
   <script src="app-misc.js?v=20261026r"></script>
   <script src="app-sidebar.js?v=20261029v"></script>
   <script src="app-tickets.js?v=20261106a"></script>
-  <script src="app-wallet.js?v=20261110l"></script>
+  <script src="app-wallet.js?v=20261110a"></script>
   <script src="app-orders.js?v=20261110a"></script>
 <script src="app-gate.js?v=20261106a"></script>
   <script src="app-popup.js?v=20261026r"></script>
