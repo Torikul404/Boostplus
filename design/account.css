@@ -24,3 +24,8 @@
   .pb-acc-head { cursor: default; pointer-events: none; }
   .pb-acc-head::after { display: none; }
 }
+
+.pb-gender { display: flex; gap: 10px; margin-top: 4px; }
+.pb-gbtn { flex: 1; min-height: 48px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.pb-gbtn[aria-checked="true"] { border-color: var(--primary, #6366f1); box-shadow: 0 0 0 2px rgba(99,102,241,.35); font-weight: 700; }
+.pb-gbtn[disabled] { opacity: .6; cursor: not-allowed; }

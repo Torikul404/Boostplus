@@ -1,0 +1,45 @@
+/* design/inline-moved.css — HTML-এর ইনলাইন style="" থেকে সরানো স্থির স্টাইল (v15)।
+   শুধু যেগুলো JS বদলায় না (display ছাড়া)। .pb-uN নামগুলো স্বয়ংক্রিয়ভাবে বানানো। `html body` উপসর্গ দিয়ে specificity বাড়ানো, যাতে আগের ইনলাইনের মতোই অন্য নিয়মকে হারায়। */
+html body .pb-u1 { position:relative; }
+html body .pb-u2 { position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none; }
+html body .pb-u3 { width:100%;padding:12px 40px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb; }
+html body .pb-u4 { position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:15px;cursor:pointer;padding:4px; }
+html body .pb-u5 { width:100%; }
+html body .pb-u6 { font-size:11px; }
+html body .pb-u7 { max-width:480px;margin:0 auto; }
+html body .pb-u8 { width:100%;padding:12px 12px 12px 38px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb; }
+html body .pb-u9 { background:none;border:none;color:#94a3b8;margin-bottom:8px;cursor:pointer; }
+html body .pb-u10 { font-size:13px; }
+html body .pb-u11 { padding-right:44px; }
+html body .pb-u12 { position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:16px;cursor:pointer; }
+html body .pb-u13 { padding:12px; }
+html body .pb-u14 { margin-top:16px; width:100%; }
+html body .pb-u15 { font-size:12px;text-align:center; }
+html body .pb-u16 { background:#0b0f14;border:1px solid #2a3a4a;border-radius:12px;padding:12px;margin-bottom:8px; }
+html body .pb-u17 { padding:6px 12px;border-radius:8px;border:1px solid #2a3a4a;background:#1e293b;color:#e5e7eb; }
+html body .pb-u18 { background:#0b0f14;border:1px solid #2a3a4a;border-radius:12px;padding:12px;margin-bottom:12px; }
+html body .pb-u19 { position:absolute;top:-10px;left:50%;transform:translateX(-50%);width:120px;height:120px;background:radial-gradient(circle,rgba(110,231,183,0.18) 0%,rgba(110,231,183,0) 70%);pointer-events:none; }
+html body .pb-u20 { text-align:center;color:#fbbf24;font-size:13px;min-height:1.2em;margin:8px 0; }
+html body .pb-u21 { flex:1;padding:9px 0;border-radius:7px;border:none;background:#6ee7b7;color:#0b0f14;font-weight:700;font-size:13px;cursor:pointer; }
+html body .pb-u22 { flex:1;padding:9px 0;border-radius:7px;border:none;background:transparent;color:#94a3b8;font-weight:700;font-size:13px;cursor:pointer; }
+html body .pb-u23 { width:100%;padding:11px;border-radius:10px;border:1px solid #2a3a4a;background:transparent;color:#94a3b8;font-size:13px; }
+html body .pb-u24 { background:none;border:none;color:#38bdf8;font-size:13px;cursor:pointer;padding:4px;text-decoration:underline; }
+html body .pb-u25 { width:100%;padding:12px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;letter-spacing:4px;text-align:center; }
+html body .pb-u26 { background:none;border:none;color:#94a3b8;font-size:13px;cursor:pointer;padding:4px; }
+html body .pb-u27 { text-align:center;margin-top:16px;font-size:11px;color:#64748b; }
+html body .pb-u28 { background:#e2136e;color:#fff;border-radius:14px;padding:18px;text-align:center; }
+html body .pb-u29 { width:100%;padding:14px;border-radius:10px;border:none;font-size:16px;text-align:center; }
+html body .pb-u30 { flex:1;padding:12px;border-radius:10px;border:1px solid #2a3a4a;background:#1e293b;color:#e5e7eb; }
+html body .pb-u31 { flex:1;padding:12px;border-radius:10px;border:none;background:#a16207;color:#fff;font-weight:700; }
+html body .pb-u32 { background:#1e293b;border-radius:12px;padding:12px;font-size:13px;margin-bottom:10px;line-height:1.5; }
+html body .pb-u33 { width:100%;padding:12px;border-radius:10px;border:1px solid #2a3a4a;background:#0b0f14;color:#e5e7eb;margin:8px 0; }
+html body .pb-u34 { margin-top:10px;font-size:13px;color:#94a3b8;text-align:center; }
+/* লাইট থিমে support.css:533-534 এর [style*="#94a3b8"]/[style*="#38bdf8"] নিয়ম এখন আর মেলে না, তাই সমতুল্য নিয়ম */
+[data-theme="light"] .pb-u4 { color: var(--muted) !important; }
+[data-theme="light"] .pb-u9 { color: var(--muted) !important; }
+[data-theme="light"] .pb-u12 { color: var(--muted) !important; }
+[data-theme="light"] .pb-u22 { color: var(--muted) !important; }
+[data-theme="light"] .pb-u23 { color: var(--muted) !important; }
+[data-theme="light"] .pb-u24 { color: var(--link) !important; }
+[data-theme="light"] .pb-u26 { color: var(--muted) !important; }
+[data-theme="light"] .pb-u34 { color: var(--muted) !important; }

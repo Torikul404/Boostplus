@@ -87,3 +87,22 @@ select, textarea, .lg-in, .af-input, .dd-search, .pk-select, .pk-trig, .track-bo
 .pk-select:hover,.pk-trig:hover{ border-color:var(--primary,#4f46e5); }
 .lg-btn,.ab-submit-btn,.pb-retry{ border:1px solid var(--primary-border,var(--primary,#4f46e5)); }
 .pk-on .ab-submit-btn{ border:1px solid var(--primary-border,var(--primary,#4f46e5)); }
+
+/* ধাপ ২৪: মোবাইলে টাচ-টার্গেট ≥৪৪ px (দেখতে যেমন, শুধু ট্যাপের জায়গা বাড়ে) */
+@media (max-width: 767px){
+  .site-nav-brand{ min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; }
+  #searchInput{ min-height:44px; }
+  .pb-link{ display:inline-flex; align-items:center; min-height:44px; }
+  .footer-links a{ display:inline-flex; align-items:center; min-height:44px; }
+}
+
+/* ---- ১০ নভেম্বর: লেখা ≥ --text-min (১২px) এবং মোবাইলে ছোট হিরো, যাতে অর্ডার ফর্ম ওপরে ওঠে ---- */
+.stat-label,.we-accept-chip,.we-accept-note,.footer-copyright{font-size:max(.75rem,var(--text-min,12px))}
+@media (max-width:640px){
+  header .logo-row{margin-bottom:.25rem}
+  .platform-ticker{display:none}
+  .stats-bar{margin-top:.5rem;gap:6px}
+  .stat-item{padding:6px 4px}
+  .stat-number{font-size:1.1rem}
+  .stat-label{margin-top:1px}
+}

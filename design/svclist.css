@@ -1,0 +1,86 @@
+/* design/svclist.css — সার্ভিস লিস্ট পাতা (app-svclist.js) · কার্ড-ডিজাইন · টোকেন-নির্ভর (dark + light দুই থিম) · হালকা: ছবি নেই, আইকন = একটি SVG স্প্রাইট */
+#svclist-view .sl-page { max-width: 1120px; margin: 0 auto; padding: 8px 4px 28px; display: flex; flex-direction: column; gap: 12px; }
+#svclist-view .sl-head, #svclist-view .sl-head h1 { text-align: left; }
+.sl-head h1 { margin: 0; font-size: 1.35rem; color: var(--text); }
+.sl-head p { margin: 4px 0 0; color: var(--muted, var(--text)); font-size: .92rem; line-height: 1.55; }
+
+/* টুলবার: Category · Advanced Filters · Search */
+.sl-bar { display: flex; flex-direction: column; gap: 8px; }
+.sl-catwrap { position: relative; align-self: flex-start; }
+.sl-tool { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: .92rem; color: var(--primary);
+  background: var(--surface-2, var(--surface)); border: 1px solid var(--border, rgba(127,127,127,.35)); }
+.sl-tool svg { width: 18px; height: 18px; flex: none; }
+.sl-tool .sl-chev { width: 14px; height: 14px; opacity: .7; }
+.sl-wide { width: 100%; color: var(--text); }
+.sl-dot { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--primary); color: #fff; font-size: .75rem; display: inline-flex; align-items: center; justify-content: center; }
+.sl-search { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 14px; border-radius: 12px; color: var(--muted, var(--text));
+  background: var(--surface-2, var(--surface)); border: 1px solid var(--border, rgba(127,127,127,.35)); }
+.sl-search svg { width: 18px; height: 18px; flex: none; }
+.sl-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 16px; min-height: 44px; }
+.sl-count { color: var(--muted, var(--text)); font-size: .85rem; min-height: 1em; }
+
+/* Category মেনু */
+.sl-menu { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; width: min(88vw, 360px); max-height: 60vh; overflow-y: auto; padding: 6px; border-radius: 14px;
+  background: var(--dark-surface, var(--surface)); border: 1px solid var(--dark-border, var(--border)); box-shadow: 0 12px 32px rgba(0,0,0,.35); }
+.sl-mi { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 10px; cursor: pointer; background: transparent; color: var(--text); font-size: .92rem; line-height: 1.35; }
+.sl-mi:hover, .sl-mi[aria-selected="true"] { background: rgb(var(--primary-rgb, 79 70 229) / .14); }
+.sl-mi small { margin-left: auto; opacity: .7; flex: none; }
+
+/* প্ল্যাটফর্ম আইকন (স্প্রাইট) */
+.sl-pf { width: 28px; height: 28px; flex: none; }
+.sl-pfx { width: 28px; height: 28px; flex: none; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: var(--primary); color: #fff; font-weight: 800; font-size: .8rem; }
+
+/* ক্যাটাগরি হেডার */
+.sl-gh { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 8px 0 -2px; padding: 12px 14px; border-radius: 14px; text-align: center; font-size: 1rem; line-height: 1.35; font-weight: 700; color: var(--text);
+  background: rgb(var(--primary-rgb, 79 70 229) / .14); border: 1px solid rgb(var(--primary-rgb, 79 70 229) / .25); }
+.sl-gh small { opacity: .75; font-weight: 500; }
+
+/* সার্ভিস কার্ড */
+.sl-card { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 16px; color: var(--text);
+  background: var(--dark-surface, var(--surface)); border: 1px solid var(--dark-border, var(--border)); }
+.sl-r1 { display: flex; align-items: center; gap: 8px; }
+.sl-price { margin-left: auto; padding: 8px 12px; border-radius: 10px; background: var(--primary); color: #fff; font-weight: 800; font-size: .95rem; white-space: nowrap; }
+.sl-price s { opacity: .7; font-weight: 500; margin-right: 6px; }
+.sl-heart { width: 44px; height: 44px; border-radius: 10px; cursor: pointer; font-size: 1.15rem; line-height: 1; color: #e11d48; background: var(--surface-2, var(--surface)); border: 1px solid var(--border, rgba(127,127,127,.35)); }
+.sl-heart[aria-pressed="true"] { background: rgb(225 29 72 / .14); border-color: #e11d48; }
+.sl-idc { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border-radius: 10px; cursor: pointer; font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 800; font-size: .9rem; color: #fff;
+  background: var(--primary); border: 0; }
+.sl-idc svg { width: 15px; height: 15px; opacity: .85; }
+.sl-nm { margin: 0; font-size: .95rem; line-height: 1.5; font-weight: 600; text-align: center; word-break: break-word; }
+.sl-r2 { display: flex; gap: 8px; flex-wrap: wrap; }
+.sl-min, .sl-max { padding: 6px 10px; border-radius: 8px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8rem; font-weight: 700; }
+.sl-min { color: #16a34a; background: rgb(22 163 74 / .13); }
+.sl-max { color: #e11d48; background: rgb(225 29 72 / .12); }
+.sl-avg { text-align: center; padding: 8px 10px; border-radius: 10px; font-size: .82rem; font-weight: 600; color: #d97706; background: rgb(245 158 11 / .13); }
+.sl-acts { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.sl-btn { min-height: 44px; padding: 0 14px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: .9rem; color: var(--text);
+  background: var(--surface-2, var(--surface)); border: 1px solid var(--border, rgba(127,127,127,.35)); }
+.sl-buy { background: var(--primary); border-color: var(--primary); color: #fff; }
+.sl-panel { padding: 10px 12px; border-radius: 12px; font-size: .9rem; line-height: 1.6; background: rgb(var(--primary-rgb, 79 70 229) / .07); }
+
+.sl-msg { text-align: center; padding: 28px 12px; color: var(--muted, var(--text)); background: var(--dark-surface, var(--surface)); border: 1px solid var(--dark-border, var(--border)); border-radius: 16px; line-height: 1.7; }
+.sl-more { text-align: center; }
+
+/* Advanced Filters মোডাল */
+.sl-modal { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.55); }
+.sl-modal[hidden] { display: none; }
+.sl-mcard { width: min(100%, 460px); max-height: 90vh; overflow: auto; border-radius: 18px; background: var(--dark-surface, var(--surface)); color: var(--text); border: 1px solid var(--dark-border, var(--border)); }
+.sl-mh { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--dark-border, var(--border)); }
+.sl-x { width: 44px; height: 44px; border-radius: 10px; font-size: 1.4rem; cursor: pointer; color: var(--text); background: var(--surface-2, var(--surface)); border: 1px solid var(--border, rgba(127,127,127,.35)); }
+.sl-mb { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.sl-mt { font-weight: 700; } .sl-mt small { font-weight: 400; opacity: .7; }
+.sl-prange { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sl-prange input { min-height: 46px; border-radius: 10px; padding: 0 12px; font-size: 16px; color: var(--text); background: var(--surface-2, var(--surface)); border: 1px solid var(--border, rgba(127,127,127,.35)); }
+.sl-plats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sl-plat { min-height: 44px; border-radius: 12px; cursor: pointer; font-weight: 600; font-size: .9rem; color: var(--text); background: var(--surface-2, var(--surface)); border: 1px solid var(--border, rgba(127,127,127,.35)); }
+.sl-plat[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+.sl-favonly { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: .92rem; }
+.sl-mf { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px 16px; border-top: 1px solid var(--dark-border, var(--border)); }
+
+@media (min-width: 768px) {
+  .sl-bar { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .sl-wide { width: auto; }
+  .sl-search { flex: 1 1 260px; }
+  .sl-count { flex: 1 1 100%; }
+  .sl-nm { font-size: 1rem; }
+}
