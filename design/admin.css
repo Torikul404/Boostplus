@@ -1,113 +1,563 @@
-/* ==========================================================
-   design/admin.css — অ্যাডমিন প্যানেলের ডিজাইন লেয়ার (ধাপ ১০)
-   শুধু admin.html এ লিংক করা; মার্কআপ/লজিক বদলায় না। রং design/tokens.css থেকে,
-   তাই সাইটের সাথে একই ভাষা। ডিফল্ট = premium (ডার্ক); লাইট = [data-theme="light"]।
-   থিম বেছে নেওয়া `pb_admin_theme` এ (সাইটের থিম সেটিং থেকে আলাদা)।
-   ========================================================== */
-:root { --font: 'Inter','Hind Siliguri',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; --green:#22c55e; --red:#ef4444; --amber:#f59e0b; --adm-r:14px; --adm-r-sm:10px; }
-[data-theme="light"] { --green:#059669; --red:#dc2626; --amber:#d97706; }
-* { font-family: var(--font); }
-body { background: var(--bg); background-image: var(--hero-bg); background-repeat: no-repeat; background-size: 100% 420px; color: var(--text); line-height: 1.5; -webkit-font-smoothing: antialiased; }
-.wrap { max-width: 960px; padding: 14px 14px 40px; }
-h1 { font-size: 19px; font-weight: 800; letter-spacing: -.02em; margin: 14px 0 6px; }
-:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* design/admin-v4.css — নতুন কাঠামো: সাইডবার + গ্রুপ করা নেভিগেশন, অর্ডার পাতায় দুই কলাম।
+   শুধু লেআউট/স্টাইল; অ্যাডমিনের JS ও id অপরিবর্তিত। রং design/tokens.css থেকে। */
+#panelView .num,#panelView .oid{font-variant-numeric:tabular-nums}
+#panelView h1{font-size:22px;font-weight:700;letter-spacing:-.01em;margin:4px 0 14px}
+#panelView>.tabs{background:var(--surface)}
+.tabs .tg{flex:none;width:100%;font-size:12px;font-weight:600;color:var(--muted);padding:14px 10px 4px}
+.tabs .tg:first-child{padding-top:4px}
+#panelView>.tabs button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;box-shadow:none;border-radius:8px;padding:8px 10px;font-size:14px;font-weight:600;color:var(--text-2);text-align:left}
+#panelView>.tabs button:hover{background:var(--surface-2);border:0}
+#panelView>.tabs button.on{background:rgb(var(--primary-rgb)/.14);color:var(--accent);box-shadow:none}
+#panelView>.tabs button svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#panelView>.tabs button.adm-theme{position:static;margin:auto 0 0;padding:8px 10px;border-top:1px solid var(--border);border-radius:0;color:var(--muted)}
+.nav-menu,#bnav,.nav-scrim{display:none}
+/* অর্ডার: স্ট্যাটাস বার = ফিল্টার */
+.queue{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin:0 0 16px}
+.qbar{display:flex;height:10px;border-radius:99px;overflow:hidden;gap:2px;background:var(--surface-2);margin-bottom:10px}
+.qbar i{display:block;min-width:6px}
+#panelView .queue #dashStats{display:flex!important;flex-wrap:wrap;gap:4px;margin:0}
+#dashStats .d{display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:99px;background:none;border:1px solid transparent;box-shadow:none;cursor:pointer}
+#dashStats .d:hover{background:var(--surface-2)}
+#dashStats .d.on{background:var(--surface-2);border-color:var(--border)}
+#dashStats .d:before{order:0;content:"";width:9px;height:9px;border-radius:50%;background:var(--c,var(--muted))}
+#dashStats .d .n{order:2;font-size:13px!important;color:var(--muted)!important;font-weight:700}
+#dashStats .d .l{order:1;font-size:14px;color:var(--text-2);font-weight:600;margin:0}
+#dashStats .d.all{--c:var(--primary,#4F46E5)}
+#dashStats .d.today{cursor:default;margin-left:auto}#dashStats .d.today:before{display:none}
+.d.pending,.pq-pend{--c:var(--status-pending)}.d.processing,.pq-proc{--c:var(--status-processing)}.d.partial,.pq-part{--c:var(--status-partial)}.d.completed,.pq-done{--c:var(--status-completed)}.d.rejected,.pq-rej{--c:var(--status-canceled)}
+.qbar i{background:var(--c)}
+.ord-cols{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:16px;align-items:start}
+.ord-aside{display:grid;gap:14px}
+.ord-aside .acct-title{margin:0 0 6px;font-size:14px}
+.ord-aside .dash.acct{display:block!important;margin:0}
+.ord-aside .dash.acct .d{display:flex;justify-content:space-between;align-items:baseline;background:none;border:0;border-bottom:1px dashed var(--border);border-radius:0;box-shadow:none;padding:8px 0;text-align:left}
+.ord-aside .dash.acct .d:last-child{border:0}.ord-aside .dash.acct .d .n{order:2;font-size:18px}.ord-aside .dash.acct .d .l{order:1;font-size:13px}
+.money{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px}
+.mseg{display:flex;gap:2px;background:var(--surface-2);border-radius:9px;padding:3px;margin-bottom:10px}
+.mseg button{flex:1;border:0;background:none;border-radius:7px;padding:5px;font-size:13px;font-weight:600;color:var(--muted)}
+.mseg button.on{background:var(--surface);color:var(--text)}
+.ord-aside .acct-days,.ord-aside .balance-panel{margin:0}
+#ordersList .card{border-radius:12px;box-shadow:none}
+#speedPane{max-width:900px}#speedPane .stats b{font-size:20px}#speedPane .stats div{padding:12px 6px}
+@media (max-width:1100px){.ord-cols{grid-template-columns:1fr}.ord-aside{order:-1}}
+@media (min-width:861px){
+ #panelView{max-width:none!important;margin:0!important;padding:22px 32px 60px 272px!important}
+ .admin-brand{position:fixed;top:0;left:0;width:240px;height:60px;margin:0!important;padding:0 18px;background:var(--surface);border-right:1px solid var(--border);z-index:31}
+ #panelView>.tabs{position:fixed;top:60px;left:0;bottom:0;width:240px;margin:0;padding:6px 12px 12px;flex-direction:column;flex-wrap:nowrap;gap:2px;overflow-y:auto;overflow-x:hidden;background:var(--surface);border-right:1px solid var(--border);z-index:30}
+}
+@media (max-width:860px){
+ #panelView>.tabs{position:fixed;top:0;left:0;bottom:0;width:272px;margin:0;padding:16px 12px;flex-direction:column;flex-wrap:nowrap;gap:2px;overflow-y:auto;border-right:1px solid var(--border);z-index:50;transform:translateX(-102%);transition:transform .2s}
+ body.nav-open #panelView>.tabs{transform:none}
+ body.nav-open .nav-scrim{display:block;position:fixed;inset:0;background:rgb(15 23 42/.5);z-index:40}
+ .nav-menu{display:inline-block;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px;font-size:16px}
+ #panelView{padding-bottom:84px}
+ #bnav{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--border);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+ #bnav button{border:0;background:none;display:grid;justify-items:center;gap:2px;font-size:12px;font-weight:600;color:var(--muted);padding:4px}
+ #bnav button.on{color:var(--accent)}
+ #bnav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+ #dashStats .d.today{margin-left:0}
+}
 
-/* ---------- ট্যাব বার: এক লাইনে স্ক্রল, সক্রিয়টা গ্রেডিয়েন্ট ---------- */
-.tabs { gap: 6px; overflow-x: auto; flex-wrap: nowrap; padding: 2px 2px 10px; margin: 0 -2px 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; position: sticky; top: 0; z-index: 20; background: linear-gradient(var(--bg) 78%, transparent); }
-.tabs::-webkit-scrollbar { display: none; }
-.tabs button { flex: 0 0 auto; min-width: 0; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); font-size: 13px; font-weight: 700; white-space: nowrap; box-shadow: none; transition: border-color .15s, background .15s; }
-.tabs button:hover { border-color: rgb(var(--primary-rgb) / .6); }
-.tabs button.on { background: var(--grad); color: var(--on-primary); border-color: transparent; box-shadow: 0 6px 16px rgb(var(--primary-rgb) / .32); }
-.tabs button.adm-theme { padding: 9px 11px; margin-left: auto; position: sticky; right: 0; }
+@media (max-width:860px){
+ .queue{padding:12px 12px 8px}
+ #panelView .queue #dashStats{flex-wrap:nowrap!important;overflow-x:auto;margin:0 -12px;padding:0 12px 4px;scrollbar-width:none}
+ #dashStats::-webkit-scrollbar{display:none}#dashStats .d{flex:none}
+}
 
-/* ---------- সারফেস ---------- */
-.login-box, .card, .balance-panel, .dash .d, .svc-add-box, .svc-row, .fund-box, .refill-modal, .bal-card { background: var(--surface); border: 1px solid var(--border); }
-.login-box, .card, .balance-panel, .svc-add-box, .svc-row { border-radius: var(--adm-r); box-shadow: var(--shadow-sm); }
-.login-box { border-radius: 18px; box-shadow: var(--shadow); }
-.dash .d { border-radius: var(--adm-r-sm); box-shadow: var(--shadow-sm); }
-.card { padding: 14px 15px; }
-.card .oid { font-weight: 800; letter-spacing: -.01em; }
-.row { color: var(--text-2); }
-.row b { color: var(--muted); }
-.balance-panel h3, .acct-title, .svc-row-title, .dash .d.cust .n { color: var(--text); }
-.bal-card .bn, .dash .d .l, .acct-days summary, .svc-row-meta, .fund-steps, .fund-box label, .refill-modal label { color: var(--muted); }
-.bal-card { border-radius: var(--adm-r-sm); }
-.bal-card.hl { border-color: rgb(var(--primary-rgb) / .55); background: linear-gradient(135deg, rgb(var(--primary-rgb) / .12), var(--surface)); }
-.dash .d .n { font-weight: 800; letter-spacing: -.02em; }
+/* অর্ডার কার্ড: স্ট্যাটাসের রঙের দাগ ও পরিচ্ছন্ন সারি */
+#ordersList .card{border-left:3px solid var(--c,var(--border))}
+#ordersList .card.st-pending{--c:var(--status-pending)}#ordersList .card.st-processing{--c:var(--status-processing)}
+#ordersList .card.st-partial{--c:var(--status-partial)}#ordersList .card.st-completed{--c:var(--status-completed)}#ordersList .card.st-rejected{--c:var(--status-canceled)}
+#ordersList .card .row{font-size:13.5px;line-height:1.5;padding:2px 0}#ordersList .card .row b{font-weight:600}
+#ordersList .card .card-top{padding-bottom:6px;margin-bottom:4px;border-bottom:1px dashed var(--border)}
+@media (max-width:1100px){
+ .ord-cols{display:flex;flex-direction:column;align-items:stretch;gap:12px}
+ .ord-aside{display:contents}.ord-aside>.money{order:0}.ord-main{order:1}.ord-aside>:not(.money){order:2}
+ .money .dash.acct{display:grid!important;grid-template-columns:repeat(3,1fr);gap:8px}
+ .money .dash.acct .d{display:block;text-align:center;border:0;padding:0}
+ .money .dash.acct .d .l{display:block;order:0;font-size:12px;color:var(--muted)}.money .dash.acct .d .n{display:block;font-size:17px}
+ .money .acct-title{display:none}.money .dash.acct+.muted,.money .mg .muted{font-size:11px}
+}
+@media (max-width:860px){
+ #ordersPane>h1{font-size:20px;margin:0 0 8px}
+ #ordersPane>p.muted{display:none}
+ #pinReqBox,#adminAlertsBox{padding:8px 10px!important;font-size:13px}
+ #ordersPane .tools,#ordersPane .search-row{margin-bottom:8px}
+}
 
-/* ---------- ইনপুট ---------- */
-.login-box input, .toolbar select, .fund-box input, .refill-modal input, .refill-modal select, .refill-modal textarea,
-.search-row input, .svc-grid input, .svc-grid select, .tk-reply, .tk-row select, .fund-est { background: var(--bg-2); border: 1px solid var(--border); color: var(--text); border-radius: var(--adm-r-sm); }
-.login-box input:focus, .search-row input:focus, .tk-reply:focus, .fund-box input:focus, .refill-modal input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / .22); }
-.tk-msg { background: var(--bg-2); }
+/* ===== P২: সব পাতার নতুন ডিজাইন ===== */
+/* P২-১ সার্ভিস পাতা (admin-v4 লেয়ার) */
+#servicesPane .svc-filters{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;margin:0 -12px 10px!important;padding:0 12px 2px;gap:6px!important}
+#servicesPane .svc-filters::-webkit-scrollbar{display:none}
+#servicesPane .svc-fbtn{flex:none;border-radius:99px;padding:7px 13px;background:var(--surface,#131a22);border:1px solid var(--border,#2a3a4a);color:var(--text-2,#cbd5e1);font-size:13px;font-weight:600;white-space:nowrap}
+#servicesPane .svc-fbtn.on{background:var(--primary,#4F46E5);border-color:transparent;color:#fff}
+#servicesPane .svc-tools{margin:0 0 10px;border:1px solid var(--border,#2a3a4a);border-radius:12px;background:var(--surface,#131a22)}
+#servicesPane .svc-tools>summary{cursor:pointer;list-style:none;padding:10px 14px;font-size:13px;font-weight:700;color:var(--text-2,#cbd5e1);display:flex;justify-content:space-between;align-items:center}
+#servicesPane .svc-tools>summary::-webkit-details-marker{display:none}
+#servicesPane .svc-tools>summary:after{content:"▾";opacity:.7}
+#servicesPane .svc-tools[open]>summary:after{content:"▴"}
+#servicesPane .svc-tools .svc-tools-body{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 12px}
+#servicesPane .svc-tools .svc-fbtn{border-radius:10px}
+#servicesPane .svc-catalog{max-height:none;overflow:visible;display:grid;grid-template-columns:1fr;gap:8px}
+#servicesPane .svc-row{margin:0;background:var(--surface,#131a22);border:1px solid var(--border,#2a3a4a);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+#servicesPane .svc-row-title{margin:0;font-size:14px;color:var(--text,#e2e8f0)}
+#servicesPane .svc-row-meta{margin:0;color:var(--muted,#94a3b8);overflow-wrap:anywhere}
+#servicesPane .svc-money{margin:0}
+#servicesPane .svc-row-actions{margin-top:auto;flex-wrap:nowrap}
+#servicesPane .svc-row-actions.main button{padding:9px 6px;font-size:13px;border-radius:10px;border:1px solid var(--border,#2a3a4a);background:var(--surface-2,#1b2430);color:var(--text,#e2e8f0)}
+#servicesPane .svc-row-actions.main .svc-btn-hide{background:transparent;border-color:rgba(239,68,68,.45);color:#f87171}
+#servicesPane .svc-row-actions.main .svc-btn-inst{background:rgba(79,70,229,.16);border-color:rgba(79,70,229,.5);color:#a5b4fc}
+@media(min-width:1100px){#servicesPane .svc-catalog{grid-template-columns:1fr 1fr}}
+@media(max-width:720px){#servicesPane .svc-row-actions.main button{padding:11px 6px}}
 
-/* ---------- বাটন ---------- */
-.login-box button, .toolbar button, .search-row button { background: var(--grad); color: var(--on-primary); border-radius: var(--adm-r-sm); font-weight: 700; }
-.actions button, .tk-row button { border-radius: var(--adm-r-sm); font-weight: 700; }
-.btn-note, .fund-row button, .refill-modal .rf-cancel, .rd-x, .rd-tools button, .svc-chip button, .bal-toggle, .svc-fbtn { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
-.fund-row button.go { background: var(--green); color: #fff; border-color: transparent; }
-.svc-fbtn.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
-.svc-chip { background: var(--surface-2); border-color: var(--border); }
+/* P২-২ ওয়ালেট পাতা (admin-v4 লেয়ার) */
+#walletPane .search-row{display:flex;gap:8px;flex-wrap:nowrap;margin-bottom:10px}
+#walletPane .search-row input{flex:1;min-width:0}
+#walletPane .svc-tools{margin:0 0 12px;border:1px solid var(--border,#2a3a4a);border-radius:12px;background:var(--surface,#131a22)}
+#walletPane .svc-tools>summary{cursor:pointer;list-style:none;padding:10px 14px;font-size:13px;font-weight:700;color:var(--text-2,#cbd5e1);display:flex;justify-content:space-between}
+#walletPane .svc-tools>summary::-webkit-details-marker{display:none}
+#walletPane .svc-tools>summary:after{content:"▾";opacity:.7}
+#walletPane .svc-tools[open]>summary:after{content:"▴"}
+#walletPane .svc-tools .svc-tools-body{padding:0 12px 12px}
+#walletPane #walResult{background:var(--surface,#131a22);border:1px solid var(--border,#2a3a4a);border-radius:16px;padding:14px;margin-bottom:14px}
+#walletPane #walShowBal{font-size:28px!important;line-height:1.1}
+#walletPane #walResult .svc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#walletPane #walResult .svc-grid input,#walletPane #walResult .svc-grid select{width:100%;min-width:0}
+#walletPane #walResult .btn-go,#walletPane #walResult .svc-btn-hide{min-height:46px}
+#walletPane h3{font-size:12px!important;letter-spacing:.04em;text-transform:uppercase;color:var(--muted,#94a3b8);margin:18px 0 8px!important}
+#walletPane #walLedger{display:flex;flex-direction:column;gap:6px}
+#walletPane #walLedger .svc-row{margin:0;padding:10px 12px!important;border:1px solid var(--border,#2a3a4a);border-radius:12px;background:var(--surface,#131a22);border-left-width:4px}
+#walletPane #walLedger .svc-row-meta{font-size:12px;color:var(--muted,#94a3b8);overflow-wrap:anywhere}
+#walletPane #walLedger .svc-row-meta b{font-size:15px}
+#walletPane #walLedger .svc-row.wl-in{border-left-color:#34d399}
+#walletPane #walLedger .svc-row.wl-out{border-left-color:#f87171}
+#walletPane #walUsers{display:grid;grid-template-columns:1fr;gap:6px}
+#walletPane #walUsers .svc-chip{margin:0;padding:10px 12px;align-items:center;gap:10px;border:1px solid var(--border,#2a3a4a);border-radius:12px;background:var(--surface,#131a22)}
+#walletPane #walUsers .svc-chip span:first-child{flex:1}
+#walletPane #walUsers .svc-chip button{padding:7px 12px;border-radius:10px}
+#walletPane #walNewPin{background:var(--surface-2,#0b1020);border:1px solid var(--border,#2a3a4a);color:var(--text,#e2e8f0);border-radius:10px;padding:10px 12px}
+#walletPane button[onclick^="walListUsers"]{padding:9px 14px;border-radius:10px;border:1px solid var(--border,#2a3a4a);background:var(--surface,#131a22);color:var(--text,#e2e8f0)}
+@media(min-width:1100px){#walletPane{max-width:760px}#walletPane #walUsers{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){#walletPane #walResult .svc-grid{grid-template-columns:1fr}}
 
-/* ---------- স্ট্যাটাস পিল ---------- */
-.status-pill { padding: 3px 11px; letter-spacing: .01em; }
+/* P২-৩ ইনবক্স পাতা (admin-v4 লেয়ার) */
+#inboxPane .inb-bar{flex-wrap:nowrap;margin-bottom:8px}
+#inboxPane .inb-bar input[type=search]{min-width:0;border-radius:14px}
+#inboxPane .inb-bar .inb-chip{flex:none}
+#inboxPane .inb-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:2px;margin:0 -2px;-webkit-overflow-scrolling:touch}
+#inboxPane .inb-chips::-webkit-scrollbar{display:none}
+#inboxPane .inb-chips .inb-chip{flex:none;white-space:nowrap}
+#inboxPane #inbSts .inb-chip{min-height:36px;font-weight:600;font-size:12px}
+#inboxPane .inb-item{position:relative;padding:12px 12px 12px 16px;border-left-width:4px;border-radius:14px;transition:border-color .15s}
+#inboxPane .inb-item[data-k^="t:"]{border-left-color:#60a5fa}
+#inboxPane .inb-item[data-k^="s:"]{border-left-color:#fbbf24}
+#inboxPane .inb-item[data-k^="p:"],#inboxPane .inb-item[data-k^="q:"]{border-left-color:#f87171}
+#inboxPane .inb-item:hover{border-color:var(--accent,#a5b4fc)}
+#inboxPane .inb-item .inb-sub{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#inboxPane .empty{padding:28px 16px;text-align:center;border:1px dashed var(--border,#2a3a4a);border-radius:14px;color:var(--muted,#94a3b8)}
+#inboxPane .inb-detail .card{background:var(--surface,#131a22);border:1px solid var(--border,#2a3a4a);border-radius:16px;padding:14px}
+#inboxPane .tk-msg{background:var(--surface-2,#1b2430);border-left:3px solid var(--primary);border-radius:12px;padding:10px 12px;margin:10px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#inboxPane .tk-reply{width:100%;min-height:96px;margin-top:6px;padding:10px 12px;border-radius:12px;border:1px solid var(--border,#2a3a4a);background:var(--surface-2,#0b1020);color:var(--text,#e2e8f0);font-family:inherit}
+#inboxPane .inb-qr{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-top:6px}
+#inboxPane .inb-qr .inb-chip{flex:none;min-height:34px;font-size:12px;font-weight:600;white-space:nowrap}
+#inboxPane .inb{grid-template-columns:minmax(0,1fr)}#inboxPane .inb-detail,#inboxPane .inb-list{min-width:0}
+#inboxPane .tk-status{padding:0 12px;border-radius:12px;border:1px solid var(--border,#2a3a4a);background:var(--surface-2,#0b1020);color:var(--text,#e2e8f0);font-family:inherit}
+#inboxPane .inb-back{position:sticky;top:0;z-index:2}
+@media(min-width:1024px){#inboxPane .inb{grid-template-columns:380px minmax(0,1fr)}#inboxPane .inb-detail{position:sticky;top:12px}}
 
-/* ---------- মডাল ---------- */
-.fund-box, .refill-modal { border-radius: 18px; box-shadow: var(--shadow); }
-.fund-est { border-style: dashed; }
+/* P২-৪ সাপোর্ট টিকিট পাতা (admin-v4 লেয়ার) */
+#ticketsPane #ticketFilter{display:none}
+#ticketsPane .toolbar{margin-bottom:8px}
+#ticketsPane .toolbar button{min-height:44px;border-radius:999px;padding:0 14px}
+#ticketsPane .tk-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px;margin:0 -2px 12px}
+#ticketsPane .tk-chips::-webkit-scrollbar{display:none}
+#ticketsPane .tk-chips button{flex:none;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--border,#2a3a4a);background:var(--surface,#131a22);color:var(--text-2,#cbd5e1);font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+#ticketsPane .tk-chips button[aria-pressed="true"]{background:var(--grad,var(--primary));color:var(--on-primary,#fff);border-color:transparent}
+#ticketsPane .tk-chips button:focus-visible,#ticketsPane .tk-qr button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+#ticketsPane #ticketsList{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start}
+#ticketsPane #ticketsList>.card{margin:0;background:var(--surface,#131a22);border:1px solid var(--border,#2a3a4a);border-left:4px solid var(--border,#2a3a4a);border-radius:16px;padding:14px;min-width:0}
+#ticketsPane .card[data-st="Open"]{border-left-color:#fbbf24}
+#ticketsPane .card[data-st="In Progress"]{border-left-color:#60a5fa}
+#ticketsPane .card[data-st="Resolved"]{border-left-color:#34d399}
+#ticketsPane .tk-msg{border-left:3px solid var(--primary);border-radius:12px;padding:10px 12px;margin:10px 0;overflow-wrap:anywhere}
+#ticketsPane .tk-reply{min-height:88px;border-radius:12px;padding:10px 12px;font-size:16px}
+#ticketsPane .tk-qr{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-top:6px}
+#ticketsPane .tk-qr button{flex:none;min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--border,#2a3a4a);background:var(--surface-2,#1b2430);color:var(--text-2,#cbd5e1);font:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+#ticketsPane .tk-row{align-items:stretch}
+#ticketsPane .tk-row select{min-height:44px;font-size:16px;border-radius:12px;padding:0 12px}
+#ticketsPane .tk-row button{min-height:44px;border-radius:12px;background:var(--grad,var(--primary));font-weight:700}
+#ticketsPane .tk-row .btn-refill{background:var(--surface-2,#1b2430);border:1px solid var(--border,#2a3a4a);color:var(--text,#e2e8f0);flex:none}
+@media(min-width:1100px){#ticketsPane #ticketsList{grid-template-columns:1fr 1fr}}
 
-/* ---------- লাইট থিম: যেসব রং ডার্কের জন্য হার্ডকোড ছিল ---------- */
-[data-theme="light"] .dash .d.pending .n { color: #b45309; }
-[data-theme="light"] .dash .d.processing .n, [data-theme="light"] .dash .d.topup .n { color: #0369a1; }
-[data-theme="light"] .dash .d.partial .n { color: #0f766e; }
-[data-theme="light"] .dash .d.completed .n, [data-theme="light"] .dash .d.profit .n { color: #047857; }
-[data-theme="light"] .dash .d.rejected .n, [data-theme="light"] .dash .d.profit.neg .n { color: #b91c1c; }
-[data-theme="light"] .dash .d.today .n { color: #6d28d9; }
-[data-theme="light"] .dash .d.cost .n { color: #c2410c; }
-[data-theme="light"] .st-pending, [data-theme="light"] .pub-no { color: #b45309; background: rgba(217,119,6,.14); }
-[data-theme="light"] .st-approved, [data-theme="light"] .pub-yes { color: #047857; background: rgba(5,150,105,.14); }
-[data-theme="light"] .st-rejected { color: #b91c1c; background: rgba(220,38,38,.12); }
-[data-theme="light"] .status-pill.st-partial { color: #0f766e; background: rgba(13,148,136,.14); border-color: rgba(13,148,136,.5); }
-[data-theme="light"] .bal-card.ok .bv { color: #047857; }
-[data-theme="light"] .bal-card.bad .bv { color: #b91c1c; }
-[data-theme="light"] .bal-card.low .bv { color: #b45309; }
-[data-theme="light"] .btn-retry { color: #fff; }
-[data-theme="light"] .acct-days th, [data-theme="light"] .acct-days td { border-bottom-color: var(--border); }
-[data-theme="light"] .refill-backdrop, [data-theme="light"] .fund-ov { background: rgba(15,23,42,.45); }
-[data-theme="light"] #rdModal { background: var(--bg); }
-[data-theme="light"] .skel { background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 37%, var(--surface-2) 63%); background-size: 400% 100%; }
-[data-theme="light"] .svc-row.hidden-svc { border-color: #fca5a5; }
-[data-theme="light"] #pinReqBox { background: rgba(5,150,105,.10) !important; border-color: rgba(5,150,105,.5) !important; }
-[data-theme="light"] #adminAlertsBox { background: rgba(217,119,6,.10) !important; border-color: rgba(217,119,6,.55) !important; }
-[data-theme="light"] #adminAlertsBox a.btn-note { color: #111 !important; }
-/* JS/HTML ইনলাইন রং */
-[data-theme="light"] [style*="color:#fbbf24"], [data-theme="light"] [style*="color: #fbbf24"] { color: #b45309 !important; }
-[data-theme="light"] [style*="color:#f59e0b"], [data-theme="light"] [style*="color: #f59e0b"] { color: #b45309 !important; }
-[data-theme="light"] [style*="color:#6ee7b7"], [data-theme="light"] [style*="color: #6ee7b7"] { color: #047857 !important; }
-[data-theme="light"] [style*="color:#4ade80"], [data-theme="light"] [style*="color: #4ade80"] { color: #047857 !important; }
-[data-theme="light"] [style*="color:#34d399"], [data-theme="light"] [style*="color: #34d399"] { color: #047857 !important; }
-[data-theme="light"] [style*="color:#86efac"], [data-theme="light"] [style*="color: #86efac"] { color: #047857 !important; }
-[data-theme="light"] [style*="color:#f87171"], [data-theme="light"] [style*="color: #f87171"] { color: #b91c1c !important; }
-[data-theme="light"] [style*="color:#fca5a5"], [data-theme="light"] [style*="color: #fca5a5"] { color: #b91c1c !important; }
-[data-theme="light"] [style*="color:#fecaca"], [data-theme="light"] [style*="color: #fecaca"] { color: #b91c1c !important; }
-[data-theme="light"] [style*="color:#38bdf8"], [data-theme="light"] [style*="color: #38bdf8"] { color: #0369a1 !important; }
-[data-theme="light"] [style*="color:#67e8f9"], [data-theme="light"] [style*="color: #67e8f9"] { color: #0e7490 !important; }
-[data-theme="light"] [style*="color:#5eead4"], [data-theme="light"] [style*="color: #5eead4"] { color: #0f766e !important; }
-[data-theme="light"] [style*="color:#a78bfa"], [data-theme="light"] [style*="color: #a78bfa"] { color: #6d28d9 !important; }
-[data-theme="light"] [style*="color:#fb923c"], [data-theme="light"] [style*="color: #fb923c"] { color: #c2410c !important; }
-[data-theme="light"] [style*="color:#93c5fd"], [data-theme="light"] [style*="color: #93c5fd"] { color: #1d4ed8 !important; }
-[data-theme="light"] [style*="color:#94a3b8"], [data-theme="light"] [style*="color: #94a3b8"] { color: var(--muted) !important; }
-[data-theme="light"] [style*="color:#64748b"], [data-theme="light"] [style*="color: #64748b"] { color: var(--muted) !important; }
-[data-theme="light"] [style*="color:#cbd5e1"], [data-theme="light"] [style*="color: #cbd5e1"] { color: var(--text-2) !important; }
-[data-theme="light"] [style*="color:#e2e8f0"], [data-theme="light"] [style*="color: #e2e8f0"] { color: var(--text) !important; }
-[data-theme="light"] [style*="color:#e5e7eb"], [data-theme="light"] [style*="color: #e5e7eb"] { color: var(--text) !important; }
+/* P২-৫ রিফান্ড হিস্ট্রি পাতা (admin-v4 লেয়ার) */
+#refundPane{max-width:820px}
+#refundPane .search-row{display:flex;gap:8px;flex-wrap:nowrap;margin-bottom:10px}
+#refundPane .search-row input{flex:1;min-width:0;min-height:46px;font-size:16px;border-radius:12px}
+#refundPane .search-row button{min-height:46px;border-radius:12px}
+#refundPane #rhResult .svc-add-box{background:var(--surface,#131a22);border:1px solid var(--border,#2a3a4a);border-radius:16px;padding:14px}
+#refundPane #rhResult .svc-add-box>div:nth-child(2){display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+#refundPane #rhResult .svc-add-box>div:nth-child(2)>div{min-width:0;border-radius:12px!important}
+#refundPane #rhResult .tabs{display:flex;gap:6px;padding:4px;border-radius:14px;background:var(--surface,#131a22);border:1px solid var(--border,#2a3a4a)}
+#refundPane #rhResult .tabs button{flex:1;min-height:44px;border-radius:10px;border:0;background:transparent;color:var(--text-2,#cbd5e1);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+#refundPane #rhResult .tabs button.on{background:var(--grad,var(--primary));color:var(--on-primary,#fff)}
+#refundPane #rhRefunds,#refundPane #rhOrders{display:flex;flex-direction:column;gap:6px}
+#refundPane #rhRefunds .svc-row,#refundPane #rhOrders .svc-row{margin:0;padding:10px 12px!important;border:1px solid var(--border,#2a3a4a);border-left:4px solid var(--border,#2a3a4a);border-radius:12px;background:var(--surface,#131a22);overflow-wrap:anywhere}
+#refundPane #rhRefunds .svc-row{border-left-color:#34d399}
+#refundPane #rhOrders .svc-row[data-st="done"]{border-left-color:#34d399}
+#refundPane #rhOrders .svc-row[data-st="bad"]{border-left-color:#f87171}
+#refundPane #rhOrders .svc-row[data-st="run"]{border-left-color:#60a5fa}
+#refundPane #rhOrders .svc-row[data-st="wait"]{border-left-color:#fbbf24}
+#refundPane #rhOrders .svc-row[data-pend]{background:rgba(248,113,113,.10);border-color:#f87171}
+#refundPane .svc-row-meta{font-size:12px;color:var(--muted,#94a3b8)}
+#refundPane .svc-row-meta b{font-size:15px}
+#refundPane .empty{padding:28px 16px;text-align:center;border:1px dashed var(--border,#2a3a4a);border-radius:14px;color:var(--muted,#94a3b8)}
 
-@media (min-width: 720px) { .dash { grid-template-columns: repeat(6, 1fr); } .balance-grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+/* P২-৬ স্পিড টেস্টার পাতা (admin-v4 লেয়ার) */
+#speedPane{max-width:960px}
+#speedPane .sphead{gap:8px;margin:0 0 10px}
+#speedPane .sphead h1{font-size:19px}
+#speedPane .sphead .ib{min-height:44px;min-width:44px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:13px}
+#speedPane .sphead .ib.on{border-color:rgb(52 211 153 / .5);color:var(--success)}
+#speedPane .sphead .dot{width:8px;height:8px;border-radius:50%;background:var(--success);animation:spPulse 1.6s ease-in-out infinite}
+@keyframes spPulse{50%{opacity:.25}}
+#speedPane .chips{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 0 10px;gap:6px}
+#speedPane .chip{min-height:40px;padding:0 14px;display:inline-flex;align-items:center;white-space:nowrap}
+#speedPane .chip:nth-child(-n+3){border-radius:10px}
+#speedPane .chip:nth-child(4){margin-left:12px;position:relative}
+#speedPane .chip:nth-child(4)::before{content:"";position:absolute;left:-9px;top:8px;bottom:8px;width:1px;background:var(--border)}
+#speedPane .stats{gap:8px}
+#speedPane .stats div{border-radius:14px;padding:10px 4px}
+#speedPane .stats b{font-size:17px;line-height:1.2}
+#speedPane .stats span{font-size:11px}
+#speedPane .tabs{border-radius:14px;padding:4px}
+#speedPane .tabs button{min-height:44px;border-radius:10px;font-size:13px}
+#spV{display:grid;grid-template-columns:1fr;gap:10px;align-items:start}
+#spV .card{margin:0;border-radius:16px;padding:14px}
+#spV .card:has(.pv.best){border-left:4px solid var(--success)}
+#spV .note{grid-column:1/-1}
+#spV[data-tab="ord"]{display:block}
+#speedPane .pv{grid-template-columns:30px 1fr auto;gap:10px;padding:11px 0}
+#speedPane .pv .bar{max-width:100%;height:6px}
+#speedPane .sc b{font-size:22px}
+#speedPane .o{position:relative;min-height:48px;padding:10px 4px 10px 12px;border-left:4px solid var(--border);border-radius:4px}
+#speedPane .o+.o{margin-top:2px}
+#speedPane .o[data-st="done"]{border-left-color:#34d399}
+#speedPane .o[data-st="bad"]{border-left-color:#f87171}
+#speedPane .o[data-st="run"]{border-left-color:#60a5fa}
+#speedPane .note{border-radius:12px}
+@media (min-width:900px){#spV[data-tab="cmp"]{grid-template-columns:1fr 1fr}#speedPane .stats b{font-size:22px}}
+@media (max-width:480px){#speedPane .stats{gap:6px}#speedPane .stats b{font-size:15px}#speedPane .stats span{font-size:10px}#speedPane .gh b{font-size:14px}}
 
-/* ব্যালেন্স কার্ড: অ্যাডমিনের নিজস্ব হার্ডকোড রং টোকেনে */
-.bal-card.hl .bn { color: var(--text); }
-.bal-card.hl { background: linear-gradient(135deg, rgb(var(--primary-rgb) / .14), var(--surface)); }
-.bal-more { background: var(--surface); border-color: var(--border); }
-.bal-more > summary { color: var(--text-2); }
-.bal-add { background: var(--primary); color: var(--on-primary); }
+/* P২-৭ Provider টিকেট পাতা (admin-v4 লেয়ার) */
+#ptPane{max-width:960px}
+#ptPane>h1:first-child{font-size:19px;margin:0 0 12px}
+#ptPane>.card:first-of-type{border-radius:16px;padding:14px;box-shadow:var(--shadow-sm)}
+#ptPane>.card:first-of-type>.row:first-child{display:block;line-height:1.5}
+#ptPane>.card:first-of-type>.row:first-child b{display:block;font-size:15px;margin-bottom:2px}
+#ptPane>.card:first-of-type .muted{font-size:12px}
+#ptPane .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+#ptPane .toolbar select{flex:1;min-width:140px;min-height:46px;font-size:16px;border-radius:12px}
+#ptPane #ptSite,#ptPane #ptProv{min-height:46px;font-size:16px;border-radius:12px;margin:8px 0!important}
+#ptPane #ptSendBtn{width:100%;min-height:48px;border-radius:12px;border:0;background:var(--grad,var(--primary));color:var(--on-primary,#fff);font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+#ptPane #ptSendBtn:disabled{opacity:.6}
+#ptPane #ptMsg{margin-top:8px;min-height:20px;font-size:13px;overflow-wrap:anywhere}
+#ptPane>.toolbar{margin:12px 0}
+#ptPane>.toolbar button{flex:1;min-height:44px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-weight:600;font-size:13px;cursor:pointer}
+#ptPane>.toolbar button:last-child{border-color:var(--primary);background:var(--grad-soft)}
+#ptPane>h1:not(:first-child){font-size:16px;margin:16px 0 6px;display:flex;align-items:center;gap:8px}
+#ptPane>h1[data-count]::after{content:attr(data-count);font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px;background:var(--surface-2);color:var(--muted)}
+#ptPane>.row.muted{font-size:12px;margin-bottom:8px}
+#ptReplies,#ptReqs{display:flex;flex-direction:column;gap:8px}
+#ptReplies .card,#ptReqs .card{margin:0;border-radius:14px;padding:12px 12px 12px 14px;border-left:4px solid var(--border);overflow-wrap:anywhere}
+#ptReplies .card[data-k="ai"]{border-left-color:#60a5fa}
+#ptReplies .card[data-k="human"]{border-left-color:#a78bfa}
+#ptReqs .card[data-ok="1"]{border-left-color:#34d399}
+#ptReqs .card[data-ok="0"]{border-left-color:#f87171;background:rgba(248,113,113,.08)}
+#ptReqs .card-top b{font-size:14px}
+#ptReqs .row{margin-top:4px;font-size:13px}
+#ptReplies .tk-msg{margin-top:6px;font-size:13px;line-height:1.5}
+#ptReqs .card[data-ok="0"] .row>span[style]{color:#f87171!important}
+#ptPane>.card:first-of-type>.row:first-child b{color:var(--text)}
+#ptPane #ptSite,#ptPane #ptProv{background:var(--surface-2,#0f1620);border:1px solid var(--border,#2a3a4a);color:var(--text);box-shadow:none}
+#ptPane #ptSite:focus,#ptPane #ptProv:focus{outline:2px solid var(--primary);outline-offset:1px}
+#ptPane .empty{padding:24px 16px;text-align:center;border:1px dashed var(--border);border-radius:14px;color:var(--muted)}
+@media (min-width:900px){
+ #ptPane[style*="block"]{display:grid!important;grid-template-columns:360px 1fr;column-gap:20px;align-items:start}
+ #ptPane>h1:first-child{grid-column:1/-1}
+ #ptPane>.card:first-of-type{grid-column:1;grid-row:2/span 7;position:sticky;top:16px}
+ #ptPane>:not(h1:first-child):not(.card:first-of-type){grid-column:2}
+}
+
+/* অ্যাক্টিভিটি লগ ও অর্ডারের তারিখ ফিল্টার: ইনপুট মিলানো */
+#logPane .toolbar input,#logPane .toolbar select{min-height:44px;font-size:14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0 10px}
+#logPane .toolbar{gap:8px}
+#logPane .toolbar button{min-height:44px;border-radius:12px}
+@media (max-width:860px){#dashBox{padding:8px 10px}#dashBox .ds-grid{grid-template-columns:repeat(3,1fr)}}
+
+/* ভাঁজ করা প্যানেল */
+.foldable>.fold-h{cursor:pointer;position:relative;padding-left:24px;min-height:44px;display:flex;align-items:center;user-select:none}
+.foldable>.fold-h::before{content:"";position:absolute;left:4px;top:50%;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg);transition:transform .2s}
+.foldable.fold>.fold-h::before{transform:translateY(-50%) rotate(-45deg)}
+.foldable>.fold-h:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:8px}
+.foldable.fold>*:not(.fold-h):not(.st-sum){display:none!important}
+#dashBox>summary{min-height:44px;display:flex;align-items:center;gap:6px}
+
+/* ===== P২-৮ OrderActions লগ (admin-v4 লেয়ার) ===== */
+#actionsPane{max-width:960px}
+#actionsPane>h1{font-size:19px;line-height:1.35}
+#actionsPane .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#actionsPane #oaQ{flex:1 1 100%;min-height:46px;font-size:16px;border-radius:12px;order:-1}
+#actionsPane .toolbar>button{min-height:44px;border-radius:12px}
+#actionsPane #oaCount{font-size:12px;color:var(--muted)}
+#actionsPane.oa-ready #oaType,#actionsPane.oa-ready #oaResult{display:none}
+.oa-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0;flex:1 1 100%}
+.oa-chips::-webkit-scrollbar{display:none}
+#actionsPane .oa-chip{flex:none;min-height:40px;padding:0 14px;border-radius:99px;border:1px solid var(--border);background:var(--surface);background-image:none;color:var(--muted);box-shadow:none;font:inherit;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap}
+#actionsPane .oa-chip.on{background:var(--grad-soft);background-image:none;border-color:var(--primary);color:var(--text);font-weight:700}
+#actionsPane .oa-chip.ok.on{border-color:#34d399}#actionsPane .oa-chip.fail.on{border-color:#f87171}
+#actionsPane #oaQ{background:var(--surface-2);border:1px solid var(--border);color:var(--text);box-shadow:none}
+#actionsPane #oaQ:focus{outline:2px solid var(--primary);outline-offset:1px}
+#actionsPane.oa-ready #oaSummary{display:none}
+#oaTiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 4px}
+#oaTiles div{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 4px;text-align:center;min-width:0}
+#oaTiles b{display:block;font-size:20px;line-height:1.2}
+#oaTiles span{font-size:11px;color:var(--muted)}
+#oaTiles .g b{color:var(--success)}#oaTiles .r b{color:var(--danger)}
+#oaTiles .r.z b{color:var(--text)}
+#oaCap{font-size:12px;color:var(--muted);margin:0 0 10px}
+#oaList{display:grid;grid-template-columns:1fr;gap:8px}
+#oaList>.empty,#oaList>.err{grid-column:1/-1}
+#oaList .card{margin:0;border-radius:14px;padding:12px 12px 12px 14px;border-left:4px solid var(--border);overflow-wrap:anywhere}
+#oaList .card[data-r="ok"]{border-left-color:#34d399}
+#oaList .card[data-r="fail"]{border-left-color:#f87171;background:rgba(248,113,113,.08)}
+#oaList .card-top .oid{font-size:15px;font-weight:700}
+#oaList .row{margin-top:4px;font-size:13px}
+#oaList .card .link{display:inline-flex;align-items:center;min-height:32px;padding:0 10px;border-radius:99px;border:1px solid var(--border);margin-left:4px}
+#actionsPane .empty{padding:24px 16px;text-align:center;border:1px dashed var(--border);border-radius:14px;color:var(--muted)}
+@media (min-width:900px){#oaList{grid-template-columns:1fr 1fr}#oaTiles b{font-size:24px}}
+@media (max-width:480px){#oaTiles{gap:6px}#oaTiles b{font-size:17px}#oaTiles span{font-size:10px}}
+
+/* ===== P২-৯ সাইট থিম পাতা (admin-v4 লেয়ার) ===== */
+#themePane{max-width:880px}
+#themePane>h1{font-size:19px;line-height:1.35}
+#themePane>p.muted{font-size:13px!important;line-height:1.6;margin:4px 0 0}
+#themePane #themeOpts{display:grid!important;grid-template-columns:1fr;gap:10px!important;margin:14px 0!important}
+#themePane .thOpt{position:relative;display:flex!important;flex-direction:row;gap:14px!important;align-items:center!important;padding:12px!important;min-height:84px;background:var(--surface)!important;border:2px solid var(--border)!important;border-radius:16px!important;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+#themePane .thOpt:hover{border-color:var(--primary)!important}
+#themePane .thOpt:has(input:checked){border-color:var(--primary)!important;background:var(--grad-soft,rgb(var(--primary-rgb)/.12))!important;box-shadow:0 0 0 3px rgb(var(--primary-rgb)/.18)}
+#themePane .thOpt:has(input:focus-visible){outline:2px solid var(--primary);outline-offset:2px}
+#themePane .thOpt>input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+#themePane .thOpt>span:not(.th-prev){display:none!important}
+#themePane .thOpt>span:last-child{display:block!important;min-width:0;line-height:1.5}
+#themePane .thOpt b{font-size:15px}
+#themePane .thOpt small{font-size:12px;color:var(--muted)}
+#themePane .thOpt::after{content:"";position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;border:2px solid var(--border);background:var(--surface)}
+#themePane .thOpt:has(input:checked)::after{content:"✓";display:grid;place-items:center;border-color:var(--primary);background:var(--primary);color:#fff;font-size:13px;font-weight:800}
+#themePane .th-prev{flex:none;display:block!important;position:relative;width:92px;height:64px;border-radius:10px;overflow:hidden;border:1px solid rgba(128,128,128,.35)}
+#themePane .th-prev i{position:absolute;display:block;border-radius:3px}
+#themePane .th-prev .n{left:6px;right:6px;top:6px;height:7px}
+#themePane .th-prev .c1{left:6px;top:20px;width:38%;height:30px}
+#themePane .th-prev .c2{right:6px;top:20px;width:38%;height:30px}
+#themePane .th-prev .b{left:6px;bottom:5px;width:40%;height:6px}
+#themePane .th-prem{background:linear-gradient(135deg,#0b1020,#1a2347)}
+#themePane .th-prem .n,#themePane .th-prem .b{background:#6366f1}
+#themePane .th-prem .c1,#themePane .th-prem .c2{background:rgba(255,255,255,.12)}
+#themePane .th-lite{background:linear-gradient(135deg,#fff,#eef2f8)}
+#themePane .th-lite .n,#themePane .th-lite .b{background:#2563eb}
+#themePane .th-lite .c1,#themePane .th-lite .c2{background:#dbe3f0}
+#themePane .th-tog{background:linear-gradient(90deg,#0b1020 50%,#fff 50%)}
+#themePane .th-tog .n,#themePane .th-tog .b{background:#8b5cf6}
+#themePane .th-tog .c1{background:rgba(255,255,255,.14)}
+#themePane .th-tog .c2{background:#dbe3f0}
+#themePane #themeSaveBtn{width:100%;min-height:48px;border-radius:12px!important;font-size:15px;box-shadow:none}
+#themePane #themeSaveBtn:disabled{opacity:.6;cursor:default}
+#themePane #themeMsg{min-height:20px;margin-top:10px!important;font-size:13px!important;line-height:1.5}
+@media (min-width:900px){
+ #themePane #themeOpts{grid-template-columns:repeat(3,1fr)}
+ #themePane .thOpt{flex-direction:column;align-items:flex-start!important;padding:14px!important}
+ #themePane .th-prev{width:100%;height:92px}
+ #themePane #themeSaveBtn{width:auto;min-width:220px}
+}
+@media (max-width:860px){
+ #themePane .thOpt::after{top:50%;margin-top:-11px}
+ #themePane .thOpt>span:last-child{padding-right:30px}
+}
+
+/* ===== P২-১০ অ্যাক্টিভিটি লগ (admin-v4 লেয়ার) ===== */
+#logPane{max-width:960px}
+#logPane>h1{font-size:19px;line-height:1.35}
+#logPane>p.muted{font-size:12px!important;line-height:1.7;color:var(--muted)}
+#logPane>p.muted b{color:var(--text)}
+#logPane>p.muted a{display:inline-flex;align-items:center;min-height:32px;padding:0 10px;border:1px solid var(--border);border-radius:99px;text-decoration:none!important;margin-left:4px}
+#logPane .toolbar{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important;align-items:stretch}
+#logPane .toolbar>*{min-width:0!important;width:100%;box-sizing:border-box}
+#logPane .toolbar input,#logPane .toolbar select{min-height:46px;font-size:16px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);box-shadow:none}
+#logPane .toolbar input:focus,#logPane .toolbar select:focus{outline:2px solid var(--primary);outline-offset:1px}
+#logPane #logQ{order:1;grid-column:1/-1}
+#logPane #logFrom{order:2}#logPane #logTo{order:3}#logPane #logActor{order:4}#logPane #logAct{order:5}
+#logPane .toolbar>button{order:6;grid-column:1/-1;min-height:46px;border-radius:12px;border:0;font-weight:800;font-size:15px;cursor:pointer;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:none}
+#logPane #logCount{display:none}
+.lg-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0;margin:10px 0 0}
+.lg-chips::-webkit-scrollbar{display:none}
+#logPane .lg-chip{flex:none;min-height:40px;padding:0 14px;border-radius:99px;border:1px solid var(--border);background:var(--surface);background-image:none;color:var(--muted);box-shadow:none;font:inherit;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap}
+#logPane .lg-chip.on{background:var(--grad-soft);background-image:none;border-color:var(--primary);color:var(--text);font-weight:700}
+#logTiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 4px}
+#logTiles div{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 4px;text-align:center;min-width:0}
+#logTiles b{display:block;font-size:20px;line-height:1.2}
+#logTiles span{font-size:11px;color:var(--muted)}
+#logTiles .r b{color:var(--danger)}#logTiles .r.z b{color:var(--text)}
+#logCap{font-size:12px;color:var(--muted);margin:0 0 10px}
+#logList{display:grid;grid-template-columns:1fr;gap:8px}
+#logList>.empty,#logList>.err,#logList>.muted{grid-column:1/-1}
+#logList .card{margin:0;border-radius:14px;padding:12px 12px 12px 14px;border-left:4px solid var(--primary);overflow-wrap:anywhere}
+#logList .card[data-r="fail"]{border-left-color:#f87171;background:rgba(248,113,113,.08)}
+#logList .card-top .oid{font-size:15px;font-weight:700}
+#logList .card-top .muted{font-size:12px;white-space:nowrap}
+#logList .row{margin-top:5px;font-size:13px}
+#logList .card-top+.row b{display:inline-flex;align-items:center;min-height:26px;padding:0 10px;border-radius:99px;background:var(--surface-2);font-size:12px}
+#logList .row.muted{font-size:12px}
+#logPane .empty{padding:24px 16px;text-align:center;border:1px dashed var(--border);border-radius:14px;color:var(--muted)}
+@media (min-width:900px){
+ #logPane .toolbar{grid-template-columns:repeat(4,minmax(0,1fr))}
+ #logPane #logQ{grid-column:1/4;order:1}
+ #logPane .toolbar>button{grid-column:4;order:2}
+ #logPane #logFrom{order:3}#logPane #logTo{order:4}#logPane #logActor{order:5}#logPane #logAct{order:6}
+ #logList{grid-template-columns:1fr 1fr}#logTiles b{font-size:24px}
+}
+@media (max-width:480px){#logTiles{gap:6px}#logTiles b{font-size:17px}#logTiles span{font-size:10px}}
+
+/* ===== P৪ নোটিশ ব্যানার পাতা (admin-v4 লেয়ার) ===== */
+#noticePane{max-width:760px}
+#noticePane>h1{font-size:19px;line-height:1.35}
+#noticePane>p.muted{font-size:13px;line-height:1.6;color:var(--muted);margin:4px 0 12px}
+.ntc-state{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:14px;border:1px solid var(--border);background:var(--surface);font-size:13px;margin-bottom:12px}
+.ntc-state:before{content:"";width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
+.ntc-state.on:before{background:var(--success);box-shadow:0 0 0 4px rgba(52,211,153,.2)}
+.ntc-sw{display:flex;align-items:center;gap:12px;min-height:48px;cursor:pointer;margin-bottom:10px}
+.ntc-sw input{position:absolute;opacity:0;width:1px;height:1px}
+.ntc-track{flex:none;width:48px;height:28px;border-radius:99px;background:var(--surface-2);border:1px solid var(--border);position:relative;transition:background .15s}
+.ntc-track:after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:var(--muted);transition:transform .15s,background .15s}
+.ntc-sw input:checked+.ntc-track{background:var(--primary);border-color:var(--primary)}
+.ntc-sw input:checked+.ntc-track:after{transform:translateX(20px);background:#fff}
+.ntc-sw input:focus-visible+.ntc-track{outline:2px solid var(--primary);outline-offset:2px}
+#noticePane #noticeLevel{display:none}
+.ntc-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0;margin:6px 0}
+.ntc-chips::-webkit-scrollbar{display:none}
+#noticePane .ntc-chip{flex:none;min-height:40px;padding:0 14px;border-radius:99px;border:1px solid var(--border);background:var(--surface);background-image:none;color:var(--muted);box-shadow:none;font:inherit;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap}
+#noticePane .ntc-chip.on{background:var(--grad-soft);background-image:none;border-color:var(--primary);color:var(--text);font-weight:700}
+#noticePane .ntc-chip.q{border-style:dashed}
+#noticePane #noticeText{width:100%;box-sizing:border-box;min-height:96px;font-size:16px;line-height:1.5;padding:12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);resize:vertical;box-shadow:none}
+#noticePane #noticeText:focus{outline:2px solid var(--primary);outline-offset:1px}
+.ntc-count{text-align:right;font-size:12px;color:var(--muted);margin-top:4px}
+.ntc-count.full{color:var(--danger)}
+.ntc-h{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.ntc-banner{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;border:1px solid;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.ntc-banner.info{background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.5)}
+.ntc-banner.warn{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.55)}
+.ntc-banner.bad{background:rgba(248,113,113,.14);border-color:rgba(248,113,113,.6)}
+.ntc-banner.empty{background:var(--surface);border:1px dashed var(--border);color:var(--muted)}
+.ntc-actions{display:flex;gap:8px;margin-top:14px}
+#noticePane .ntc-actions button{min-height:48px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;border:0;box-shadow:none}
+#noticePane #noticeSaveBtn{flex:1;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+#noticePane .ntc-off{flex:none;padding:0 16px;background:var(--surface);border:1px solid var(--border)!important;color:var(--text)}
+#noticePane .ntc-actions button:disabled{opacity:.6;cursor:default}
+#noticeMsg{min-height:20px;margin-top:10px;font-size:13px;line-height:1.5}
+@media (min-width:900px){#noticePane #noticeSaveBtn{flex:none;min-width:200px}}
+
+/* ---- P৫: প্রোভাইডার-কেন্দ্রিক হোম ---- */
+#provHome{margin:0 0 12px}
+#provHome .ph-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px}
+#provHome .ph-head h2{font-size:15px;margin:0;flex:1 1 auto}
+#provHome .ph-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+#provHome .ph-chips::-webkit-scrollbar{display:none}
+#provHome .ph-chip,#provHome .ph-ref{flex:none;min-height:40px;padding:0 14px;border-radius:99px;border:1px solid var(--border);background:var(--surface);background-image:none;color:var(--muted);box-shadow:none;font:inherit;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap}
+#provHome .ph-chip.on{background:var(--grad,var(--primary));color:var(--on-primary,#fff);border-color:transparent}
+#provHome .ph-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+#provHome .ph-card{--c:var(--muted);border:1px solid var(--border);border-left:4px solid var(--c);border-radius:12px;background:var(--surface);padding:12px;display:grid;gap:8px}
+#provHome .ph-card.g{--c:var(--success)}#provHome .ph-card.y{--c:#f59e0b}#provHome .ph-card.r{--c:var(--danger)}
+#provHome .ph-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+#provHome .ph-top b{font-size:15px;overflow-wrap:anywhere}
+#provHome .ph-bal{font-size:18px;font-weight:700}
+#provHome .ph-bal.bad{color:var(--danger);font-size:12px;font-weight:500}
+#provHome .ph-m{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center}
+#provHome .ph-m div{background:var(--surface-2);border-radius:8px;padding:6px 2px}
+#provHome .ph-m b{display:block;font-size:15px}
+#provHome .ph-m span{font-size:11px;color:var(--muted)}
+#provHome .ph-bar{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+#provHome .ph-bar i{display:block;height:100%;background:var(--c)}
+#provHome .ph-note{font-size:12px;color:var(--muted)}
+#provHome .ph-ref:focus-visible,#provHome .ph-chip:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+@media(max-width:860px){#provHome .ph-grid{grid-template-columns:1fr}}
+
+/* ---- P৬: লাভের রিপোর্ট ---- */
+#profitPane .pf-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0;margin:6px 0}
+#profitPane .pf-chips::-webkit-scrollbar{display:none}
+#profitPane .pf-chip{flex:none;min-height:44px;padding:0 16px;border-radius:99px;border:1px solid var(--border);background:var(--surface);background-image:none;color:var(--muted);box-shadow:none;font:inherit;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap}
+#profitPane .pf-chip.on{background:var(--grad,var(--primary));color:var(--on-primary,#fff);border-color:transparent}
+#profitPane .pf-chip:focus-visible,#profitPane .pf-ref:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+#profitPane .pf-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}
+#profitPane .pf-tiles div{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center}
+#profitPane .pf-tiles b{display:block;font-size:17px}
+#profitPane .pf-tiles span{font-size:11px;color:var(--muted)}
+#profitPane .pf-tiles .pf-p b{color:var(--success)}#profitPane .pf-tiles .pf-p.neg b{color:var(--danger)}
+#profitPane .pf-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+#profitPane .pf-row{--c:var(--success);border:1px solid var(--border);border-left:4px solid var(--c);border-radius:12px;background:var(--surface);padding:10px 12px;display:grid;gap:6px}
+#profitPane .pf-row.neg{--c:var(--danger)}
+#profitPane .pf-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+#profitPane .pf-top b{overflow-wrap:anywhere;font-size:14px}
+#profitPane .pf-top strong{font-size:16px;color:var(--c);white-space:nowrap}
+#profitPane .pf-sub{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+#profitPane .pf-bar{height:5px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+#profitPane .pf-bar i{display:block;height:100%;background:var(--c)}
+#profitPane .pf-note{font-size:12px;color:var(--muted);margin:6px 0}
+@media(max-width:860px){#profitPane .pf-tiles{grid-template-columns:repeat(2,1fr)}#profitPane .pf-list{grid-template-columns:1fr}}
+
+/* ---- P৭: মোবাইলে দ্রুত অ্যাকশন (সোয়াইপ + কার্ডের মাথায় দুই বাটন) ---- */
+.qa-btns{display:none}
+@media(max-width:860px){
+  #ordersList .card.qa{touch-action:pan-y;position:relative;transition:transform .18s ease}
+  #ordersList .card.qa.qa-drag{transition:none}
+  #ordersList .card .card-top{align-items:center}
+  .qa-btns{display:flex;gap:6px;margin-left:auto;margin-right:8px}
+  .qa-btns button{min-width:44px;min-height:44px;padding:0 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);background-image:none;box-shadow:none;font:inherit;font-size:18px;line-height:1;cursor:pointer}
+  .qa-btns .qa-ok{border-color:var(--success)}.qa-btns .qa-no{border-color:var(--danger)}
+  .qa-btns button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  .qa-hint{position:absolute;left:0;right:0;top:0;padding:6px 12px;font-size:12px;font-weight:600;border-radius:12px 12px 0 0;opacity:0;pointer-events:none;color:#fff}
+  .qa-hint.ok{background:var(--success)}.qa-hint.no{background:var(--danger);text-align:right}
+}
+
+/* ---- P৮: ইউজারনেম + পাসওয়ার্ড লগইন ---- */
+#loginView input{display:block;width:100%;margin:0 0 10px}
+#loginView .lg-alt{margin:14px 0 0;text-align:left}
+#loginView .lg-alt summary{cursor:pointer;color:var(--muted);font-size:13px;padding:8px 0;min-height:44px;display:flex;align-items:center}
+#loginView .lg-alt input{margin-top:6px}
+#credPane .cr-card{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;margin:8px 0;display:grid;gap:10px;max-width:520px}
+#credPane .cr-card label{font-size:13px;color:var(--muted);display:grid;gap:4px}
+#credPane input{min-height:46px;width:100%}
+#credPane .cr-btn{min-height:48px;border-radius:12px;border:0;background:var(--grad,var(--primary));color:var(--on-primary,#fff);font:inherit;font-weight:600;cursor:pointer}
+#credPane .cr-btn.alt{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+#credPane .cr-btn:disabled{opacity:.6}
+#credPane .cr-st{font-size:14px}
+#credPane .cr-note{font-size:12px;color:var(--muted)}
+#credPane .cr-msg{font-size:13px;min-height:18px}
+#loginView #loginBtn{width:100%;min-height:48px}
+
+/* ---- P৯: নিজস্ব পরিচয়: কাস্টমার সাইটের tokens.css-এর সাথে রং ও আকার এক করা ---- */
+:root{--adm-r:var(--radius,16px);--adm-r-sm:var(--radius-sm,12px)}
+/* অর্ডার স্ট্যাটাস পিল: আগে পিলে processing = ইন্ডিগো (গাঢ় ব্যাকগ্রাউন্ডে ঝাপসা), partial = টিল, completed = রং ছাড়া ছিল। এখন সাইটের --status-* (কনট্রাস্ট ≥৪.৫:১ যাচাই করা) */
+.status-pill,.st-approved,.st-completed,.st-pending,.st-processing,.st-partial,.st-rejected,.st-canceled,.st-cancelled{--sc:var(--muted);color:var(--sc);background:rgb(var(--ov-rgb) / .08);border:1px solid rgb(var(--ov-rgb) / .22)}
+.pub-no{--sc:var(--status-pending);color:var(--sc);background:rgb(var(--ov-rgb) / .08)}
+@supports (background:color-mix(in srgb,red 10%,transparent)){
+  .status-pill,.st-approved,.st-completed,.st-pending,.st-processing,.st-partial,.st-rejected,.st-canceled,.st-cancelled{background:color-mix(in srgb,var(--sc) 11%,transparent);border-color:color-mix(in srgb,var(--sc) 45%,transparent)}
+  .pub-no{background:color-mix(in srgb,var(--sc) 11%,transparent)}
+}
+[data-theme] .st-pending,[data-theme] .pub-no,[data-theme] .status-pill.st-pending{--sc:var(--status-pending)}
+[data-theme] .st-processing,[data-theme] .status-pill.st-processing{--sc:var(--status-processing)}
+[data-theme] .st-approved,[data-theme] .st-completed,[data-theme] .status-pill.st-completed{--sc:var(--status-completed)}
+[data-theme] .st-partial,[data-theme] .status-pill.st-partial{--sc:var(--status-partial)}
+[data-theme] .st-rejected,[data-theme] .st-canceled,[data-theme] .st-cancelled,[data-theme] .status-pill.st-rejected{--sc:var(--status-canceled)}
+[data-theme] :is(.st-pending,.st-processing,.st-approved,.st-completed,.st-partial,.st-rejected,.st-canceled,.st-cancelled,.pub-no){color:var(--sc)}
+/* ফোকাস রিং: সাইটের --focus-ring (ডার্কে ৯.৫:১, লাইটে ৬.৩:১) */
+#panelView :is(button,a,input,select,textarea,summary,[tabindex]):focus-visible,#loginView :is(button,input,summary):focus-visible{outline:2px solid var(--focus-ring,#a5b4fc);outline-offset:2px}
+html[data-theme] .status-pill.st-partial{--sc:var(--status-partial);color:var(--sc);background:rgb(var(--ov-rgb) / .08);border-color:rgb(var(--ov-rgb) / .22)}
+@supports (background:color-mix(in srgb,red 10%,transparent)){html[data-theme] .status-pill.st-partial{background:color-mix(in srgb,var(--sc) 11%,transparent);border-color:color-mix(in srgb,var(--sc) 45%,transparent)}}
