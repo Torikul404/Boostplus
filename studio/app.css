@@ -152,5 +152,12 @@ a,img,svg{-webkit-user-drag:none}
 .pth[aria-pressed=true]{outline:3px solid var(--tx);outline-offset:2px}.card+.card{margin-top:12px}.pst+.card{margin-top:12px}
 .prow{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--bd);cursor:pointer}.prow input{width:22px;height:22px;margin:3px 0 0;flex:none}
 
-.chip.dg{border-color:var(--er);color:var(--er)}
-.chip.dg:disabled{opacity:.6}
+/* v75: সেরা সার্ভিস + স্পিড */
+.bcd .bnm,.spc .bnm{display:block;margin:6px 0 2px;overflow-wrap:anywhere}.bcd .bm,.spc .bm{margin:6px 0}.bm.g,.tl small.g,.spv b.g{color:var(--ok)}.tl small.w{color:var(--wa)}
+.bsh{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.bcd .acts,.spc .acts{margin-top:10px}
+.spc{border-left:4px solid var(--bd)}.spc.g{border-left-color:var(--ok)}.spc.b{border-left-color:var(--er)}
+.tl{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}.tl>div{display:flex;flex-direction:column;gap:2px;min-width:0}.tl b{font-size:13px}.tl small{font-size:12px}
+.pbar{height:8px;border-radius:4px;background:var(--bd);overflow:hidden;margin:6px 0}.pbar i{display:block;height:100%;background:var(--ok)}
+.sps{margin:12px 0}.spr{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--bd)}.spr:first-of-type{border-top:0}.spv{text-align:right;flex:none}
+#ordD input{width:100%;min-height:44px}#ordD .btn{min-height:48px}
+@media(max-width:380px){.tl{grid-template-columns:1fr}}
