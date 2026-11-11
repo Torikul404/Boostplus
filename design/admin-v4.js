@@ -495,3 +495,149 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
     location.reload();
   };
 })();
+
+/* ---- P৯: স্পিড টেস্টার — অর্ডার হিস্ট্রি ও বিস্তারিত ডিটেইলস ----
+   আগের কোড ছোঁয় না। spOrd/spDraw ওভাররাইড করে; ডেটা আসে আগের admin_speedtest থেকেই।
+   অর্ডার সারির মূল তথ্য ওপরে, ট্যাপ করলে পুরো বিবরণ (সময়রেখা, ডেলিভারি, লিংক, কপি বাটন) খোলে। */
+(function () {
+  "use strict";
+  if (typeof SP === "undefined" || typeof spDraw !== "function" || typeof spOrd !== "function") return;
+  var PAGE = 40;
+  SP.q = ""; SP.os = "all"; SP.op = ""; SP.all = false; SP.lim = PAGE; SP.oid = "";
+  var E = function (x) { return String(x == null ? "" : x).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var kind = function (r) { return typeof spKind === "function" ? spKind(r) : "run"; };
+  var has = function (v) { return v !== "" && v != null; };
+  var dur = function (m) { return typeof spDur === "function" ? spDur(m) : Math.round(m) + "মি"; };
+  function when(ms) {
+    if (!ms || ms < 1) return "—";
+    try { return new Date(ms).toLocaleString("bn-BD", { timeZone: "Asia/Dhaka", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }); }
+    catch (e) { return new Date(ms).toLocaleString(); }
+  }
+  function calc(r) {
+    var k = kind(r), q = Number(r.quantity) || 0, rem = has(r.remains) ? Number(r.remains) : NaN;
+    var el = k === "run" ? (SP.now - r.ordered_at) / 6e4 : (r.total_secs || 0) / 60;
+    var del = k === "done" ? q : (q && !isNaN(rem) ? Math.max(0, q - rem) : NaN);
+    var pct = k === "done" ? 100 : (q && !isNaN(del) ? Math.min(100, Math.round(del / q * 100)) : NaN);
+    var ph = el > 0 && del > 0 ? Math.round(del / (el / 60)) : 0;
+    return { k: k, q: q, el: el, del: del, pct: pct, ph: ph };
+  }
+  function rowsAll() {
+    var since = SP.all ? 0 : SP.now - ({ "24h": 864e5, "7d": 6048e5, "30d": 2592e6 }[SP.per] || 6048e5);
+    return SP.rows.filter(function (r) {
+      return r.provider_order && r.ordered_at >= since && (!SP.pl || spPlat({ name: r.service_name, platform: r.platform }) === SP.pl);
+    }).sort(function (a, b) { return b.ordered_at - a.ordered_at; });
+  }
+  function match(r) {
+    if (SP.os !== "all" && kind(r) !== SP.os) return false;
+    if (SP.op && r.provider !== SP.op) return false;
+    var q = SP.q.trim().toLowerCase();
+    if (!q) return true;
+    return [r.order_id, r.provider_order, r.link, r.service_name, r.provider, r.service_id, r.whatsapp, r.status].some(function (v) { return String(v == null ? "" : v).toLowerCase().indexOf(q) > -1; });
+  }
+  function cp(label, val) {
+    return has(val) && String(val) !== "" ? '<button type="button" class="ohc" data-spcopy="' + E(val) + '" aria-label="' + E(label) + ' কপি">কপি</button>' : "";
+  }
+  function kv(label, valHtml, wide) { return '<div class="ohk' + (wide ? " w" : "") + '"><span>' + label + '</span><b>' + valHtml + '</b></div>'; }
+  function detail(r) {
+    var c = calc(r), url = /^https?:\/\//i.test(String(r.link || "")) ? String(r.link) : "";
+    var link = r.link ? (url ? '<a href="' + E(url) + '" target="_blank" rel="noopener noreferrer">' + E(r.link) + '</a>' : E(r.link)) : "—";
+    var pctTxt = isNaN(c.pct) ? "—" : c.pct + "%";
+    var tl = [
+      ["অর্ডার করা হয়েছে", r.ordered_at], ["প্রোভাইডারে শুরু", r.started_at], ["সম্পন্ন হয়েছে", r.completed_at], ["শেষ চেক", r.last_checked]
+    ].map(function (t) { return '<div class="oht' + (t[1] ? " on" : "") + '"><i></i><span>' + t[0] + '</span><b>' + when(t[1]) + '</b></div>'; }).join("");
+    return '<div class="ohd">' +
+      '<div class="ohp"><div class="ohpb"><i style="width:' + (isNaN(c.pct) ? 0 : c.pct) + '%"></i></div><span>ডেলিভারি <b>' + pctTxt + '</b>' + (isNaN(c.del) ? "" : " · " + c.del + " / " + (c.q || "—")) + '</span></div>' +
+      '<div class="ohg">' +
+      kv("অর্ডার আইডি", E(r.order_id || "—") + cp("অর্ডার আইডি", r.order_id)) +
+      kv("প্রোভাইডার অর্ডার আইডি", E(r.provider_order || "—") + cp("প্রোভাইডার অর্ডার আইডি", r.provider_order)) +
+      kv("প্রোভাইডার", E(r.provider || "—")) +
+      kv("প্রোভাইডার সার্ভিস আইডি", E(r.service_id || "—")) +
+      kv("সার্ভিস", E(r.service_name || "—"), true) +
+      kv("প্ল্যাটফর্ম", E(r.platform || "—")) +
+      kv("পরিমাণ", c.q ? c.q.toLocaleString("en-US") : "—") +
+      kv("বিল", has(r.amount) && r.amount !== "" ? E(r.amount) : "—") +
+      kv("সাইটে স্ট্যাটাস", E(r.site_status || "—")) +
+      kv("প্রোভাইডার স্ট্যাটাস", E(r.status || "—")) +
+      (r.whatsapp ? kv("কাস্টমার WhatsApp", E(r.whatsapp) + cp("নম্বর", r.whatsapp)) : "") +
+      kv("লিংক", link + cp("লিংক", r.link), true) +
+      '</div>' +
+      '<div class="ohg ohn">' +
+      kv("শুরুর কাউন্ট", has(r.start_count) ? E(r.start_count) : "—") +
+      kv("বাকি", has(r.remains) ? E(r.remains) : "—") +
+      kv("শুরু হতে সময়", r.start_secs > 0 ? dur(r.start_secs / 60) : "—") +
+      kv(c.k === "run" ? "এখন পর্যন্ত সময়" : "মোট সময়", c.el > 0 ? dur(c.el) : "—") +
+      kv("১K ডেলিভারি সময়", c.k === "done" && c.q && c.el > 0 ? dur(c.el / (c.q / 1000)) : "—") +
+      kv("গতি", c.ph ? c.ph.toLocaleString("en-US") + "/ঘণ্টা" : "—") +
+      '</div>' +
+      '<div class="oht-wrap">' + tl + '</div>' +
+      (r.note ? '<div class="ohnote">📝 ' + E(r.note) + '</div>' : "") +
+      '</div>';
+  }
+  function item(r) {
+    var c = calc(r), isOpen = SP.oid && SP.oid === String(r.order_id || r.provider_order), key = String(r.order_id || r.provider_order);
+    var lbl = c.k === "done" ? "✅ সম্পন্ন" : c.k === "bad" ? "⚠️ " + E(r.status) : "⏳ " + E(r.status || "অপেক্ষায়");
+    var cl = c.k === "done" ? "ok" : c.k === "bad" ? "bd" : "wn";
+    return '<div class="o oh' + (isOpen ? " open" : "") + '" data-st="' + c.k + '">' +
+      '<button type="button" class="oh-h" data-spo="' + E(key) + '" aria-expanded="' + (isOpen ? "true" : "false") + '">' +
+      '<span class="t"><span>' + E(r.provider) + ' <span class="mut">#' + E(r.order_id || r.provider_order) + '</span></span><span class="' + cl + '">' + lbl + '</span></span>' +
+      '<span class="m oh-s">' + E(r.service_name || ("সার্ভিস #" + r.service_id)) + '</span>' +
+      '<span class="m"><span>' + when(r.ordered_at) + '</span><span>পরিমাণ <b>' + (c.q || "—") + '</b></span><span>' + (c.k === "run" ? "এখন পর্যন্ত" : "সময়") + ' <b>' + (c.el > 0 ? dur(c.el) : "—") + '</b></span>' + (isNaN(c.pct) ? "" : '<span>ডেলিভারি <b>' + c.pct + '%</b></span>') + '</span>' +
+      '<span class="oh-chev" aria-hidden="true">›</span></button>' +
+      (isOpen ? detail(r) : "") + '</div>';
+  }
+  function listHtml() {
+    var all = rowsAll().filter(match), shown = all.slice(0, SP.lim);
+    if (!all.length) return '<div class="note">কোনো অর্ডার মেলেনি' + (SP.q || SP.os !== "all" || SP.op ? " — সার্চ বা ফিল্টার বদলে দেখুন" : "") + '</div>';
+    return shown.map(item).join("") + (all.length > shown.length ? '<button type="button" class="ohmore" data-spmore="1">আরও দেখান (' + (all.length - shown.length) + 'টি বাকি)</button>' : "");
+  }
+  function countsHtml() {
+    var base = rowsAll(), n = { all: 0, done: 0, run: 0, bad: 0 };
+    base.filter(function (r) { return !SP.op || r.provider === SP.op; }).forEach(function (r) { n.all++; n[kind(r)]++; });
+    return n;
+  }
+  window.spOrd = function () {
+    var n = countsHtml(), provs = {};
+    rowsAll().forEach(function (r) { provs[r.provider] = 1; });
+    var sts = [["all", "সব"], ["run", "⏳ চলমান"], ["done", "✅ সম্পন্ন"], ["bad", "⚠️ ব্যর্থ/আংশিক"]];
+    return '<div class="card ohcard"><div class="ohtool">' +
+      '<input type="search" id="spOrdQ" class="ohq" placeholder="🔍 অর্ডার আইডি, লিংক, সার্ভিস, WhatsApp…" value="' + E(SP.q) + '" autocomplete="off" aria-label="অর্ডার খুঁজুন">' +
+      '<select id="spOrdP" class="ohs" aria-label="প্রোভাইডার"><option value="">সব প্রোভাইডার</option>' + Object.keys(provs).sort().map(function (p) { return '<option value="' + E(p) + '"' + (SP.op === p ? " selected" : "") + '>' + E(p) + '</option>'; }).join("") + '</select>' +
+      '</div><div class="ohchips">' + sts.map(function (s) { return '<button type="button" class="chip' + (SP.os === s[0] ? " on" : "") + '" data-spos="' + s[0] + '">' + s[1] + ' <b>' + n[s[0]] + '</b></button>'; }).join("") +
+      '<button type="button" class="chip' + (SP.all ? " on" : "") + '" data-spall="1">🗂 সব সময়ের হিস্ট্রি</button></div>' +
+      '<div class="ohsum" id="spOrdSum"></div><div id="spOrdList">' + listHtml() + '</div></div>';
+  };
+  function sumTxt() {
+    var l = rowsAll().filter(match);
+    return l.length + "টি অর্ডার" + (SP.all ? " · সব সময়" : "") + (SP.q ? " · “" + SP.q + "”" : "");
+  }
+  function fixSum() { var s = document.getElementById("spOrdSum"); if (s) s.textContent = sumTxt(); }
+  function relist() { var l = document.getElementById("spOrdList"); if (l) { l.innerHTML = listHtml(); fixSum(); } }
+  /* অটো-রিফ্রেশে সার্চ বক্সের ফোকাস ও কার্সর ঠিক রাখা */
+  var baseDraw = window.spDraw;
+  window.spDraw = function () {
+    var a = document.activeElement, keep = a && a.id === "spOrdQ" ? [a.selectionStart, a.selectionEnd] : null;
+    baseDraw.apply(this, arguments);
+    if (SP.tab === "ord") fixSum();
+    if (keep) { var q = document.getElementById("spOrdQ"); if (q) { q.focus(); try { q.setSelectionRange(keep[0], keep[1]); } catch (e) {} } }
+  };
+  function copy(txt, btn) {
+    var done = function () { var o = btn.textContent; btn.textContent = "✓"; setTimeout(function () { btn.textContent = o; }, 1200); };
+    try { navigator.clipboard.writeText(txt).then(done, function () { fb(); }); } catch (e) { fb(); }
+    function fb() { try { var t = document.createElement("textarea"); t.value = txt; t.style.cssText = "position:fixed;opacity:0"; document.body.appendChild(t); t.select(); document.execCommand("copy"); document.body.removeChild(t); done(); } catch (e2) {} }
+  }
+  document.addEventListener("input", function (e) {
+    if (e.target && e.target.id === "spOrdQ") { SP.q = e.target.value; SP.lim = PAGE; SP.oid = ""; relist(); }
+  });
+  document.addEventListener("change", function (e) {
+    if (e.target && e.target.id === "spOrdP") { SP.op = e.target.value; SP.lim = PAGE; SP.oid = ""; spDraw(); }
+  });
+  document.addEventListener("click", function (e) {
+    var t = e.target; if (!t || !t.closest || !t.closest("#spV")) return;
+    var b;
+    if ((b = t.closest("[data-spcopy]"))) { copy(b.getAttribute("data-spcopy"), b); return; }
+    if ((b = t.closest("[data-spo]"))) { var k = b.getAttribute("data-spo"); SP.oid = SP.oid === k ? "" : k; relist(); var o = document.querySelector('#spV [data-spo="' + (window.CSS && CSS.escape ? CSS.escape(k) : k) + '"]'); if (o && SP.oid) { try { o.scrollIntoView({ block: "nearest" }); } catch (e1) {} } return; }
+    if ((b = t.closest("[data-spos]"))) { SP.os = b.getAttribute("data-spos"); SP.lim = PAGE; SP.oid = ""; spDraw(); return; }
+    if (t.closest("[data-spall]")) { SP.all = !SP.all; SP.lim = PAGE; SP.oid = ""; spDraw(); return; }
+    if (t.closest("[data-spmore]")) { SP.lim += PAGE; relist(); }
+  });
+})();

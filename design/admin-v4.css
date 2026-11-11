@@ -561,3 +561,49 @@
 #panelView :is(button,a,input,select,textarea,summary,[tabindex]):focus-visible,#loginView :is(button,input,summary):focus-visible{outline:2px solid var(--focus-ring,#a5b4fc);outline-offset:2px}
 html[data-theme] .status-pill.st-partial{--sc:var(--status-partial);color:var(--sc);background:rgb(var(--ov-rgb) / .08);border-color:rgb(var(--ov-rgb) / .22)}
 @supports (background:color-mix(in srgb,red 10%,transparent)){html[data-theme] .status-pill.st-partial{background:color-mix(in srgb,var(--sc) 11%,transparent);border-color:color-mix(in srgb,var(--sc) 45%,transparent)}}
+
+/* P৯ স্পিড টেস্টার: অর্ডার হিস্ট্রি ও বিস্তারিত (admin-v4 লেয়ার) */
+#speedPane .ohcard{padding:12px}
+#speedPane .ohtool{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+#speedPane .ohq{flex:2 1 220px;min-height:46px;font-size:16px;border-radius:12px;padding:0 12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-family:inherit;min-width:0}
+#speedPane .ohs{flex:1 1 150px;min-height:46px;font-size:15px;border-radius:12px;padding:0 10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-family:inherit;min-width:0}
+#speedPane .ohchips{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:8px}
+#speedPane .ohchips::-webkit-scrollbar{display:none}
+#speedPane .ohchips .chip{min-height:40px;padding:0 12px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;border-radius:10px}
+#speedPane .ohchips .chip b{font-size:11px;background:var(--surface-2);border-radius:99px;padding:1px 7px;color:var(--text)}
+#speedPane .ohsum{font-size:12px;color:var(--muted);margin:0 0 6px}
+#speedPane .oh{padding:0;border-top:0;margin-top:6px;background:var(--surface-2);border-radius:12px;border-left-width:4px}
+#speedPane .oh+.oh{margin-top:6px}
+#speedPane .oh-h{display:block;position:relative;width:100%;text-align:left;background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:10px 30px 10px 12px;min-height:48px;border-radius:12px}
+#speedPane .oh-h .t{display:flex;justify-content:space-between;gap:8px;font-weight:600;font-size:13px}
+#speedPane .oh-h .m{display:flex;gap:4px 10px;font-size:11px;color:var(--muted);flex-wrap:wrap;margin-top:3px}
+#speedPane .oh-h .m b{color:var(--text)}
+#speedPane .oh-s{overflow-wrap:anywhere}
+#speedPane .oh-chev{position:absolute;right:12px;top:50%;margin-top:-11px;font-size:20px;line-height:22px;color:var(--muted);transition:transform .15s}
+#speedPane .oh.open .oh-chev{transform:rotate(90deg)}
+#speedPane .ohd{padding:4px 12px 12px;border-top:1px dashed var(--border);margin:0 0 0 0}
+#speedPane .ohp{display:flex;align-items:center;gap:10px;margin:10px 0;font-size:12px;color:var(--muted)}
+#speedPane .ohpb{flex:1;height:8px;border-radius:99px;background:var(--surface);overflow:hidden;border:1px solid var(--border)}
+#speedPane .ohpb i{display:block;height:100%;background:var(--grad,var(--primary));border-radius:99px}
+#speedPane .ohp b{color:var(--text)}
+#speedPane .ohg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+#speedPane .ohk{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 9px;min-width:0}
+#speedPane .ohk.w{grid-column:1/-1}
+#speedPane .ohk span{display:block;font-size:10px;color:var(--muted);margin-bottom:1px}
+#speedPane .ohk b{display:block;font-size:13px;font-weight:600;overflow-wrap:anywhere;word-break:break-word}
+#speedPane .ohk a{color:var(--primary);text-decoration:underline;font-weight:500}
+#speedPane .ohc{margin-left:8px;min-height:28px;padding:0 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:inherit;font-size:11px;font-weight:600;cursor:pointer;vertical-align:middle}
+#speedPane .ohn{grid-template-columns:repeat(3,1fr)}
+#speedPane .ohn .ohk{text-align:center}
+#speedPane .oht-wrap{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#speedPane .oht{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 9px 7px 22px;position:relative;opacity:.6}
+#speedPane .oht.on{opacity:1}
+#speedPane .oht i{position:absolute;left:8px;top:12px;width:8px;height:8px;border-radius:50%;background:var(--border)}
+#speedPane .oht.on i{background:var(--success)}
+#speedPane .oht span{display:block;font-size:10px;color:var(--muted)}
+#speedPane .oht b{display:block;font-size:12px;font-weight:600}
+#speedPane .ohnote{margin-top:8px;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+#speedPane .ohmore{display:block;width:100%;min-height:46px;margin-top:8px;border-radius:12px;border:1px solid var(--primary);background:var(--grad-soft);color:var(--text);font:inherit;font-weight:600;cursor:pointer}
+#speedPane .oh-h:focus-visible,#speedPane .ohc:focus-visible,#speedPane .ohmore:focus-visible{outline:2px solid var(--focus-ring,#a5b4fc);outline-offset:2px}
+@media (min-width:700px){#speedPane .ohg:not(.ohn){grid-template-columns:repeat(3,1fr)}#speedPane .oht-wrap{grid-template-columns:repeat(4,1fr)}}
+@media (max-width:420px){#speedPane .ohn{grid-template-columns:1fr 1fr}}
