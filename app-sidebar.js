@@ -130,6 +130,13 @@
         document.dispatchEvent(new CustomEvent('pb:orders-open'));
         requestAnimationFrame(scrollToApp);
         break;
+      case 'done':
+        showExtraView('done-view');
+        setHash('done');
+        setActive('done');
+        document.dispatchEvent(new CustomEvent('pb:done-open'));
+        requestAnimationFrame(scrollToApp);
+        break;
       case 'rules':
         showExtraView('rules-view');
         setHash('rules');
@@ -183,7 +190,7 @@
   // Deep links: /#tickets, /#contact and /#rules
   function routeFromHash() {
     const h = (location.hash || '').replace('#', '');
-    if (h === 'tickets' || h === 'contact' || h === 'rules' || h === 'orders' || h === 'account' || h === 'services') go(h);
+    if (h === 'tickets' || h === 'contact' || h === 'rules' || h === 'orders' || h === 'account' || h === 'services' || h === 'done') go(h);
   }
   window.addEventListener('hashchange', routeFromHash);
   routeFromHash();

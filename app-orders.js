@@ -97,6 +97,12 @@
   if (nb && window.MutationObserver) new MutationObserver(paintAccount).observe(nb, { childList: true, characterData: true, subtree: true, attributes: true });
   if ($('pbAcctLogin')) $('pbAcctLogin').addEventListener('click', openWallet);
   if ($('pbAcctAdd')) $('pbAcctAdd').addEventListener('click', openWallet);
+  // সাইডবার মেনুর "ফান্ড অ্যাড করুন": লগইন থাকলে সরাসরি টপ-আপ পেজ, না থাকলে লগইন
+  if ($('pbSideAddFund')) $('pbSideAddFund').addEventListener('click', () => {
+    const sc = $('pbSidebarClose');
+    if (sc && $('pbSidebar') && $('pbSidebar').classList.contains('open')) sc.click();
+    if (token() && typeof window.goTopup === 'function') window.goTopup(); else openWallet();
+  });
   if ($('pbAcctAvatar') && $('pbAcctFile')) {
     $('pbAcctAvatar').addEventListener('click', () => { if (token()) $('pbAcctFile').click(); else openWallet(); });
     $('pbAcctFile').addEventListener('change', (e) => { pickPhoto(e.target.files && e.target.files[0]); e.target.value = ''; });
