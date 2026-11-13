@@ -1325,16 +1325,24 @@ async function spd(){
   const draw=()=>{const b=$('#spb');if(!D||!b)return;
     const rows=rowsAll,provs=[...new Set(rows.map(r=>r.provider))].sort(),
       cnt={run:rows.filter(r=>!spFin(r)).length,wait:rows.filter(r=>!spFin(r)&&!(r.started_at>0)).length,ok:rows.filter(r=>spFin(r)&&!spBad(r)).length,bad:rows.filter(spBad).length},
-      show=rows.filter(r=>(!SP.prov||r.provider===SP.prov)&&(SP.st==='all'||(SP.st==='run'?!spFin(r):spFin(r)))),
-      S=spStats(rows.filter(r=>!SP.prov||r.provider===SP.prov)).filter(s=>s.n).sort((a,b2)=>((b2.start_n>0)-(a.start_n>0))||((a.start_med||1e12)-(b2.start_med||1e12))).slice(0,10),nm={};
+      stOk=r=>SP.st==='all'||(SP.st==='run'?!spFin(r):spFin(r)),show=rows.filter(r=>(!SP.prov||r.provider===SP.prov)&&stOk(r)),
+      S=spStats(rows.filter(r=>(!SP.prov||r.provider===SP.prov)&&stOk(r))).filter(s=>s.n).sort((a,b2)=>((b2.start_n>0)-(a.start_n>0))||((a.start_med||1e12)-(b2.start_med||1e12))).slice(0,10),nm={};
     rows.forEach(r=>{const k=r.provider+'|'+r.service_id;if(r.name&&!nm[k])nm[k]=r.name});
     b.innerHTML=`<div class="card lvb"><div class="lvh"><span class="tag lv"><i class="dot"></i>লাইভ</span><b id="spclk"></b></div><div class="lvg"><div><b>${bn(rows.length)}</b><span class="sub">মোট অর্ডার</span></div><div><b class="w">${bn(cnt.run)}</b><span class="sub">চলমান</span></div><div><b class="w">${bn(cnt.wait)}</b><span class="sub">শুরুর অপেক্ষায়</span></div><div><b class="g">${bn(cnt.ok)}</b><span class="sub">সম্পন্ন</span></div><div><b class="hi">${bn(cnt.bad)}</b><span class="sub">ব্যর্থ/আংশিক</span></div></div></div>
 <div class="chips">${[['all','সব'],['run','⏳ চলমান'],['done','✅ শেষ']].map(x=>`<button type="button" class="chip" data-s="${x[0]}" aria-pressed="${SP.st===x[0]}">${x[1]}</button>`).join('')}${rows.some(spFin)?'<button type="button" class="chip" id="repAll">📊 সব রিপোর্ট</button>':''}</div><select id="spp" class="plmore" aria-label="প্রভাইডার"><option value="">সব প্রভাইডার</option>${provs.map(p=>`<option${p===SP.prov?' selected':''}>${esc(p)}</option>`).join('')}</select>`
-    +(S.length?`<div class="card sps"><b>শুরুর গতি — দ্রুত আগে</b>${S.map(s=>{const p=s.k.split('|');return `<div class="spr"><div><b>${esc(p[0])}</b> · #${esc(p[1])}<div class="sub">${esc((nm[s.k]||'').slice(0,60))}</div></div><div class="spv"><b class="${s.start_n?'g':''}">${s.start_n?'~'+mnT(s.start_med):'শুরু হয়নি'}</b><div class="sub">মোট ${s.ok?'~'+mnT(s.total_med):'—'} · ড্রপ ${bn(s.bad)}% · টেস্ট ${bn(s.n)}টি</div></div></div>`}).join('')}</div>`:'')
+    +(S.length?`<div class="card sps"><b>শুরুর গতি — দ্রুত আগে</b>${S.map(s=>{const p=s.k.split('|');return `<div class="spr" data-sv="${esc(s.k)}" role="button" tabindex="0" aria-label="বিস্তারিত দেখুন"><div><b>${esc(p[0])}</b> · #${esc(p[1])}<div class="sub">${esc((nm[s.k]||'').slice(0,60))}</div></div><div class="spv"><b class="${s.start_n?'g':''}">${s.start_n?'~'+mnT(s.start_med):'শুরু হয়নি'}</b><div class="sub">মোট ${s.ok?'~'+mnT(s.total_med):'—'} · ড্রপ ${bn(s.bad)}% · টেস্ট ${bn(s.n)}টি</div></div></div>`}).join('')}</div>`:'')
     +(show.length?show.map(spc).join(''):'<div class="card empty">'+(rows.length?'এই ফিল্টারে কোনো অর্ডার নেই।':'স্টুডিও থেকে দেওয়া কোনো অর্ডার নেই। \'সেরা\' পাতা থেকে টেস্ট অর্ডার দিন।')+'</div>')
     +'<p class="sub">শুধু স্টুডিও থেকে দেওয়া অর্ডার এখানে আসে। সময় প্রতি সেকেন্ডে চলে; চলমান অর্ডার থাকলে প্রতি ২০ সেকেন্ডে প্রভাইডার থেকে স্ট্যাটাস মেলে (শুরুর সময় ±২০ সেকেন্ড হতে পারে)।</p>';
     b.querySelectorAll('[data-s]').forEach(x=>x.onclick=()=>{SP.st=x.dataset.s;draw()});$('#spp').onchange=e=>{SP.prov=e.target.value;draw()};
     const ra=$('#repAll');if(ra)ra.onclick=()=>spRepDlg(spReportAll(rows),'📊 সব রিপোর্ট');
+    const svD=k=>{const L=rows.filter(r=>r.provider+'|'+r.service_id===k&&(!SP.prov||r.provider===SP.prov)&&stOk(r));if(!L.length)return;let d=$('#svD');if(!d){d=document.createElement('dialog');d.id='svD';d.className='svd';d.setAttribute('aria-labelledby','svT');document.body.appendChild(d)}
+      const p=k.split('|'),st=spStats(L)[0];
+      d.innerHTML='<h3 id="svT" style="margin:0 0 4px"></h3><div class="sub" id="svS"></div><div class="svl"></div><div class="acts"><button type="button" class="btn" id="svX">বন্ধ</button></div>';
+      $('#svT').textContent=p[0]+' · #'+p[1];$('#svS').textContent=(nm[k]||'')+' — '+bn(L.length)+'টি অর্ডার'+(st&&st.start_n?' · শুরু ~'+mnT(st.start_med):'');
+      d.querySelector('.svl').innerHTML=L.map(spc).join('');
+      d.querySelectorAll('[data-rep]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.rep);if(r)spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order)});
+      $('#svX').onclick=()=>d.close();d.showModal();tick()};
+    b.querySelectorAll('[data-sv]').forEach(x=>{x.onclick=()=>svD(x.dataset.sv);x.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();svD(x.dataset.sv)}}});
     b.querySelectorAll('[data-rep]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.rep);if(r)spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order)});tick()};
   const load=async(refresh,quiet)=>{const b=$('#sprf'),n=$('#spn');if(!b)return;if(!quiet){b.disabled=true;n.textContent=refresh?'প্রভাইডার থেকে স্ট্যাটাস মেলানো হচ্ছে…':'লোড হচ্ছে…'}
     try{const d=await api('svc_spd',{refresh:!!refresh,limit:150});if(my!==rid)return;D=d;if(d.now)SPoff=d.now-Date.now();rowsAll=spRows(d);spNotify(rowsAll,false);draw();const n2=$('#spn');if(n2)n2.textContent=(refresh?'মেলানো হয়েছে · ':'')+'হালনাগাদ '+dT(spNow())}

@@ -175,3 +175,5 @@ a,img,svg{-webkit-user-drag:none}
 .tl small[data-lv]{font-variant-numeric:tabular-nums}
 pre.rep{white-space:pre-wrap;overflow-wrap:anywhere;max-height:55vh;overflow:auto;margin:0 0 10px;padding:10px;border:1px solid var(--bd);border-radius:10px;font:13px/1.55 inherit;user-select:text}
 #repD .acts{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+
+.spr[data-sv]{cursor:pointer}.spr[data-sv]:active{opacity:.7}dialog.svd{max-height:88vh;overflow:auto}.svd .svl .card{margin:10px 0}
