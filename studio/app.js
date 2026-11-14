@@ -802,9 +802,10 @@ function priceSheet(rows){
 function editSheet(r,after){
   let dlg=$('#esh');if(!dlg){dlg=document.createElement('dialog');dlg.id='esh';document.body.appendChild(dlg)}
   const pls=[...new Set([r.platform,...PLAT.map(p=>p[0])].filter(Boolean))];
-  dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 8px">সম্পাদনা · ID ${esc(r.code)}</h3><label for="enm">সার্ভিসের নাম</label><input id="enm" maxlength="120" value="${esc(r.name)}"><label for="epl">প্ল্যাটফর্ম</label><select id="epl">${pls.map(p=>`<option${p===r.platform?' selected':''}>${esc(p)}</option>`).join('')}</select><label for="ect">ক্যাটেগরি</label><input id="ect" autocomplete="off" value="${esc(r.category)}"><div id="esg" class="csg"></div><p id="eer" class="err" role="alert"></p><div class="acts"><button class="sm" value="cancel" formnovalidate>বাতিল</button><button class="sm" id="etd" type="button">অটো সাজান</button><button class="btn" value="ok">সংরক্ষণ</button></div></form>`;
+  dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 8px">সম্পাদনা · ID ${esc(r.code)}</h3><label for="enm">সার্ভিসের নাম</label><input id="enm" maxlength="120" value="${esc(r.name)}"><label for="epl">প্ল্যাটফর্ম</label><select id="epl">${pls.map(p=>`<option${p===r.platform?' selected':''}>${esc(p)}</option>`).join('')}</select><label for="ect">ক্যাটেগরি</label><input id="ect" autocomplete="off" value="${esc(r.category)}"><div id="esg" class="csg"></div><p id="eer" class="err" role="alert"></p><div class="acts"><button class="sm" value="cancel" formnovalidate>বাতিল</button><button class="sm" id="etd" type="button">অটো সাজান</button><button class="sm" id="epn" type="button">↩ প্রভাইডারের নাম</button><button class="btn" value="ok">সংরক্ষণ</button></div></form>`;
   catSuggest($('#ect'),$('#epl'),$('#esg'),()=>[r.category,(r.tidy||{}).cat]);
   $('#etd').onclick=()=>{const t=r.tidy||{},nn=nice(r)||t.name;if(nn)$('#enm').value=nn;if(t.cat)$('#ect').value=t.cat};
+  $('#epn').onclick=async()=>{const v=await provNameGet(r);if(!v){toast('প্রভাইডারের নাম পাওয়া যায়নি — আগে সিঙ্ক করুন');return}$('#enm').value=v.n};
   dlg.querySelector('form').onsubmit=e=>{if(e.submitter&&e.submitter.value==='ok'&&!$('#enm').value.trim()){e.preventDefault();$('#eer').textContent='নাম দিন'}};
   dlg.onclose=async()=>{if(dlg.returnValue!=='ok')return;
     try{await api('svc_site_edit',{code:r.code,name:$('#enm').value,platform:$('#epl').value,category:$('#ect').value});toast('সংরক্ষিত ✔');SC=null;(after||mload)()}catch(e){if(!authFail(e))toast(e.message)}};
@@ -860,6 +861,7 @@ function catSuggest(inp,sel,box,seed){let L=null,tok=0,typed=false;
 
 /* ---------- ক্যাটেগরি: তালিকা · নতুন তৈরি · ভেতরে সার্ভিসের নাম এডিট ---------- */
 const catUrl=c=>'#cat='+encodeURIComponent(c);
+let CPS='';
 async function siteRows(force){if(SC&&!force)return SC;SC=await scanSite({state:'all'});return SC}
 const matchCat=c=>{const k=stripEmo(c).toLowerCase(),f=(window._sc||[]).find(x=>stripEmo(x).toLowerCase()===k);return f||c};
 function askText(title,val,emo){return new Promise(res=>{let d=$('#ask');if(!d){d=document.createElement('dialog');d.id='ask';document.body.appendChild(d)}
@@ -872,13 +874,15 @@ async function catsPage(){
   el.innerHTML=nav('cats')+'<div class="sk"></div><div class="sk" style="margin-top:12px"></div>';
   try{const rows=await siteRows(true),G={},all=new Set();
     rows.forEach(r=>{if(!r.category)return;all.add(r.category);const p=r.platform_label||'other',g=G[p]||(G[p]={}),c=g[r.category]||(g[r.category]={n:0,on:0});c.n++;if(r.state!=='off')c.on++});
-    const pls=Object.keys(G).sort((a,b)=>Object.keys(G[b]).length-Object.keys(G[a]).length);
-    el.innerHTML=nav('cats')+`<div class="bar"><button class="btn" id="cnew">➕ নতুন ক্যাটেগরি</button></div><div class="bar"><button class="sm" id="cemo" style="flex:1">✨ সব ক্যাটেগরিতে ইমুজি দিন</button><button class="chip" id="cemt" aria-pressed="${emoOn()}" title="ইমুজি দিয়ে সাজানো চালু/বন্ধ">🙂 ইমুজি ${emoOn()?'চালু':'বন্ধ'}</button></div><div class="bar"><input id="cqs" type="search" placeholder="ক্যাটেগরি খুঁজুন" aria-label="ক্যাটেগরি খুঁজুন"></div><p class="sub" id="ccn">মোট ${bn(all.size)}টি ক্যাটেগরি · ${bn(rows.length)}টি সার্ভিস</p><p class="sub" id="cprog" role="status"></p><div id="cgl"></div>`;
+    const PRI=['facebook','instagram','tiktok','youtube','twitter','x','telegram','whatsapp','spotify','google','linkedin','snapchat','threads'],pri=p=>{const i=PRI.indexOf(String(p).toLowerCase());return i<0?99:i},pls=Object.keys(G).sort((a,b)=>pri(a)-pri(b)||Object.keys(G[b]).length-Object.keys(G[a]).length);if(CPS&&!G[CPS])CPS='';
+    const pchips=()=>'<button class="chip" data-p="" aria-pressed="'+(!CPS)+'">সব '+bn(all.size)+'</button>'+pls.map(p=>'<button class="chip" data-p="'+esc(p)+'" aria-pressed="'+(CPS===p)+'">'+logo(p,16)+' '+esc(p)+' '+bn(Object.keys(G[p]).length)+'</button>').join('');
+    el.innerHTML=nav('cats')+'<div class="chips pchips" id="cpl" role="group" aria-label="প্ল্যাটফর্ম" style="margin-top:10px">'+pchips()+'</div>'+`<div class="bar"><button class="btn" id="cnew">➕ নতুন ক্যাটেগরি</button></div><div class="bar"><button class="sm" id="cemo" style="flex:1">✨ সব ক্যাটেগরিতে ইমুজি দিন</button><button class="chip" id="cemt" aria-pressed="${emoOn()}" title="ইমুজি দিয়ে সাজানো চালু/বন্ধ">🙂 ইমুজি ${emoOn()?'চালু':'বন্ধ'}</button></div><div class="bar"><input id="cqs" type="search" placeholder="ক্যাটেগরি খুঁজুন" aria-label="ক্যাটেগরি খুঁজুন"></div><p class="sub" id="ccn">মোট ${bn(all.size)}টি ক্যাটেগরি · ${bn(rows.length)}টি সার্ভিস</p><p class="sub" id="cprog" role="status"></p><div id="cgl"></div>`;
     const draw=q=>{q=q.trim().toLowerCase();let h='';
-      pls.forEach(p=>{const cs=Object.keys(G[p]).filter(c=>!q||c.toLowerCase().indexOf(q)>=0).sort((a,b)=>a.localeCompare(b));if(!cs.length)return;
+      (CPS?pls.filter(x=>x===CPS):pls).forEach(p=>{const cs=Object.keys(G[p]).filter(c=>!q||c.toLowerCase().indexOf(q)>=0).sort((a,b)=>a.localeCompare(b));if(!cs.length)return;
         h+=`<h3 class="sec pc">${logo(p,24)} ${esc(p)} <span class="sub">· ${bn(cs.length)}টি</span></h3><div class="list">`+cs.map(c=>`<a class="card cat" href="${esc(catUrl(c))}"><span><b>${esc(c)}</b><span class="sub" style="display:block">${bn(G[p][c].n)}টি সার্ভিস · চালু ${bn(G[p][c].on)}</span></span><span aria-hidden="true">›</span></a>`).join('')+'</div>'});
-      $('#cgl').innerHTML=h||'<div class="card empty">কিছু পাওয়া যায়নি</div>'};
+      $('#cgl').innerHTML=h||'<div class="card empty">কিছু পাওয়া যায়নি</div>';{const ps=CPS?[CPS]:pls,nc=ps.reduce((a,p)=>a+Object.keys(G[p]).length,0),ns=ps.reduce((a,p)=>a+Object.keys(G[p]).reduce((b,c)=>b+G[p][c].n,0),0);$('#ccn').textContent='মোট '+bn(nc)+'টি ক্যাটেগরি · '+bn(ns)+'টি সার্ভিস'+(CPS?' ('+CPS+')':'')}};
     draw('');$('#cqs').oninput=e=>draw(e.target.value);
+    $('#cpl').onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;CPS=b.dataset.p;$('#cpl').querySelectorAll('[data-p]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.p===CPS)));draw($('#cqs').value)};
     $('#cnew').onclick=()=>catSheet({mode:'new'});
     $('#cemt').onclick=()=>{ls.set('pb_emo',emoOn()?'0':'1');catsPage()};
     $('#cemo').onclick=()=>catsEmoji(rows)}
@@ -901,8 +905,8 @@ async function catsEmoji(rows){
 async function catPage(name){
   cur=null;$('#title').textContent=name;$('#back').hidden=false;const el=$('#main');
   el.innerHTML='<div class="sk"></div><div class="sk" style="margin-top:12px"></div>';
-  try{const rows=await scanSite({category:name,state:'all'}),on=rows.filter(r=>r.state!=='off').length;window._sc=window._sc||[];
-    el.innerHTML=`<div class="card catbar"><div><b style="font-size:18px;word-break:break-word">${esc(name)}</b><div class="sub">${bn(rows.length)}টি সার্ভিস · চালু ${bn(on)}</div></div><div class="acts"><button class="sm" id="kr">✎ নাম বদলান</button><button class="sm" id="ke">✨ ইমুজি</button><button class="sm" id="ka">➕ সার্ভিস যোগ</button><button class="sm" id="kt">🧹 সার্ভিসের নাম সাজান</button><button class="sm dng" id="kd">🗑 মুছুন</button></div></div><div class="bar"><input id="kq" type="search" placeholder="এই ক্যাটেগরির সার্ভিস খুঁজুন (নাম বা আইডি)" aria-label="খুঁজুন"></div><p class="sub">নামের ঘরে সরাসরি লিখুন → 💾 চাপুন। ✨ চাপলে অটো নাম (ইমুজিসহ) বসবে।</p><div class="list" id="kl"></div><div id="kmore"></div>`;
+  try{const rows=await scanSite({category:name,state:'all'}),on=rows.filter(r=>r.state!=='off').length,pl=(rows.find(r=>r.platform_label)||{}).platform_label||'';window._sc=window._sc||[];
+    el.innerHTML=`<div class="card catbar"><div><b style="font-size:18px;word-break:break-word">${esc(name)}</b><div class="sub">${bn(rows.length)}টি সার্ভিস · চালু ${bn(on)}</div>${pl?`<button class="chip" id="kpl" type="button" style="margin-top:8px" aria-label="${esc(pl)} প্ল্যাটফর্মের সব ক্যাটেগরি">${logo(pl,16)} ${esc(pl)} · সব ক্যাটেগরি ›</button>`:''}</div><div class="acts"><button class="sm" id="kr">✎ নাম বদলান</button><button class="sm" id="ke">✨ ইমুজি</button><button class="sm" id="ka">➕ সার্ভিস যোগ</button><button class="sm" id="kt">🧹 সার্ভিসের নাম সাজান</button><button class="sm dng" id="kd">🗑 মুছুন</button></div></div><div class="bar"><input id="kq" type="search" placeholder="এই ক্যাটেগরির সার্ভিস খুঁজুন (নাম বা আইডি)" aria-label="খুঁজুন"></div><p class="sub">নামের ঘরে সরাসরি লিখুন → 💾 চাপুন। ✨ চাপলে অটো নাম (ইমুজিসহ) বসবে।</p><div class="list" id="kl"></div><div id="kmore"></div>`;
     let q='',shown=0;const reload=()=>route();
     const list=()=>rows.filter(r=>!q||qOK(q,r.name+' '+r.code));
     const more=()=>{const L=list();L.slice(shown,shown+60).forEach(r=>$('#kl').appendChild(krow(r,reload)));shown=Math.min(L.length,shown+60);
@@ -910,6 +914,7 @@ async function catPage(name){
     const fresh=()=>{$('#kl').innerHTML='';shown=0;more();if(!list().length)$('#kl').innerHTML='<div class="card empty">কিছু পাওয়া যায়নি</div>'};
     fresh();$('#kq').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{q=e.target.value.trim().toLowerCase();fresh()},250)};
     $('#kr').onclick=()=>catRename(name,nn=>{location.hash=catUrl(nn)});
+    const kp=$('#kpl');if(kp)kp.onclick=()=>{CPS=pl;location.hash='cats'};
     $('#ke').onclick=async()=>{if(busy)return;const nn=catNice(name);if(!nn||nn===name){toast('আগে থেকেই এই নামে সাজানো আছে');return}
       if(!confirm('ক্যাটেগরির নাম বদলাবে:\n'+name+'\n→ '+nn+'\n\n'+bn(rows.length)+'টি সার্ভিসের ক্যাটেগরি বদলাবে। চালিয়ে যাবেন?'))return;
       busy=true;try{await catsEmojiDo([[name,nn]]);toast('ক্যাটেগরির নাম সাজানো হয়েছে ✔');busy=false;location.hash=catUrl(nn)}catch(e){busy=false;if(!authFail(e))toast(e.message)}};
@@ -923,9 +928,12 @@ async function catPage(name){
     $('#kd').onclick=()=>catDelete(name,()=>{location.hash='cats'})
   }catch(e){if(!authFail(e))el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p><button class="btn" id="rt" style="max-width:220px">আবার চেষ্টা করুন</button></div>`,$('#rt').onclick=()=>catPage(name)}}
 /* ক্যাটেগরির ভেতরের একটা সার্ভিস: নাম সরাসরি এডিট */
+/* প্রভাইডারের ডিফল্ট নাম: সাইটের কোড = প্রভাইডারের service_id; ১০ প্রভাইডারের ক্যাশ থেকে নেয় */
+function provNameFor(r){const L=lpRows().filter(x=>String(x.service_id)===String(r.code));if(!L.length)return null;const m=L.find(x=>r.provider&&x.provider===r.provider)||L[0];return m&&m.name?{p:m.provider,n:String(m.name)}:null}
+async function provNameGet(r){let v=provNameFor(r);if(!v){try{await allReady()}catch(_){}v=provNameFor(r)}return v}
 function krow(r,reload){
   const c=document.createElement('div');c.className='card krow'+(r.state==='off'?' dim':'');
-  c.innerHTML=`<div class="khd"><span class="sub">${logo(r.platform_label,18)} ID <b>${esc(r.code)}</b> · খরচ <b>$${esc(r.cost)}</b> · ${bn(r.min)}–${bn(r.max)}${r.state==='off'?' · লুকানো':''}</span><div class="acts2"><button class="sw" role="switch" aria-checked="${r.state!=='off'}" aria-label="সাইটে চালু/বন্ধ" data-h></button></div></div><div class="knm"><input class="nm" maxlength="120" value="${esc(r.name)}" aria-label="সার্ভিসের নাম (ID ${esc(r.code)})"><button class="ib" type="button" data-a title="অটো সাজান (ইমুজিসহ)" aria-label="অটো সাজান">✨</button><button class="ib sv" type="button" data-s hidden title="সংরক্ষণ" aria-label="সংরক্ষণ">💾</button></div><div class="row2"><button class="sm" type="button" data-e>✎ বিস্তারিত এডিট (ক্যাটেগরি/প্ল্যাটফর্ম)</button></div>`;
+  c.innerHTML=`<div class="khd"><span class="sub">${logo(r.platform_label,18)} ID <b>${esc(r.code)}</b> · খরচ <b>$${esc(r.cost)}</b> · ${bn(r.min)}–${bn(r.max)}${r.state==='off'?' · লুকানো':''}</span><div class="acts2"><button class="sw" role="switch" aria-checked="${r.state!=='off'}" aria-label="সাইটে চালু/বন্ধ" data-h></button></div></div><div class="knm"><input class="nm" maxlength="120" value="${esc(r.name)}" aria-label="সার্ভিসের নাম (ID ${esc(r.code)})"><button class="ib" type="button" data-a title="অটো সাজান (ইমুজিসহ)" aria-label="অটো সাজান">✨</button><button class="ib sv" type="button" data-s hidden title="সংরক্ষণ" aria-label="সংরক্ষণ">💾</button></div><div class="sub pvn" hidden></div><div class="row2"><button class="sm" type="button" data-pn>↩ প্রভাইডারের নাম</button><button class="sm" type="button" data-e>✎ বিস্তারিত এডিট (ক্যাটেগরি/প্ল্যাটফর্ম)</button></div>`;
   const inp=c.querySelector('.nm'),sv=c.querySelector('[data-s]'),chk=()=>{sv.hidden=!(inp.value.trim()&&inp.value.trim()!==r.name)};
   inp.oninput=chk;
   const save=async()=>{const nm=inp.value.trim();if(!nm||nm===r.name||busy)return;busy=true;sv.disabled=true;
@@ -934,6 +942,8 @@ function krow(r,reload){
   sv.onclick=save;inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();save()}};
   c.querySelector('[data-a]').onclick=()=>{const nn=nice(r)||(r.tidy&&r.tidy.name);if(!nn){toast('অটো নাম বানানোর মতো তথ্য নেই');return}inp.value=nn;chk();inp.focus()};
   c.querySelector('[data-e]').onclick=()=>editSheet(r,reload);
+  {const pv=c.querySelector('.pvn'),v0=provNameFor(r);if(v0){pv.hidden=false;pv.textContent='প্রভাইডার ('+v0.p+'): '+v0.n}}
+  c.querySelector('[data-pn]').onclick=async()=>{const v=await provNameGet(r);if(!v){toast('প্রভাইডারের নাম পাওয়া যায়নি — আগে সিঙ্ক করুন');return}inp.value=v.n;chk();const pv=c.querySelector('.pvn');pv.hidden=false;pv.textContent='প্রভাইডার ('+v.p+'): '+v.n;inp.focus()};
   c.querySelector('[data-h]').onclick=async ev=>{if(busy)return;const on=r.state==='off',b=ev.currentTarget;busy=true;b.disabled=true;
     try{await api('svc_site_hide',{codes:[r.code],on});r.state=on?'on':'off';b.setAttribute('aria-checked',on);c.classList.toggle('dim',!on);toastU(on?'চালু হয়েছে':'বন্ধ হয়েছে',()=>api('svc_site_hide',{codes:[r.code],on:!on}))}catch(e){if(!authFail(e))toast(e.message)}b.disabled=false;busy=false};
   return c}
@@ -1101,7 +1111,12 @@ function aiInit(){if($('#aiFab'))return;
     $('#aiChips').innerHTML=['TikTok Followers-এর সবচেয়ে সস্তা ৫টা (সব প্রভাইডার)','ফেসবুকের ক্যাটেগরিগুলো দেখাও','কতগুলো সার্ভিসের নাম সাজানো বাকি?','Instagram Followers-এর নাম সাজাও'].map(x=>`<button class="chip" type="button">${esc(x)}</button>`).join('');
     $('#aiChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>send(b.textContent))};
   hello();aiStatus();window._aiClose=close}
-function aiShow(){/* AI রোবট বাদ — বাটন/প্যানেল আর তৈরি হয় না */['#aiFab','#ai'].forEach(q=>{const e=$(q);if(e)e.remove()})}
+/* AI সহকারী: লগইনের পর সব পাতার ওপরে ভাসমান বাটন; লগআউটে লুকায় */
+function aiShow(a){
+  if(!a){['#aiFab','#ai'].forEach(q=>{const e=$(q);if(e)e.hidden=true});return}
+  try{aiInit()}catch(e){console.error(e);return}
+  const F=$('#aiFab'),P=$('#ai');if(!F||!P)return;
+  F.hidden=!P.hidden;try{topLayer(F)}catch(e){}}
 
 /* ---------- রাউটার, লগইন, ইনস্টল ---------- */
 function exc(){cur=null;$('#title').textContent='ব্যতিক্রম';$('#back').hidden=true;const el=$('#main'),I=EXC.items,G=[['new','🆕 নতুন সার্ভিস'],['gone','⚠ প্রভাইডার থেকে চলে গেছে (সাইটে চালু ছিল)'],['price','💲 দাম বদলেছে (৫%+)']];
