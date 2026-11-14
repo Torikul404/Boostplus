@@ -1003,7 +1003,7 @@ function aiFabInit(F){let dr=null;
 
 /* ---------- AI সহকারী (Gemini) — key শুধু এই ডিভাইসের ব্রাউজারে থাকে ---------- */
 const GK='pb_gem_key',GM='pb_gem_model',GOK='pb_gem_ok',GDEF='gemini-3.6-flash';
-const gmodel=()=>{const m=(ls.get(GM)||'').trim();return m&&!/^gemini-(1|2)\./.test(m)?m:GDEF};let gh=[],gbusy=false;
+const gmodel=()=>{const m=(ls.get(GM)||'').trim(),a=(ls.get('pb_gem_auto')||'').trim();if(a&&(!m||m===GDEF))return a;return m&&!/^gemini-(1|2)\./.test(m)?m:GDEF};let gh=[],gbusy=false;
 const SYS=`তুমি "boostplus সার্ভিস স্টুডিও"-র AI সহকারী। সবসময় বাংলায়, ছোট ও পরিষ্কার উত্তর দাও।
 টুল দিয়ে তুমি সাইটের সার্ভিস ও ১০ প্রভাইডারের সার্ভিস খুঁজতে, ক্যাটেগরি/নাম সাজাতে, চালু-বন্ধ করতে, ক্যাটেগরির নাম বদলাতে/মুছতে পারো।
 নিয়ম:
@@ -1065,14 +1065,25 @@ const TOOLFN={
  delete_category(a){return catDeleteCore(a.category)}};
 const gmd=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
 function addMsg(k,t){const b=$('#aiMsgs');if(!b)return null;const d=document.createElement('div');d.className='am '+k;if(k==='ai')d.innerHTML=gmd(t);else d.textContent=t;b.appendChild(d);b.scrollTop=b.scrollHeight;return d}
-async function gcall(){const key=ls.get(GK),model=gmodel(),body={systemInstruction:{parts:[{text:SYS}]},contents:gh,tools:TOOLS,generationConfig:{temperature:.3}};
-  /* ১) নিজের AIza… key থাকলে সরাসরি Google-এ; ব্যর্থ/নেটওয়ার্ক সমস্যা/মডেল নেই হলে ২) Apps Script প্রক্সি (সার্ভারের key + মডেল-ফলব্যাক) */
+const GURL='https://generativelanguage.googleapis.com/v1beta/';
+async function gdirect(key,model,body){const r=await fetch(GURL+'models/'+encodeURIComponent(model)+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body)});const d=await r.json().catch(()=>({}));return{r,d}}
+/* মডেল না পেলে: key-র জন্য চালু থাকা সবচেয়ে নতুন flash মডেল খুঁজে বের করে */
+async function gfindModel(key){try{const r=await fetch(GURL+'models?pageSize=200',{headers:{'x-goog-api-key':key}});if(!r.ok)return null;const d=await r.json(),L=(d.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>String(m.name||'').replace(/^models\//,''));
+  const ver=n=>{const m=n.match(/^gemini-(\d+(?:\.\d+)?)/);return m?parseFloat(m[1]):0};
+  let c=L.filter(n=>/^gemini-\d+(\.\d+)?-flash$/.test(n));if(!c.length)c=L.filter(n=>/^gemini-\d/.test(n)&&/flash/.test(n)&&!/image|tts|live|audio|embed|lite|thinking|robotics|computer/.test(n));
+  c.sort((a,b)=>ver(b)-ver(a));return c[0]||null}catch(_){return null}}
+async function gcall(){const key=ls.get(GK),model=gmodel(),body={systemInstruction:{parts:[{text:SYS}]},contents:gh,tools:TOOLS,generationConfig:{temperature:.3}};let derr=null;
+  /* ১) নিজের AIza… key থাকলে সরাসরি Google-এ (মডেল না থাকলে নিজে খুঁজে নেয়); ব্যর্থ হলে ২) Apps Script প্রক্সি — প্রক্সি না থাকলে Google-এর আসল এরর দেখায় */
   if(key&&!/^AQ\./.test(key)){
-    try{const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body)});
-      const d=await r.json().catch(()=>({}));if(r.ok)return d;if(r.status!==404&&r.status!==400&&r.status!==403&&r.status!==401){const e=new Error((d.error&&d.error.message)||('HTTP '+r.status));e.status=r.status;throw e}}
-    catch(x){if(x&&x.status)throw x}}
-  const p=await api('ai_gemini',Object.assign({model,body},key&&/^AQ\./.test(key)?{key}:{}));
-  if(p.status!==200){const e=new Error((p.data&&p.data.error&&p.data.error.message)||('HTTP '+p.status));e.status=p.status;throw e}return p.data}
+    try{let x=await gdirect(key,model,body);
+      if(x.r.status===404){const alt=await gfindModel(key);if(alt&&alt!==model){const y=await gdirect(key,alt,body);if(y.r.ok){ls.set('pb_gem_auto',alt);return y.d}x=y}}
+      if(x.r.ok)return x.d;
+      const e=new Error((x.d.error&&x.d.error.message)||('HTTP '+x.r.status));e.status=x.r.status;
+      if([400,401,403,404].indexOf(x.r.status)<0)throw e;derr=e}
+    catch(e){if(e&&e.status)throw e}}
+  try{const p=await api('ai_gemini',Object.assign({model,body},key&&/^AQ\./.test(key)?{key}:{}));
+    if(p.status!==200){const e=new Error((p.data&&p.data.error&&p.data.error.message)||('HTTP '+p.status));e.status=p.status;throw e}return p.data}
+  catch(se){if(derr&&se&&se.code==='unknown_action')throw derr;throw se}}
 function gtrim(){if(gh.length<=40)return;let i=gh.length-14;while(i<gh.length&&!(gh[i].role==='user'&&gh[i].parts&&gh[i].parts[0]&&gh[i].parts[0].text!==undefined))i++;gh=i<gh.length?gh.slice(i):gh.slice(-2)}
 async function agent(text){gtrim();gh.push({role:'user',parts:[{text}]});
   for(let i=0;i<8;i++){const d=await gcall(),c=d.candidates&&d.candidates[0];
@@ -1084,7 +1095,7 @@ async function agent(text){gtrim();gh.push({role:'user',parts:[{text}]});
       resp.push({functionResponse:{name:fc.name,response:{result:out}}})}
     gh.push({role:'user',parts:resp})}
   addMsg('ai','অনেক ধাপ হয়ে গেছে — আবার বলুন, কোথায় থেমেছি সেখান থেকে চালাব।')}
-const gerr=e=>e.code==='unknown_action'?'Apps Script-এ নতুন PtServices.gs বসিয়ে আবার Deploy করুন (ai_gemini অ্যাকশন নেই)':e.status===429?'ফ্রি কোটা শেষ বা অনেক দ্রুত পাঠানো হয়েছে — একটু পরে চেষ্টা করুন':e.status===400&&/key/i.test(e.message)||e.status===403?'API key ঠিক নয় বা অনুমতি নেই — ⚙ থেকে দেখুন':e.status===404?'মডেল পাওয়া যায়নি — ⚙ থেকে মডেলের ঘর ফাঁকা করে সংরক্ষণ করুন (ডিফল্ট '+GDEF+')':e.name==='TypeError'?'ইন্টারনেট/নেটওয়ার্ক সমস্যা':e.message;
+const gerr=e=>e.code==='unknown_action'?'Apps Script-এ নতুন PtServices.gs বসিয়ে আবার Deploy করুন (ai_gemini অ্যাকশন নেই)':e.status===429?'ফ্রি কোটা শেষ বা অনেক দ্রুত পাঠানো হয়েছে — একটু পরে চেষ্টা করুন':e.status===400&&/key/i.test(e.message)||e.status===403||e.status===401?'API key ঠিক নয় বা অনুমতি নেই — ⚙ থেকে দেখুন ('+String(e.message||'').slice(0,160)+')':e.status===404?'মডেল পাওয়া যায়নি ও নিজে থেকে খুঁজেও মেলেনি — ⚙ থেকে মডেলের নাম বদলে দেখুন ('+String(e.message||'').slice(0,140)+')':e.name==='TypeError'?'ইন্টারনেট/নেটওয়ার্ক সমস্যা':e.message;
 function aiStatus(){const k=ls.get(GK);$('#aiSt').textContent=k?(ls.get(GOK)?'● সংযুক্ত':'● key আছে'):(ls.get(GOK)?'● সার্ভার key':'○ সার্ভার key');$('#aiSt').className='sub'+(k&&ls.get(GOK)?' ok':'')}
 function aiInit(){if($('#aiFab'))return;
   document.body.insertAdjacentHTML('beforeend',`<button id="aiFab" class="aifab" popover="manual" aria-label="AI সহকারী — টেনে সরানো যায়" title="AI সহকারী (টেনে সরান)" hidden>${ROBOT}</button><section id="ai" class="aipanel" popover="manual" role="dialog" aria-label="AI সহকারী" hidden><header><b class="aiti">${ROBOT.replace('width="30" height="30"','width="22" height="22"')} AI সহকারী</b><span id="aiSt" class="sub"></span><span class="aihs"><button class="ib" id="aiSet" aria-label="সেটিং">⚙</button><button class="ib" id="aiNew" aria-label="নতুন চ্যাট" title="নতুন চ্যাট">↺</button><button class="ib" id="aiX" aria-label="বন্ধ">✕</button></span></header>
@@ -1285,6 +1296,40 @@ const spLoad=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(_)
 const spKey=r=>r.provider+'|'+r.provider_order;
 const spFin=r=>r.completed_at>0||/completed|partial|cancel|refund|fail|error/.test(String(r.status||'').toLowerCase());
 const spBad=r=>/partial|cancel|refund|fail|error/.test(String(r.status||'').toLowerCase());
+const spCan=r=>/cancel|refund|fail|error/.test(String(r.status||'').toLowerCase());
+/* ---------- টেলিগ্রাম: অর্ডার শেষ/ক্যান্সেল হলে লিংকসহ মেসেজ (টোকেন শুধু এই ব্রাউজারে) ---------- */
+const SPK_T='sp_tg_sent_v1';
+const tgCfg=()=>({t:(ls.get('pb_tg_token')||'').trim(),c:(ls.get('pb_tg_chat')||'').trim()});
+const tgOn=()=>{const g=tgCfg();return !!(g.t&&g.c&&ls.get('pb_tg_on')!=='0')};
+async function tgSendMsg(text,g){g=g||tgCfg();const r=await fetch('https://api.telegram.org/bot'+g.t+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:g.c,text:String(text).slice(0,3900)})});let j=null;try{j=await r.json()}catch(_){}if(!j||!j.ok)throw new Error((j&&j.description)||('Telegram '+r.status));return j}
+function spTgText(r){const can=spCan(r),par=/partial/.test(String(r.status||'').toLowerCase()),q=+r.quantity||0,dl=r.delivered!=null?+r.delivered:null,
+  el=r.completed_at>0&&r.ordered_at>0?(r.completed_at-r.ordered_at)/1000:(r.total_secs||0),st=r.started_at>0?(r.start_secs>0?r.start_secs:(r.started_at-r.ordered_at)/1000):0;
+  const L=[can?'🚫 অর্ডার ক্যান্সেল':par?'⚠️ অর্ডার আংশিক':'✅ অর্ডার সম্পন্ন','────────────────','প্রভাইডার: '+r.provider,'সার্ভিস: #'+r.service_id+(r.name?' · '+r.name:''),'প্রভাইডার অর্ডার: #'+r.provider_order,'স্ট্যাটাস: '+(r.status||'—')];
+  if(q)L.push('পরিমাণ: '+bn(q)+(dl!=null?' · ডেলিভারি '+bn(dl):''));
+  if(st>0)L.push('শুরু হতে: '+mnT(st));
+  if(el>0)L.push('মোট সময়: '+mnT(el));
+  if(r.cost_bdt!=null)L.push('খরচ ≈ ৳'+bn(r.cost_bdt));
+  L.push('🔗 লিংক: '+(r.link||'—'));return L.join('\n')}
+let spTgBusy=false;
+async function spTgRun(rows){if(spTgBusy||!tgOn())return;let sent=spLoad(SPK_T);const first=!sent;sent=sent||{};const todo=[];
+  rows.filter(r=>!r._local&&spFin(r)).forEach(r=>{const k=spKey(r);if(sent[k])return;if(first)sent[k]=1;else todo.push(r)});
+  if(first){spSave(SPK_T,sent);return}
+  if(!todo.length)return;spTgBusy=true;
+  try{for(const r of todo.slice(0,15)){try{await tgSendMsg(spTgText(r))}catch(e){break}sent[spKey(r)]=1;spSave(SPK_T,sent);await new Promise(z=>setTimeout(z,1100))}}finally{spTgBusy=false}}
+async function spTgManual(r){if(!tgOn()){toast('আগে টেলিগ্রাম সেটআপ করুন');spTgDlg();return}
+  try{await tgSendMsg(spTgText(r));toast('টেলিগ্রামে পাঠানো হয়েছে ✔')}catch(e){toast('টেলিগ্রাম: '+e.message)}}
+function spTgDlg(){let d=$('#tgD');if(!d){d=document.createElement('dialog');d.id='tgD';d.setAttribute('aria-labelledby','tgT');document.body.appendChild(d)}
+  const g=tgCfg();
+  d.innerHTML=`<form method="dialog"><h3 id="tgT" style="margin:0 0 8px">✈ টেলিগ্রাম মেসেজ</h3><p class="sub">অর্ডার শেষ বা ক্যান্সেল হলে লিংকসহ মেসেজ যাবে। স্পিড টেস্ট পাতা খোলা থাকলে চলে।</p><label for="tgTk">বট টোকেন</label><input id="tgTk" type="password" autocomplete="off" placeholder="123456:ABC…" value="${esc(g.t)}"><label for="tgCh">চ্যাট / গ্রুপ আইডি</label><input id="tgCh" autocomplete="off" placeholder="-100… বা @চ্যানেল" value="${esc(g.c)}"><label class="bsk"><input type="checkbox" id="tgOn" ${ls.get('pb_tg_on')!=='0'?'checked':''}> চালু</label><p class="sub">টোকেন শুধু এই ফোনের ব্রাউজারে থাকে।</p><p class="err" id="tgEr" role="alert"></p><div class="acts"><button class="sm" value="cancel" formnovalidate>বন্ধ</button><button class="sm" id="tgDel" type="button">মুছুন</button><button class="btn" id="tgSv" type="button">সংরক্ষণ ও টেস্ট</button></div></form>`;
+  const er=$('#tgEr'),chip=()=>{const c=$('#tgSet');if(c)c.textContent='✈ টেলিগ্রাম '+(tgOn()?'●':'○')};
+  $('#tgDel').onclick=()=>{ls.del('pb_tg_token');ls.del('pb_tg_chat');ls.del('pb_tg_on');try{localStorage.removeItem(SPK_T)}catch(_){}chip();d.close();toast('টেলিগ্রাম মুছে ফেলা হয়েছে')};
+  $('#tgSv').onclick=async()=>{const t=$('#tgTk').value.trim(),c=$('#tgCh').value.trim(),b=$('#tgSv');
+    if(!/^\d+:[\w-]{20,}$/.test(t)){er.textContent='বট টোকেন ঠিক নয় (যেমন 123456:ABC…)';return}
+    if(!/^-?\d+$|^@\w+$/.test(c)){er.textContent='চ্যাট আইডি ঠিক নয় (যেমন -1001234567890)';return}
+    b.disabled=true;er.textContent='পরীক্ষা হচ্ছে…';
+    try{await tgSendMsg('✅ boostplus স্টুডিও — টেলিগ্রাম সংযোগ ঠিক আছে',{t,c});ls.set('pb_tg_token',t);ls.set('pb_tg_chat',c);ls.set('pb_tg_on',$('#tgOn').checked?'1':'0');try{localStorage.removeItem(SPK_T)}catch(_){}er.textContent='';chip();d.close();toast('টেলিগ্রাম সংযুক্ত ✔ — এখন থেকে নতুন শেষ হওয়া অর্ডারের মেসেজ যাবে')}
+    catch(e){er.textContent='পাঠানো যায়নি: '+e.message}b.disabled=false};
+  d.showModal()}
 let SPoff=0;
 const spNow=()=>Date.now()+SPoff;
 const lvT=s=>{s=Math.max(0,Math.floor(s));if(s<60)return bn(s)+' সে.';if(s<3600)return bn(Math.floor(s/60))+' মি. '+bn(s%60)+' সে.';const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return bn(h)+' ঘ. '+bn(m)+' মি. '+bn(s%60)+' সে.'};
@@ -1334,7 +1379,7 @@ function spRepDlg(txt,title){let d=$('#repD');if(!d){d=document.createElement('d
 /* অর্ডার একটু আগে শেষ হলে: টোস্ট + নোটিফিকেশন + রিপোর্টের বোতাম (প্রতিটা অর্ডারে একবারই) */
 function spNotify(rows,silent){let nt=spLoad(SPK_N);const first=!nt;nt=nt||{};let ch=false;
   rows.filter(r=>!r._local&&spFin(r)).forEach(r=>{const k=spKey(r);if(nt[k])return;nt[k]=1;ch=true;if(silent||first)return;
-    const m='✅ অর্ডার শেষ — #'+r.provider_order+' ('+r.provider+') · রিপোর্ট তৈরি হয়েছে';
+    const m=(spCan(r)?'🚫 অর্ডার ক্যান্সেল — #':'✅ অর্ডার শেষ — #')+r.provider_order+' ('+r.provider+') · রিপোর্ট তৈরি হয়েছে';
     const t=document.createElement('div');t.className='toast';t.setAttribute('role','status');t.append(m+' ');const b=document.createElement('button');b.className='sm';b.textContent='রিপোর্ট';b.onclick=()=>{t.remove();spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order)};t.appendChild(b);document.body.appendChild(t);setTimeout(()=>t.remove(),15000);
     try{if('Notification' in window&&Notification.permission==='granted')navigator.serviceWorker.ready.then(g=>g.showNotification('স্পিড টেস্ট শেষ',{body:m,icon:'icons/admin-192.png',tag:'sp-'+k,data:{h:'spd'}}))}catch(_){}});
   if(ch)spSave(SPK_N,nt)}
@@ -1349,7 +1394,7 @@ const spc=r=>{const fin=spFin(r),bad=spBad(r),cls=fin?(bad?'b':'g'):'',started=r
   return `<div class="card spc ${cls}"><div class="bsh"><span class="tag">🧪 টেস্ট</span><span class="tag">${esc(r._local?'পাঠানো হয়েছে':(r.status||'—'))}</span>${live}</div><b class="bnm">${esc(r.name||r.label||('অর্ডার '+r.provider_order))}</b><div class="sub">${esc(r.provider)} · সার্ভিস ${esc(r.service_id)} · প্রভাইডার অর্ডার #${esc(r.provider_order)}${r.platform?' · '+esc(r.platform):''}</div>
 <div class="tl"><div><span class="sub">অর্ডার</span><b>${dT(r.ordered_at)}</b></div><div><span class="sub">শুরু</span>${startCell}</div><div><span class="sub">শেষ</span>${endCell}</div></div>
 ${pct!=null?`<div class="pbar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div><div class="sub">ডেলিভারি ${bn(r.delivered)} / ${bn(r.quantity)} (${bn(pct)}%) · শুরুর কাউন্ট ${r.start_count!=null?bn(r.start_count):'—'} · বাকি ${bn(r.remains)}${rate?` · গতি ~${bn(rate)}/মিনিট${eta}`:''}</div>`:`<div class="sub">পরিমাণ ${r.quantity?bn(r.quantity):'—'}${r.start_count!=null?' · শুরুর কাউন্ট '+bn(r.start_count):''}${r._local?' · সার্ভারে মেলানো হচ্ছে…':''}</div>`}
-${r.link?`<div class="sub">লিংক: ${lk}</div>`:''}<div class="sub">${r.cost_bdt!=null?'খরচ ≈ ৳'+bn(r.cost_bdt)+' · ':''}শেষ মেলানো ${dT(r.last_checked)}</div>${fin?`<div class="acts"><button type="button" class="sm" data-rep="${esc(spKey(r))}">📄 রিপোর্ট</button></div>`:''}</div>`};
+${r.link?`<div class="sub">লিংক: ${lk}</div>`:''}<div class="sub">${r.cost_bdt!=null?'খরচ ≈ ৳'+bn(r.cost_bdt)+' · ':''}শেষ মেলানো ${dT(r.last_checked)}</div>${fin?`<div class="acts"><button type="button" class="sm" data-rep="${esc(spKey(r))}">📄 রিপোর্ট</button><button type=\"button\" class=\"sm\" data-tg=\"${esc(spKey(r))}\">✈ টেলিগ্রাম</button></div>`:''}</div>`};
 async function spd(){
   cur=null;$('#title').textContent='স্পিড টেস্ট';$('#back').hidden=true;const el=$('#main'),my=rid;
   el.innerHTML=nav('spd')+'<div class="bar"><button type="button" class="btn" id="sprf" style="max-width:240px">↻ এখনই মেলান</button><span class="sub" id="spn" role="status"></span></div><div id="spb"><div class="sk"></div></div>';
@@ -1358,30 +1403,30 @@ async function spd(){
   clearInterval(spTk);spTk=setInterval(tick,1000);
   const draw=()=>{const b=$('#spb');if(!D||!b)return;
     const rows=rowsAll,provs=[...new Set(rows.map(r=>r.provider))].sort(),
-      cnt={run:rows.filter(r=>!spFin(r)).length,wait:rows.filter(r=>!spFin(r)&&!(r.started_at>0)).length,ok:rows.filter(r=>spFin(r)&&!spBad(r)).length,bad:rows.filter(spBad).length},
-      stOk=r=>SP.st==='all'||(SP.st==='run'?!spFin(r):spFin(r)),isAll=SP.st==='all',show=isAll?[]:rows.filter(r=>(!SP.prov||r.provider===SP.prov)&&stOk(r)),
+      cnt={run:rows.filter(r=>!spFin(r)).length,wait:rows.filter(r=>!spFin(r)&&!(r.started_at>0)).length,ok:rows.filter(r=>spFin(r)&&!spCan(r)).length,bad:rows.filter(spCan).length},
+      stOk=r=>SP.st==='all'||(SP.st==='run'?!spFin(r):SP.st==='can'?spCan(r):spFin(r)&&!spCan(r)),isAll=SP.st==='all',show=isAll?[]:rows.filter(r=>(!SP.prov||r.provider===SP.prov)&&stOk(r)),
       S=spStats(rows.filter(r=>(!SP.prov||r.provider===SP.prov)&&stOk(r))).filter(s=>s.n).sort((a,b2)=>((b2.start_n>0)-(a.start_n>0))||((a.start_med||1e12)-(b2.start_med||1e12))).slice(0,10),nm={};
     rows.forEach(r=>{const k=r.provider+'|'+r.service_id;if(r.name&&!nm[k])nm[k]=r.name});const BS=spBest(spStats(rows),nm),TR=spTrend(rows);
-    b.innerHTML=`<div class="card lvb"><div class="lvh"><span class="tag lv"><i class="dot"></i>লাইভ</span><b id="spclk"></b></div><div class="lvg"><div><b>${bn(rows.length)}</b><span class="sub">মোট অর্ডার</span></div><div><b class="w">${bn(cnt.run)}</b><span class="sub">চলমান</span></div><div><b class="w">${bn(cnt.wait)}</b><span class="sub">শুরুর অপেক্ষায়</span></div><div><b class="g">${bn(cnt.ok)}</b><span class="sub">সম্পন্ন</span></div><div><b class="hi">${bn(cnt.bad)}</b><span class="sub">ব্যর্থ/আংশিক</span></div></div></div>
-<div class="chips">${[['all','সব'],['run','⏳ চলমান'],['done','✅ শেষ']].map(x=>`<button type="button" class="chip" data-s="${x[0]}" aria-pressed="${SP.st===x[0]}">${x[1]}${x[0]==='run'?' ('+bn(cnt.run)+')':x[0]==='done'?' ('+bn(cnt.ok+cnt.bad)+')':''}</button>`).join('')}${rows.some(spFin)?'<button type="button" class="chip" id="repAll">📊 সব রিপোর্ট</button>':''}</div><select id="spp" class="plmore" aria-label="প্রভাইডার"><option value="">সব প্রভাইডার</option>${provs.map(p=>`<option${p===SP.prov?' selected':''}>${esc(p)}</option>`).join('')}</select>`
+    b.innerHTML=`<div class="card lvb"><div class="lvh"><span class="tag lv"><i class="dot"></i>লাইভ</span><b id="spclk"></b></div><div class="lvg"><div><b>${bn(rows.length)}</b><span class="sub">মোট অর্ডার</span></div><div><b class="w">${bn(cnt.run)}</b><span class="sub">চলমান</span></div><div><b class="w">${bn(cnt.wait)}</b><span class="sub">শুরুর অপেক্ষায়</span></div><div><b class="g">${bn(cnt.ok)}</b><span class="sub">সম্পন্ন</span></div><div><b class="hi">${bn(cnt.bad)}</b><span class="sub">ক্যান্সেল</span></div></div></div>
+<div class="chips">${[['all','সব'],['run','⏳ চলমান'],['done','✅ শেষ'],['can','🚫 ক্যান্সেল']].map(x=>`<button type="button" class="chip" data-s="${x[0]}" aria-pressed="${SP.st===x[0]}">${x[1]}${x[0]==='run'?' ('+bn(cnt.run)+')':x[0]==='done'?' ('+bn(cnt.ok)+')':x[0]==='can'?' ('+bn(cnt.bad)+')':''}</button>`).join('')}${rows.some(spFin)?'<button type="button" class="chip" id="repAll">📊 সব রিপোর্ট</button>':''}<button type="button" class="chip" id="tgSet">✈ টেলিগ্রাম ${tgOn()?'●':'○'}</button></div><select id="spp" class="plmore" aria-label="প্রভাইডার"><option value="">সব প্রভাইডার</option>${provs.map(p=>`<option${p===SP.prov?' selected':''}>${esc(p)}</option>`).join('')}</select>`
     +(isAll&&BS.groups.length?`<div class="card sps"><b>🏆 সেরা প্রভাইডার</b><div class="sub">একই ধরনের সার্ভিস তুলনা করে (শুরু + মোট সময় + ড্রপ)</div>${BS.groups.slice(0,8).map(g=>{const a=g.l[0],pa=a.k.split('|'),b2=g.l[1],pb=b2.k.split('|');return `<div class="spr" data-sv="${esc(a.k)}" role="button" tabindex="0" aria-label="বিস্তারিত দেখুন"><div><b>${esc(g.label)}</b><div class="sub">🏆 ${esc(pa[0])} · #${esc(pa[1])}${a.n<3?' · কম টেস্ট':''}</div><div class="sub">২য়: ${esc(pb[0])} · #${esc(pb[1])} (~${mnT(b2.start_med)})</div></div><div class="spv"><b class="g">~${mnT(a.start_med)}</b><div class="sub">মোট ${a.ok?'~'+mnT(a.total_med):'—'} · ড্রপ ${bn(a.bad)}%</div></div></div>`}).join('')}</div>`:'')
     +(isAll&&TR.length?`<div class="card sps"><b>📈 শুরুর সময়ের ধারা</b><div class="sub">প্রভাইডারভিত্তিক দৈনিক মিডিয়ান (শেষ ১৪ দিন)</div>${TR.map(t=>{const a=t.pts[0],z=t.pts[t.pts.length-1],up=z>a*1.15,dn=z<a*.85;return `<div class="spr"><div><b>${esc(t.p)}</b><div class="sub">${bn(t.pts.length)} দিনের তথ্য</div></div><div class="spv"><span class="spkw ${up?'hi':dn?'g':''}">${spSpark(t.pts,110,28)}</span><div class="sub">~${mnT(a)} → ~${mnT(z)}${up?' 🔺 ধীর':dn?' 🔻 দ্রুত':''}</div></div></div>`}).join('')}</div>`:'')
     +(isAll&&S.length?`<div class="card sps"><b>শুরুর গতি — দ্রুত আগে</b>${S.map(s=>{const p=s.k.split('|');return `<div class="spr" data-sv="${esc(s.k)}" role="button" tabindex="0" aria-label="বিস্তারিত দেখুন"><div><b>${esc(p[0])}</b> · #${esc(p[1])}${BS.by[s.k]?' <span class="bst">🏆 সেরা</span>':''}<div class="sub">${esc((nm[s.k]||'').slice(0,60))}</div></div><div class="spv"><b class="${s.start_n?'g':''}">${s.start_n?'~'+mnT(s.start_med):'শুরু হয়নি'}</b><div class="sub">মোট ${s.ok?'~'+mnT(s.total_med):'—'} · ড্রপ ${bn(s.bad)}% · টেস্ট ${bn(s.n)}টি</div></div></div>`}).join('')}</div>`:'')
-    +(isAll?'<div class="card empty">অর্ডার দেখতে ⏳ চলমান ('+bn(cnt.run)+') বা ✅ শেষ ('+bn(cnt.ok+cnt.bad)+') ট্যাব চাপুন।</div>':show.length?show.map(spc).join(''):'<div class="card empty">'+(rows.length?(SP.st==='run'?'এখন কোনো চলমান অর্ডার নেই।':'এখনো কোনো শেষ হওয়া অর্ডার নেই।'):'স্টুডিও থেকে দেওয়া কোনো অর্ডার নেই। \'সেরা\' পাতা থেকে টেস্ট অর্ডার দিন।')+'</div>')
+    +(isAll?'<div class="card empty">অর্ডার দেখতে ⏳ চলমান ('+bn(cnt.run)+'), ✅ শেষ ('+bn(cnt.ok)+') বা 🚫 ক্যান্সেল ('+bn(cnt.bad)+') ট্যাব চাপুন।</div>':show.length?show.map(spc).join(''):'<div class="card empty">'+(rows.length?(SP.st==='run'?'এখন কোনো চলমান অর্ডার নেই।':SP.st==='can'?'কোনো ক্যান্সেল অর্ডার নেই।':'এখনো কোনো শেষ হওয়া অর্ডার নেই।'):'স্টুডিও থেকে দেওয়া কোনো অর্ডার নেই। \'সেরা\' পাতা থেকে টেস্ট অর্ডার দিন।')+'</div>')
     +'<p class="sub">শুধু স্টুডিও থেকে দেওয়া অর্ডার এখানে আসে। সময় প্রতি সেকেন্ডে চলে; চলমান অর্ডার থাকলে প্রতি ২০ সেকেন্ডে প্রভাইডার থেকে স্ট্যাটাস মেলে (শুরুর সময় ±২০ সেকেন্ড হতে পারে)।</p>';
     b.querySelectorAll('[data-s]').forEach(x=>x.onclick=()=>{SP.st=x.dataset.s;draw()});$('#spp').onchange=e=>{SP.prov=e.target.value;draw()};
-    const ra=$('#repAll');if(ra)ra.onclick=()=>spRepDlg(spReportAll(rows),'📊 সব রিপোর্ট');
+    const ra=$('#repAll');if(ra)ra.onclick=()=>spRepDlg(spReportAll(rows),'📊 সব রিপোর্ট');$('#tgSet').onclick=spTgDlg;
     const svD=k=>{const L=rows.filter(r=>r.provider+'|'+r.service_id===k&&(!SP.prov||r.provider===SP.prov)&&stOk(r));if(!L.length)return;let d=$('#svD');if(!d){d=document.createElement('dialog');d.id='svD';d.className='svd';d.setAttribute('aria-labelledby','svT');document.body.appendChild(d)}
       const p=k.split('|'),st=spStats(L)[0];
       d.innerHTML='<h3 id="svT" style="margin:0 0 4px"></h3><div class="sub" id="svS"></div><div id="svC"></div><div class="svl"></div><div class="acts"><button type="button" class="btn" id="svX">বন্ধ</button></div>';
       $('#svT').textContent=p[0]+' · #'+p[1];$('#svS').textContent=(nm[k]||'')+' — '+bn(L.length)+'টি অর্ডার'+(st&&st.start_n?' · শুরু ~'+mnT(st.start_med):'');
       const cp=L.filter(r=>r.started_at>0&&r.start_secs>0&&r.ordered_at>0).sort((x,y)=>x.ordered_at-y.ordered_at).map(r=>r.start_secs);$('#svC').innerHTML=cp.length>=2?'<div class="sub" style="margin-top:6px">শুরুর সময় — পুরোনো → নতুন</div><div class="spkw g">'+spSpark(cp,260,40)+'</div><div class="sub">~'+mnT(cp[0])+' → ~'+mnT(cp[cp.length-1])+'</div>':'';d.querySelector('.svl').innerHTML=L.map(spc).join('');
-      d.querySelectorAll('[data-rep]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.rep);if(r)spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order)});
+      d.querySelectorAll('[data-rep]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.rep);if(r)spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order)});d.querySelectorAll('[data-tg]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.tg);if(r)spTgManual(r)});
       $('#svX').onclick=()=>d.close();d.showModal();tick()};
     b.querySelectorAll('[data-sv]').forEach(x=>{x.onclick=()=>svD(x.dataset.sv);x.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();svD(x.dataset.sv)}}});
-    b.querySelectorAll('[data-rep]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.rep);if(r)spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order)});tick()};
+    b.querySelectorAll('[data-rep]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.rep);if(r)spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order)});b.querySelectorAll('[data-tg]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.tg);if(r)spTgManual(r)});tick()};
   const load=async(refresh,quiet)=>{const b=$('#sprf'),n=$('#spn');if(!b)return;if(!quiet){b.disabled=true;n.textContent=refresh?'প্রভাইডার থেকে স্ট্যাটাস মেলানো হচ্ছে…':'লোড হচ্ছে…'}
-    try{const d=await api('svc_spd',{refresh:!!refresh,limit:150});if(my!==rid)return;D=d;if(d.now)SPoff=d.now-Date.now();rowsAll=spRows(d);spNotify(rowsAll,false);draw();const n2=$('#spn');if(n2)n2.textContent=(refresh?'মেলানো হয়েছে · ':'')+'হালনাগাদ '+dT(spNow())}
+    try{const d=await api('svc_spd',{refresh:!!refresh,limit:150});if(my!==rid)return;D=d;if(d.now)SPoff=d.now-Date.now();rowsAll=spRows(d);spNotify(rowsAll,false);spTgRun(rowsAll);draw();const n2=$('#spn');if(n2)n2.textContent=(refresh?'মেলানো হয়েছে · ':'')+'হালনাগাদ '+dT(spNow())}
     catch(e){if(!authFail(e)&&!quiet&&$('#spb')){if(!D)$('#spb').innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`;else{const n2=$('#spn');if(n2)n2.textContent='মেলানো যায়নি: '+e.message}}}
     const b2=$('#sprf');if(b2)b2.disabled=false};
   $('#sprf').onclick=()=>load(true);
