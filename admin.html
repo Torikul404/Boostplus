@@ -1084,7 +1084,10 @@
         topups.slice(0, 8).map(function (a) {
           return "<div style='padding:8px 0;border-top:1px solid rgba(245,158,11,0.25);font-size:13px;'>" +
             "<b>" + esc(a.provider || "?") + "</b> — " + esc(a.error || "") + "<br>" +
-            "Order: <code>" + esc(a.order_id || "") + "</code> · " + esc(a.service_code || "") + (a.qty ? " × " + esc(a.qty) : "") + " · ৳" + esc(a.amount_bdt || "") +
+            "Order: <code>" + esc(a.order_id || "") + "</code> · ৳" + esc(a.amount_bdt || "") +
+            (a.user_mobile ? "<div style='margin-top:4px;'>👤 <b>" + esc(a.user_name || "") + "</b> " + esc(a.user_mobile) + (a.user_balance != null ? " · 💰 ব্যালেন্স ৳" + esc(a.user_balance) + (a.user_balance_before != null ? " <span style='opacity:.75'>(আগে ৳" + esc(a.user_balance_before) + ")</span>" : "") : "") + "</div>" : "") +
+            "<div style='margin-top:4px;'>📦 " + esc(a.service_name || "—") + " <span style='opacity:.75'>(ID " + esc(a.service_code || "") + ")</span>" + (a.platform ? " · " + esc(a.platform) : "") + "</div>" +
+            "<div style='opacity:.9;'>🔢 পরিমাণ: <b>" + esc(a.qty || "") + "</b>" + (a.link ? " · 🔗 <span style='word-break:break-all;'>" + esc(a.link) + "</span>" : "") + "</div>" +
             (a.rate_usd > 0 ? "<div style='margin-top:4px;opacity:.9;'>রেট $" + esc(a.rate_usd) + "/1K → এই অর্ডার <b>$" + Number(a.need_usd || 0).toFixed(4) + "</b> (৳" + esc(a.need_bdt) + ")</div>" : "") +
             (a.held_count > 1 ? "<div style='opacity:.9;'>আটকে আছে " + esc(a.held_count) + "টি অর্ডার · মোট $" + Number(a.held_need_usd || 0).toFixed(4) + "</div>" : "") +
             (a.balance_usd != null ? "<div style='opacity:.9;'>প্যানেলে আছে $" + Number(a.balance_usd).toFixed(4) + "</div>" : "") +
