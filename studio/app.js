@@ -10,7 +10,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const bn=n=>(+n||0).toLocaleString('bn-BD');
 const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
-let token=ls.get('pb_studio_token')||'',busy=false,st={q:'',state:'all',cat:'',off:0},cur=null,lastList=null,qt=null,SC=null,fabMoved=false;
+let token=ls.get('pb_studio_token')||'',busy=false,st={q:'',state:'all',cat:'',off:0,sort:''},cur=null,lastList=null,qt=null,SC=null,fabMoved=false;
 const ERR={unauthorized:'টোকেন ঠিক নয়',locked_out:'অনেকবার ভুল হয়েছে — কিছুক্ষণ পরে চেষ্টা করুন',no_config:'এই প্রভাইডারের API সেট করা নেই',bad_json:'প্রভাইডার সঠিক উত্তর দেয়নি',provider_error:'প্রভাইডার ত্রুটি দিয়েছে',not_collected:'আগে "সংগ্রহ করুন" চাপুন',code_conflict:'এই আইডি সাইটে অন্য প্রভাইডারের সার্ভিস হিসেবে আছে',previously_removed:'এই সার্ভিস আগে সাইট থেকে বাদ দেওয়া হয়েছিল',category_required:'ক্যাটেগরি দিন',price_required:'দাম দিন',svc_failed:'সার্ভারে সমস্যা হয়েছে',unknown_action:'সার্ভারে নতুন কোড চালু হয়নি — Apps Script-এ PtServices.gs ও PtOrder.gs বসিয়ে Deploy → Manage deployments → Edit → New version দিন'};
 const mem={};let rid=0;
 function wipe(){for(const k in mem)delete mem[k];try{Object.keys(localStorage).filter(k=>k.indexOf('pbc_')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}}
@@ -120,12 +120,15 @@ function chgNotify(L){const rm=L.reduce((a,x)=>a+x.rm,0),up=L.reduce((a,x)=>a+x.
   try{if('Notification' in window&&Notification.permission==='granted')navigator.serviceWorker.ready.then(r=>r.showNotification('সার্ভিস স্টুডিও',{body:msg,icon:'icons/admin-192.png',tag:'prov-chg',data:{h:'chg'}}))}catch(_){}}
 /* নোটিফিকেশনের অনুমতি — লগইনের পর প্রথম ট্যাপে একবারই চায় */
 addEventListener('click',()=>{if(!token||!('Notification' in window)||Notification.permission!=='default'||ls.get('pb_notif_asked'))return;ls.set('pb_notif_asked','1');toast('প্রভাইডারে পরিবর্তন হলে জানাতে নোটিফিকেশনের অনুমতি দিন');setTimeout(()=>{try{Notification.requestPermission()}catch(_){}},900)},{passive:true});
+/* দাম অনুযায়ী সাজানো: asc = কম→বেশি, desc = বেশি→কম; দাম নেই/০ হলে সবসময় শেষে */
+function rateCmp(dir){const k=dir==='desc'?-1:1,v=r=>{const x=Number(r.rate);return x>0?x:null};return (a,b)=>{const x=v(a),y=v(b);if(x===null&&y===null)return 0;if(x===null)return 1;if(y===null)return -1;return k*(x-y)}}
 function provList(c,d,cp){const q=String(d.q||'').toLowerCase().trim(),cat=String(d.category||''),fl=String(d.state||'all'),pf=String(d.platform||'').toLowerCase(),cm={};
   if(CAT)CAT.rows.forEach(r=>{cm[r.code]=r.state});
   let all=c.rows.map(r=>{const o=Object.assign({},r);o.state=CAT?(cm[r.service_id]||'off'):(r.state||'off');return o});
   const cs={};all.forEach(r=>{cs[r.category]=(cs[r.category]||0)+1});
   if(cp&&pf)all=all.filter(r=>{const P=pick(NP,r.category)||pick(NP,r.name);return P&&(P[0].toLowerCase()===pf||pf.indexOf(P[0].toLowerCase())>=0)});
   const out=all.filter(r=>(!cat||r.category===cat)&&(fl==='all'||r.state===fl)&&(!q||qOK(q,String(r.name)+' '+r.service_id+' '+r.category)));
+  if(d.sort==='asc'||d.sort==='desc')out.sort(rateCmp(d.sort));
   const off=Math.max(0,+d.offset||0),lim=Math.min(200,+d.limit||100);
   if(!c._pl||c._plN!==c.rows.length){const m={};['Facebook','Instagram','TikTok','Twitter / X','Telegram','WhatsApp','YouTube'].forEach(k=>{m[k]=0});c.rows.forEach(r=>{const P=pick(NP,r.category)||pick(NP,r.name);if(P)m[P[0]]=(m[P[0]]||0)+1});c._pl=Object.keys(m).map(k=>({label:k,n:m[k]})).sort((a,b)=>b.n-a.n);c._plN=c.rows.length}
   const pls=c._pl;
@@ -186,7 +189,7 @@ function lpByPlat(d){const label=String(d.label||''),q=String(d.q||'').toLowerCa
     pv[r.provider]=(pv[r.provider]||0)+1;if(provs.length&&provs.indexOf(r.provider)<0)return;
     const tl=lpType(r);types[tl]=(types[tl]||0)+1;if(type&&tl!==type)return;
     const st=cm[r.service_id]||'off';if(fl!=='all'&&st!==fl)return;const o=Object.assign({},r);o.state=st;all.push(o)});
-  all.sort((a,b)=>Number(a.rate)-Number(b.rate));
+  all.sort(rateCmp(d.sort==='desc'?'desc':'asc'));
   const off=Math.max(0,+d.offset||0),lim=Math.min(80,+d.limit||40),sc={};CAT.rows.forEach(r=>{if(r.category)sc[r.category]=1});
   let fx;for(const p of SNAP_P){if(PC[p]&&PC[p].ex&&PC[p].ex.fx){fx=PC[p].ex.fx;break}}
   return{ok:true,total:all.length,provs:Object.keys(pv).map(k=>[k,pv[k]]).sort((a,b)=>b[1]-a[1]),rows:all.slice(off,off+lim),types:Object.keys(types).map(k=>[k,types[k]]).sort((a,b)=>b[1]-a[1]),fx,site_categories:Object.keys(sc).sort()}}
@@ -269,16 +272,16 @@ async function provider(p,more){
   const hq=!more&&document.activeElement&&document.activeElement.id==='q',my=more?provTok:++provTok;
   if(!more){st.off=0;if(selProv!==p){sel.clear();selProv=p}bulkBar();if(!hq)el.innerHTML='<div class="sk"></div>'}
   try{
-    const d=await pageRows('svc_list',{provider:p,q:st.q,state:st.state,category:st.cat,platform:st.plat||''},st.off,50,st.cat?'':(st.type||''));
+    const d=await pageRows('svc_list',{provider:p,q:st.q,state:st.state,category:st.cat,platform:st.plat||'',sort:st.sort||''},st.off,50,st.cat?'':(st.type||''));
     if(my!==provTok)return;
     if(!more){lastList=d;
       el.innerHTML=tiles(d.platforms||[],st.plat||'')+`<div class="bar"><input id="q" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি খুঁজুন" value="${esc(st.q)}" aria-label="খুঁজুন"></div><div id="cats">${catUI(catsFor(d.categories,st.plat),st)}</div>
-      <div class="chips" role="group" aria-label="অবস্থা">${[['all','সব'],['on','চালু'],['off','বন্ধ'],['conflict','জট']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${st.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="sa">সব বাছুন</button><button class="chip" id="csv">⤓ CSV</button></div>
+      <div class="chips" role="group" aria-label="অবস্থা">${[['all','সব'],['on','চালু'],['off','বন্ধ'],['conflict','জট']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${st.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="sa">সব বাছুন</button><button class="chip" id="csv">⤓ CSV</button></div><div class="chips" role="group" aria-label="দাম সাজান"><button class="chip" data-so="asc" aria-pressed="${st.sort==='asc'}">দাম: কম → বেশি</button><button class="chip" data-so="desc" aria-pressed="${st.sort==='desc'}">দাম: বেশি → কম</button></div>
       <p class="sub" id="cnt"></p><div class="list" id="rows"></div><div id="moreWrap"></div>`;
       $('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{st.q=e.target.value;provider(p)},350)};
       if(hq){const qi=$('#q');qi.focus();try{qi.setSelectionRange(qi.value.length,qi.value.length)}catch(_){}}
       bindCat($('#cats'),st,()=>provider(p));
-      el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{st.state=b.dataset.s;provider(p)});
+      el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{st.state=b.dataset.s;provider(p)});el.querySelectorAll('[data-so]').forEach(b=>b.onclick=()=>{st.sort=st.sort===b.dataset.so?'':b.dataset.so;provider(p)});
       $('#csv').onclick=()=>dl(p);bindTiles(el,l=>{st.plat=l;st.cat='';provider(p)});$('#sa').onclick=()=>el.querySelectorAll('.sel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange()}});
     }else lastList.rows=lastList.rows.concat(d.rows);
     $('#cnt').textContent=`মোট ${bn(d.total)}টি${d.fx?'':' · USD→৳ রেট সেট নেই (দাম USD-তে দিন)'}`;
@@ -694,7 +697,7 @@ function layout(v,pre,base,raw,em){const t=raw.map(x=>em?emTag(x):x),q=raw.findI
   return pre+base+' – '+J(t)}
 
 /* ---------- প্ল্যাটফর্ম হাব ---------- */
-let ps={q:'',type:'',state:'all',off:0};
+let ps={q:'',type:'',state:'all',off:0,sort:'asc'};
 async function plat(){
   cur=null;$('#title').textContent='প্ল্যাটফর্ম';$('#back').hidden=true;const el=$('#main');el.innerHTML=nav('plat')+'<div class="sk"></div>';
   try{await swr('svc_platforms',{},d=>{
@@ -702,16 +705,17 @@ async function plat(){
     const pr=$('#plr');if(pr)pr.onchange=()=>{if(pr.value)location.hash='pl='+encodeURIComponent(pr.value)};
   });}catch(e){if(!authFail(e))el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`}}
 function platPage(label){
-  cur=null;$('#title').textContent=label;$('#back').hidden=false;const el=$('#main');ps={q:'',type:'',state:'all',off:0,prov:[]};
-  el.innerHTML=`<div class="phd">${logo(label,48)}<div><b>${esc(label)}</b><div class="sub" id="pcnt"></div></div></div><div class="bar"><input id="pq" type="search" placeholder="নাম বা আইডি খুঁজুন" aria-label="খুঁজুন"></div><div class="chips" id="ppv"></div><div class="chips" id="pty"></div><div class="chips">${[['all','সব'],['on','চালু'],['off','বন্ধ']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${s[0]==='all'}">${s[1]}</button>`).join('')}<button class="chip" id="psa">সব বাছুন</button></div><div class="list" id="pl"></div><div id="pmore"></div>`;
+  cur=null;$('#title').textContent=label;$('#back').hidden=false;const el=$('#main');ps={q:'',type:'',state:'all',off:0,prov:[],sort:'asc'};
+  el.innerHTML=`<div class="phd">${logo(label,48)}<div><b>${esc(label)}</b><div class="sub" id="pcnt"></div></div></div><div class="bar"><input id="pq" type="search" placeholder="নাম বা আইডি খুঁজুন" aria-label="খুঁজুন"></div><div class="chips" id="ppv"></div><div class="chips" id="pty"></div><div class="chips">${[['all','সব'],['on','চালু'],['off','বন্ধ']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${s[0]==='all'}">${s[1]}</button>`).join('')}<button class="chip" id="psa">সব বাছুন</button></div><div class="chips" id="pso" role="group" aria-label="দাম সাজান"><button class="chip" data-so="asc" aria-pressed="true">দাম: কম → বেশি</button><button class="chip" data-so="desc" aria-pressed="false">দাম: বেশি → কম</button></div><div class="list" id="pl"></div><div id="pmore"></div>`;
+  $('#pso').querySelectorAll('[data-so]').forEach(b=>b.onclick=()=>{ps.sort=b.dataset.so;$('#pso').querySelectorAll('[data-so]').forEach(x=>x.setAttribute('aria-pressed',x===b));pload(label)});
   $('#psa').onclick=()=>el.querySelectorAll('#pl .sel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange()}});
   $('#pq').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{ps.q=e.target.value;pload(label)},350)};
   el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ps.state=b.dataset.s;el.querySelectorAll('[data-s]').forEach(x=>x.setAttribute('aria-pressed',x===b));pload(label)});
   pload(label)}
 async function pload(label,more){
   if(!more)ps.off=0;const box=$('#pl');if(!more)box.innerHTML='<div class="sk"></div>';
-  try{const d=await api('svc_by_platform',{label,q:ps.q,type:ps.type,state:ps.state,provs:ps.prov,offset:ps.off,limit:40});d.cmp=1;window._fx=d.fx;window._sc=d.site_categories;
-    $('#pcnt').textContent=`মোট ${bn(d.total)}টি · সস্তা আগে`;
+  try{const d=await api('svc_by_platform',{label,q:ps.q,type:ps.type,state:ps.state,provs:ps.prov,sort:ps.sort,offset:ps.off,limit:40});d.cmp=1;window._fx=d.fx;window._sc=d.site_categories;
+    $('#pcnt').textContent=`মোট ${bn(d.total)}টি · ${ps.sort==='desc'?'দামি আগে':'সস্তা আগে'}`;
     $('#ppv').innerHTML=d.provs&&d.provs.length>1?`<button class="chip" data-pv="" aria-pressed="${!ps.prov.length}">সব প্রভাইডার</button>`+d.provs.map(v=>`<button class="chip" data-pv="${esc(v[0])}" aria-pressed="${ps.prov.includes(v[0])}">${esc(v[0])} ${bn(v[1])}</button>`).join(''):'';
     $('#ppv').querySelectorAll('[data-pv]').forEach(b=>b.onclick=()=>{const v=b.dataset.pv;ps.prov=!v?[]:ps.prov.includes(v)?ps.prov.filter(x=>x!==v):ps.prov.concat(v);ps.type='';pload(label)});
     $('#pty').innerHTML=`<button class="chip" data-t=" aria-pressed="${!ps.type}">সব ধরন</button>`+d.types.map(t=>`<button class="chip" data-t="${esc(t[0])}" aria-pressed="${ps.type===t[0]}">${esc(t[0])} ${bn(t[1])}</button>`).join('');
