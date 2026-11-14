@@ -1074,7 +1074,7 @@ async function gfindModel(key){try{const r=await fetch(GURL+'models?pageSize=200
   c.sort((a,b)=>ver(b)-ver(a));return c[0]||null}catch(_){return null}}
 async function gcall(){const key=ls.get(GK),model=gmodel(),body={systemInstruction:{parts:[{text:SYS}]},contents:gh,tools:TOOLS,generationConfig:{temperature:.3}};let derr=null;
   /* ১) নিজের AIza… key থাকলে সরাসরি Google-এ (মডেল না থাকলে নিজে খুঁজে নেয়); ব্যর্থ হলে ২) Apps Script প্রক্সি — প্রক্সি না থাকলে Google-এর আসল এরর দেখায় */
-  if(key&&!/^AQ\./.test(key)){
+  if(key){
     try{let x=await gdirect(key,model,body);
       if(x.r.status===404){const alt=await gfindModel(key);if(alt&&alt!==model){const y=await gdirect(key,alt,body);if(y.r.ok){ls.set('pb_gem_auto',alt);return y.d}x=y}}
       if(x.r.ok)return x.d;
@@ -1099,7 +1099,7 @@ const gerr=e=>e.code==='unknown_action'?'Apps Script-এ নতুন PtServices
 function aiStatus(){const k=ls.get(GK);$('#aiSt').textContent=k?(ls.get(GOK)?'● সংযুক্ত':'● key আছে'):(ls.get(GOK)?'● সার্ভার key':'○ সার্ভার key');$('#aiSt').className='sub'+(k&&ls.get(GOK)?' ok':'')}
 function aiInit(){if($('#aiFab'))return;
   document.body.insertAdjacentHTML('beforeend',`<button id="aiFab" class="aifab" popover="manual" aria-label="AI সহকারী — টেনে সরানো যায়" title="AI সহকারী (টেনে সরান)" hidden>${ROBOT}</button><section id="ai" class="aipanel" popover="manual" role="dialog" aria-label="AI সহকারী" hidden><header><b class="aiti">${ROBOT.replace('width="30" height="30"','width="22" height="22"')} AI সহকারী</b><span id="aiSt" class="sub"></span><span class="aihs"><button class="ib" id="aiSet" aria-label="সেটিং">⚙</button><button class="ib" id="aiNew" aria-label="নতুন চ্যাট" title="নতুন চ্যাট">↺</button><button class="ib" id="aiX" aria-label="বন্ধ">✕</button></span></header>
-<div id="aiKey" class="aikey" hidden><label for="aiK">Gemini API key</label><input id="aiK" type="password" autocomplete="off" placeholder="AIza…"><label for="aiM">মডেল</label><input id="aiM" autocomplete="off"><p class="sub">key শুধু এই ফোনের ব্রাউজারে থাকে। Google AI Studio-তে key-তে সীমা (restriction) বেঁধে রাখুন।</p><p class="err" id="aiKe" role="alert"></p><div class="acts"><button class="sm" id="aiDel" type="button">key মুছুন</button><button class="btn" id="aiSave" type="button">সংরক্ষণ ও পরীক্ষা</button></div></div>
+<div id="aiKey" class="aikey" hidden><label for="aiK">Gemini API key</label><input id="aiK" type="password" autocomplete="off" placeholder="AIza…"><label for="aiM">মডেল</label><input id="aiM" autocomplete="off"><p class="sub">key শুধু এই ফোনের ব্রাউজারে থাকে। Google AI Studio-তে key-তে সীমা (restriction) বেঁধে রাখুন। (অ্যাপ সংস্করণ v93)</p><p class="err" id="aiKe" role="alert"></p><div class="acts"><button class="sm" id="aiDel" type="button">key মুছুন</button><button class="btn" id="aiSave" type="button">সংরক্ষণ ও পরীক্ষা</button></div></div>
 <div id="aiMsgs" class="aimsgs" aria-live="polite"></div><div id="aiChips" class="chips"></div><form id="aiForm"><input id="aiIn" placeholder="যা করাতে চান লিখুন…" autocomplete="off" aria-label="বার্তা"><button class="btn" id="aiGo">পাঠান</button></form></section>`);
   const P=$('#ai'),F=$('#aiFab');aiFabInit(F);topLayer(P);topLayer(F);
   const open=()=>{P.hidden=false;F.hidden=true;topLayer(P);aiStatus();$('#aiIn').focus()};
