@@ -5,10 +5,13 @@
   "use strict";
   var API = "https://script.google.com/macros/s/AKfycbxacUqhDDc_2kRsedBF_x8zTrqUhNloQryVEkKuJzDC7SAyh_po6BbxX2F0ZLrrPmhV/exec"; // app-core.js-এর BOOSTPLUS_SHEET_API-র সাথে এক রাখুন
   var CFG = { pay: "01921018882", nagadVirtual: "9856 000883905438", min: 20, minutes: 15 }; // nagadVirtual ফাঁকা রাখলে সারিটি লুকায়
+  var FEE = { bkash: 18.5, nagad: 15, rocket: 17, npsb: 10 }; // প্রতি ১০০০ টাকায় ফি (৳); ব্যাকএন্ড Code.gs-এর TOPUP_FEE_PER_1000-এর সাথে এক রাখুন
   var IMG = "topup/img/", KEY = "pb_topup", TOK = "pb_wallet_token";
   var M = { bkash: { n: "bKash", c: "#d10f63" }, nagad: { n: "Nagad", c: "#e8532a" }, rocket: { n: "Rocket", c: "#8c2b8f" }, npsb: { n: "NPSB", c: "#4f46e5" } };
   var S = (function () { try { return Object.assign({ lang: "bn", amt: 0, m: "", w: "bkash", sender: "", id: "", order: "", res: "", end: 0, bal: null }, JSON.parse(sessionStorage.getItem(KEY) || "{}")); } catch (e) { return { lang: "bn", amt: 0, m: "", w: "bkash", sender: "", id: "", order: "", res: "", end: 0, bal: null }; } })();
   var T = null, PAGE = "", FILE = "", app = null;
+  function feeOf(a, m) { var r = FEE[m] || 0; return Math.round((Number(a) || 0) * r / 1000 * 100) / 100; }
+  function tot() { return Number(((Number(S.amt) || 0) + feeOf(S.amt, S.m)).toFixed(2)); }
   function save() { try { sessionStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
   function bn(x) { return String(x).replace(/\d/g, function (d) { return "০১২৩৪৫৬৭৮৯"[d]; }); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
@@ -50,7 +53,7 @@
         var im = k === "npsb" ? '<img src="' + IMG + 'npsb.svg" alt="" width="56" height="40" style="flex:none;object-fit:contain;border-radius:8px;background:#fff;padding:4px 3px">' : logoSm(k);
         return '<button class="m" data-m="' + k + '" aria-pressed="' + (S.m === k) + '">' + im + M[k].n + "</button>";
       }).join("");
-      return '<div class="w">' + head(0) + '<div><h1>ব্যালেন্স যোগ করুন</h1><div class="mu">অ্যামাউন্ট লিখুন, তারপর পেমেন্ট মেথড বাছুন</div></div><div><label class="lb" for="amt">অ্যামাউন্ট (BDT)</label><div class="card in"><b>৳</b><input id="amt" type="number" inputmode="numeric" placeholder="0" value="' + (S.amt || "") + '"></div><div class="mu" id="hint">ন্যূনতম ৳' + bn(CFG.min) + '</div></div><div class="grid3">' + q + '</div><div class="lb">পেমেন্ট মেথড</div><div class="grid2">' + ms + '</div><div class="card" style="padding:14px;display:grid;gap:8px;font-size:14px"><div class="row" style="padding:0"><span class="mu">অ্যামাউন্ট</span><b id="s1">' + fmt(S.amt) + '</b></div><div class="row" style="padding:0"><span class="mu">ফি</span><b>৳০.০০</b></div><div class="row" style="padding:0"><span class="mu">যোগের পর ব্যালেন্স</span><b id="s2">' + (S.bal == null ? "—" : fmt(S.bal + S.amt)) + '</b></div></div><button class="btn" id="go" style="margin-top:auto" disabled>এগিয়ে যান</button></div>';
+      return '<div class="w">' + head(0) + '<div><h1>ব্যালেন্স যোগ করুন</h1><div class="mu">অ্যামাউন্ট লিখুন, তারপর পেমেন্ট মেথড বাছুন</div></div><div><label class="lb" for="amt">অ্যামাউন্ট (BDT)</label><div class="card in"><b>৳</b><input id="amt" type="number" inputmode="numeric" placeholder="0" value="' + (S.amt || "") + '"></div><div class="mu" id="hint">ন্যূনতম ৳' + bn(CFG.min) + '</div></div><div class="grid3">' + q + '</div><div class="lb">পেমেন্ট মেথড</div><div class="grid2">' + ms + '</div><div class="card" style="padding:14px;display:grid;gap:8px;font-size:14px"><div class="row" style="padding:0"><span class="mu">অ্যামাউন্ট</span><b id="s1">' + fmt(S.amt) + '</b></div><div class="row" style="padding:0"><span class="mu" id="fl">ফি</span><b id="s3">' + fmt(feeOf(S.amt, S.m)) + '</b></div><div class="row" style="padding:0"><span class="mu">যোগের পর ব্যালেন্স</span><b id="s2">' + (S.bal == null ? "—" : fmt(S.bal + S.amt)) + '</b></div><div class="row" style="padding:0"><span class="mu">মোট পাঠাতে হবে</span><b id="s4">' + fmt(tot()) + '</b></div></div><button class="btn" id="go" style="margin-top:auto" disabled>এগিয়ে যান</button></div>';
     },
     npsb: function () {
       bg("");
@@ -61,15 +64,15 @@
       bg("#fff");
       var en = S.lang === "en", dg = (S.sender || "").split("");
       var cells = Array.apply(null, Array(11)).map(function (_, i) { return (i == 3 || i == 7 ? "<b>-</b>" : "") + '<input aria-label="' + (en ? "Digit " : "অঙ্ক ") + bn(i + 1) + '" maxlength="1" inputmode="numeric" data-i="' + i + '" value="' + (dg[i] || "") + '">'; }).join("");
-      var N = en ? { tot: "Total Amount:", am: "BDT " + Number(S.amt).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), chg: "Charge:", z: "BDT 0", lb: "Your Nagad Account Number", tc: 'By clicking/tapping "Proceed" you are agreeing to boostplus <a href="terms.html" style="color:inherit"><b>Terms and Conditions</b></a>', pr: "Proceed", cl: "Close" }
-        : { tot: "মোট অ্যামাউন্ট:", am: fmt(S.amt), chg: "চার্জ:", z: "৳০", lb: "আপনার Nagad অ্যাকাউন্ট নম্বর", tc: '"এগিয়ে যান" ক্লিক/ট্যাপ করার মাধ্যমে আপনি boostplus-এর <a href="terms.html" style="color:inherit"><b>শর্তাবলীতে</b></a> সম্মতি দিচ্ছেন।', pr: "Proceed", cl: "Close" };
+      var N = en ? { tot: "Total Amount:", am: "BDT " + tot().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), chg: "Charge:", z: "BDT " + feeOf(S.amt, S.m).toFixed(2), lb: "Your Nagad Account Number", tc: 'By clicking/tapping "Proceed" you are agreeing to boostplus <a href="terms.html" style="color:inherit"><b>Terms and Conditions</b></a>', pr: "Proceed", cl: "Close" }
+        : { tot: "মোট অ্যামাউন্ট:", am: fmt(tot()), chg: "চার্জ:", z: fmt(feeOf(S.amt, S.m)), lb: "আপনার Nagad অ্যাকাউন্ট নম্বর", tc: '"এগিয়ে যান" ক্লিক/ট্যাপ করার মাধ্যমে আপনি boostplus-এর <a href="terms.html" style="color:inherit"><b>শর্তাবলীতে</b></a> সম্মতি দিচ্ছেন।', pr: "Proceed", cl: "Close" };
       return '<div class="nd"><div class="ndc"><div class="lang" role="group" aria-label="Language"><button data-lang="bn" aria-pressed="' + !en + '">বাং</button><button data-lang="en" aria-pressed="' + en + '">Eng</button></div><div class="nbr"><img src="' + IMG + 'logo.svg" alt="" width="60" height="60"><div class="nnm">boostplus</div></div><div class="nl"><div><b>' + N.tot + "</b> " + N.am + "</div><div><b>" + N.chg + "</b> " + N.z + '</div></div><div class="nlb">' + N.lb + '</div><div class="cells" id="cells">' + cells + '</div><div class="err" id="er" hidden></div><div class="ntc">' + N.tc + '</div><div class="nbt"><button class="sm" id="ok">' + N.pr + '</button><a class="sm" href="topup-amount.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">' + N.cl + '</a></div><div class="ngl"><img src="' + IMG + 'ngd.svg" alt="নগদ Nagad"></div></div></div>';
     },
     wallet: function (m) {
       var c = { bkash: "#e2136e", rocket: "#8c2b8f" }[m], en = S.lang === "en", okv = /^01\d{9}$/.test(S.sender);
       bg("#9b9b9b");
-      var T2 = en ? { lb: "Your " + M[m].n + " Account Number", ph: "e.g 01XXXXXXXXX", tc: "Confirm and proceed, ", tl: "terms & conditions", cn: "Cancel", cf: "Confirm", am: "৳" + Number(S.amt).toFixed(2) }
-        : { lb: "আপনার " + M[m].n + " অ্যাকাউন্ট নম্বর", ph: "যেমন 01XXXXXXXXX", tc: "নিশ্চিত করে এগিয়ে যান, ", tl: "শর্তাবলি", cn: "বাতিল", cf: "নিশ্চিত করুন", am: fmt(S.amt) };
+      var T2 = en ? { lb: "Your " + M[m].n + " Account Number", ph: "e.g 01XXXXXXXXX", tc: "Confirm and proceed, ", tl: "terms & conditions", cn: "Cancel", cf: "Confirm", am: "৳" + tot().toFixed(2) }
+        : { lb: "আপনার " + M[m].n + " অ্যাকাউন্ট নম্বর", ph: "যেমন 01XXXXXXXXX", tc: "নিশ্চিত করে এগিয়ে যান, ", tl: "শর্তাবলি", cn: "বাতিল", cf: "নিশ্চিত করুন", am: fmt(tot()) };
       var cart = '<span class="cart" style="background:none;width:34px;height:34px"><img src="' + IMG + 'logo.svg" alt="" width="34" height="34" style="border-radius:50%;display:block"></span>';
       var mark = m === "bkash" ? (en ? '<img src="' + IMG + 'bken.svg" alt="bKash" style="height:42px">' : '<span class="bkw" role="img" aria-label="বিকাশ"><i>বি</i>কাশ</span><img src="' + IMG + 'bkash-l.png" alt="" style="height:42px">') : '<img src="' + IMG + 'rocket-l.png" alt="' + M[m].n + '">';
       var lg = '<div class="lg" role="group" aria-label="Language"><button data-lang="bn" aria-pressed="' + !en + '">বাং</button><button data-lang="en" aria-pressed="' + en + '">EN</button></div>';
@@ -84,7 +87,7 @@
       var qb = (m === "nagad" || m === "npsb") ? '<div class="card" style="padding:16px;text-align:center;font-weight:600;line-height:1.5">' + (m === "npsb" ? sc : "Nagad অ্যাপ খুলে নিচের নম্বরে <u>Send Money</u> করুন, ঠিক এই অ্যামাউন্ট") + "</div>" : '<div class="qr"><img src="' + IMG + qk + '" alt="' + (k === "rocket" ? "Rocket QR" : "bKash Bangla QR") + '" width="' + (k === "rocket" ? "220" : "280") + '" style="max-width:100%;height:auto;display:block;border-radius:12px"><span>' + sc + "</span></div>";
       var extra = (k === "nagad" && CFG.nagadVirtual) ? rows("Nagad ভার্চুয়াল নম্বর", CFG.nagadVirtual, "v") : "";
       if (!S.end) { S.end = Date.now() + CFG.minutes * 60000; save(); }
-      return '<div class="w pay">' + head(1) + '<div class="top" style="align-items:flex-end"><div><div class="mu">boostplus · ব্যালেন্স যোগ</div><h1>' + M[m].n + ' দিয়ে Send Money</h1></div><b style="font-size:30px">' + fmt(S.amt) + "</b></div>" + qb + rows(M[k].n + " পারসোনাল নম্বর (Send Money)", CFG.pay, "n") + extra + rows("ঠিক এই পরিমাণ পাঠান", "৳" + bn(S.amt), "a") + '<div style="text-align:center;color:var(--warn);font-weight:600" id="cd" aria-live="off">' + bn(CFG.minutes) + ':০০ মিনিটের মধ্যে পেমেন্ট করুন</div><div><label class="lb" for="tx">Transaction ID</label><div class="card in" style="height:52px"><input id="tx" style="font-size:16px;font-weight:400" placeholder="যেমন 8N7002M4RB" value="' + esc(S.id) + '" autocomplete="off" autocapitalize="characters"></div></div><div class="e2" id="er" role="alert"></div><div class="pbt"><button class="btn" id="vf">পেমেন্ট যাচাই করুন</button><a class="btn ghost" href="topup-amount.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">অন্য মেথড বাছুন</a></div></div>';
+      return '<div class="w pay">' + head(1) + '<div class="top" style="align-items:flex-end"><div><div class="mu">boostplus · ব্যালেন্স যোগ</div><h1>' + M[m].n + ' দিয়ে Send Money</h1></div><b style="font-size:30px">' + fmt(tot()) + "</b></div>" + qb + rows(M[k].n + " পারসোনাল নম্বর (Send Money)", CFG.pay, "n") + extra + rows("ঠিক এই পরিমাণ পাঠান", "৳" + bn(tot()), "a") + '<div style="text-align:center;color:var(--warn);font-weight:600" id="cd" aria-live="off">' + bn(CFG.minutes) + ':০০ মিনিটের মধ্যে পেমেন্ট করুন</div><div><label class="lb" for="tx">Transaction ID</label><div class="card in" style="height:52px"><input id="tx" style="font-size:16px;font-weight:400" placeholder="যেমন 8N7002M4RB" value="' + esc(S.id) + '" autocomplete="off" autocapitalize="characters"></div></div><div class="e2" id="er" role="alert"></div><div class="pbt"><button class="btn" id="vf">পেমেন্ট যাচাই করুন</button><a class="btn ghost" href="topup-amount.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">অন্য মেথড বাছুন</a></div></div>';
     },
     result: function () {
       bg(""); stop();
@@ -123,6 +126,9 @@
         S.amt = Number(a.value) || 0; save();
         document.getElementById("s1").textContent = fmt(S.amt);
         document.getElementById("s2").textContent = S.bal == null ? "—" : fmt(S.bal + S.amt);
+        document.getElementById("s3").textContent = fmt(feeOf(S.amt, S.m));
+        document.getElementById("s4").textContent = fmt(tot());
+        document.getElementById("fl").textContent = FEE[S.m] ? "ফি (প্রতি হাজারে ৳" + bn(FEE[S.m]) + ")" : "ফি";
         document.getElementById("hint").style.color = S.amt && S.amt < CFG.min ? "var(--bad)" : "";
         g.disabled = !(S.amt >= CFG.min && S.m);
       };
@@ -170,7 +176,7 @@
       S.end = 0; go("topup-pay");
     }
     else if (t.dataset.c) {
-      var v = { n: CFG.pay, a: String(S.amt), v: CFG.nagadVirtual }[t.dataset.c];
+      var v = { n: CFG.pay, a: String(tot()), v: CFG.nagadVirtual }[t.dataset.c];
       try { navigator.clipboard.writeText(v); } catch (x) {}
       t.textContent = "কপি হয়েছে"; setTimeout(function () { t.textContent = "কপি"; }, 1500);
     }
