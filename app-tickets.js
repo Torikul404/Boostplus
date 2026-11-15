@@ -144,15 +144,16 @@
     el.orderInfo.innerHTML = html || EMPTY_INFO;
   }
   function clearKnown() { knownOrder = null; paintActs(); }
+  function sessMobileNow() { try { return (localStorage.getItem('pb_wallet_mobile') || '').replace(/\D/g, ''); } catch (_) { return ''; } }
   async function lookupOrder() {
     const id = el.orderId.value.trim().toUpperCase();
-    if (!/^(\d{5,8}|PB-[A-Z0-9-]{8,})$/.test(id)) { showOrderInfo(''); busy(false); clearKnown(); return; }
+    if (!/^(\d{3,12}|PB-[A-Z0-9-]{8,})$/.test(id)) { showOrderInfo(''); busy(false); clearKnown(); return; }
     const api = sheetApi();
     if (!api) return;
     const seq = ++lookupSeq;
     showOrderInfo('অর্ডার খোঁজা হচ্ছে…'); busy(true);
     try {
-      const res = await fetch(api + '?order_id=' + encodeURIComponent(id));
+      const res = await fetch(api + '?order_id=' + encodeURIComponent(id) + (sessMobileNow() ? '&mobile=' + encodeURIComponent(sessMobileNow()) : ''));
       const d = await res.json();
       if (seq !== lookupSeq) return; // a newer lookup is running
       if (!d || d.error) { busy(false); clearKnown(); showOrderInfo('⚠️ এই Order ID পাওয়া যায়নি — আইডিটি আবার দেখে নিন।', 'warn', true); return; }
@@ -245,7 +246,7 @@
     const sessTok = rawLs('pb_wallet_token'), sessMobile = rawLs('pb_wallet_mobile').replace(/\D/g, '');
     const actSub = ACT_SUB[subcategory];
     const directAct = category === 'Orders' && actSub && sessTok && knownOrder &&
-      String(knownOrder.order_id).toUpperCase() === orderId && flagState(knownOrder, subcategory) === 'ok';
+      (String(knownOrder.order_id).toUpperCase() === orderId || String(knownOrder.display_id || '').toUpperCase() === orderId) && flagState(knownOrder, subcategory) === 'ok';
     if (directAct && actSub === 'cancel' && knownOrder.can_cancel === 'instant' &&
         !window.confirm('অর্ডার ' + orderId + ' এখনই বাতিল হবে এবং টাকা ওয়ালেটে ফেরত যাবে। চালিয়ে যাবেন?')) return;
 
@@ -280,7 +281,7 @@
           const ar = await fetch(api, {
             method: 'POST', mode: 'cors',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'wallet_auth', sub: actSub, token: sessTok, order_id: orderId })
+            body: JSON.stringify({ action: 'wallet_auth', sub: actSub, token: sessTok, order_id: String(knownOrder.order_id) })
           });
           const ad = await ar.json();
           if (ad && ad.error === 'auth') actNote = 'লগইন মেয়াদ শেষ, তাই সরাসরি অনুরোধ যায়নি; অ্যাডমিন টিকিট দেখবেন।';

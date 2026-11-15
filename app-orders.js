@@ -267,7 +267,7 @@
     const rows = all.filter((o) => {
       if (filter !== 'All' && stKey(o.status) !== filter) return false;
       if (!q) return true;
-      return (String(o.order_id) + ' ' + o.link + ' ' + o.service_name + ' ' + o.service_code + ' ' + o.status + ' ' + o.created_at).toLowerCase().indexOf(q) !== -1;
+      return (String(o.order_id) + ' ' + did(o) + ' ' + o.link + ' ' + o.service_name + ' ' + o.service_code + ' ' + o.status + ' ' + o.created_at).toLowerCase().indexOf(q) !== -1;
     });
     const ts = (o) => { const d = toDate(o.created_at); return d ? d.getTime() : 0; };
     if (sortBy === 'old') rows.sort((x, y) => ts(x) - ts(y));
@@ -319,6 +319,9 @@
     } finally { liveBusy = false; }
   }
 
+  // সাইটে যে আইডি দেখাই: প্রোভাইডারের অর্ডার আইডি (গেলে), নইলে আমাদের ডিফল্ট। অ্যাকশন/সাপোর্ট সবসময় ভেতরের order_id দিয়ে চলে।
+  const did = (o) => String(o.display_id || o.order_id);
+
   function cardHtml(o) {
     const d = toDate(o.created_at);
     const id = esc(o.order_id);
@@ -330,7 +333,7 @@
     const k = lc(o.status);
     return '<article class="pb-oh-card s-' + esc(k.replace(/[^a-z0-9]+/g, '-')) + '" data-id="' + id + '">' +
       '<div class="pb-oh-ch">' +
-        '<button type="button" class="pb-oh-idbtn" data-copy="' + id + '" title="Copy order ID" aria-label="Copy order ID ' + id + '">#' + id + ' <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg></button>' +
+        '<button type="button" class="pb-oh-idbtn" data-copy="' + esc(did(o)) + '" title="Copy order ID" aria-label="Copy order ID ' + esc(did(o)) + '">#' + esc(did(o)) + ' <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg></button>' +
         '<span class="pb-oh-st ' + statusClass(o.status) + '">' + esc(statusLabel(o.status)) + '</span>' +
       '</div>' +
       '<h4 class="pb-oh-svcname">' + esc(o.service_name || o.service_code || 'Order') + '</h4>' +
@@ -354,7 +357,7 @@
     const linkHtml = o.link ? (safe ? '<a href="' + esc(safe) + '" target="_blank" rel="noopener noreferrer">' + esc(shortLink(o.link)) + '</a>' : '<span>' + esc(shortLink(o.link)) + '</span>') : '—';
     const d = toDate(o.created_at);
     return '<tr class="pb-oh-row s-' + esc(k.replace(/[^a-z0-9]+/g, '-')) + '" data-id="' + id + '">' +
-      '<td class="oh-id"><button type="button" class="pb-oh-idbtn" data-copy="' + id + '" title="Copy order ID" aria-label="Copy order ID ' + id + '">#' + id + '</button></td>' +
+      '<td class="oh-id"><button type="button" class="pb-oh-idbtn" data-copy="' + esc(did(o)) + '" title="Copy order ID" aria-label="Copy order ID ' + esc(did(o)) + '">#' + esc(did(o)) + '</button></td>' +
       '<td class="oh-svc"><span class="oh-svcname" title="' + esc(o.service_name || '') + '">' + esc(o.service_name || o.service_code || 'Order') + '</span><span class="oh-sub">' + esc(d ? dayLabel(d) + ' · ' + timeLabel(d) : fmtDate(o.created_at)) + ' · ৳' + esc(money(o.amount)) + '</span>' + liveRowHtml(o) + '</td>' +
       '<td class="oh-link">' + linkHtml + '</td>' +
       '<td class="oh-qty">' + esc(o.quantity) + '</td>' +
@@ -408,7 +411,7 @@
     const cell = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
     const head = ['Order ID', 'Date', 'Service', 'Code', 'Link', 'Quantity', 'Charge', 'Status'];
     const lines = [head.map(cell).join(',')].concat(rows.map((o) => [
-      o.order_id, fmtDate(o.created_at), o.service_name, o.service_code, o.link, o.quantity, o.amount, statusLabel(o.status)
+      did(o), fmtDate(o.created_at), o.service_name, o.service_code, o.link, o.quantity, o.amount, statusLabel(o.status)
     ].map(cell).join(',')));
     try {
       const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -516,7 +519,7 @@ async function load(force) {
     ensure: function () { return token() ? load(false) : Promise.resolve(); },
     get: function (id) {
       const k = String(id || '').trim().toUpperCase();
-      return all.find(function (o) { return String(o.order_id).toUpperCase() === k; }) || null;
+      return all.find(function (o) { return String(o.order_id).toUpperCase() === k; }) || all.find(function (o) { return did(o).toUpperCase() === k; }) || null;
     }
   };
 })();
