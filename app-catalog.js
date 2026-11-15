@@ -794,6 +794,7 @@ function pbServiceFacts(p) {
  *  যে অংশ নিচের Speed / Refill / Quality সারিতে আগে থেকেই আছে সেটা বাদ যায়,
  *  আর প্ল্যাটফর্মের নাম (Facebook ইত্যাদি) বাদ যায়। কিছু না বাঁচলে পুরো নামে ফিরে যায়। */
 function pbShortName(p) {
+  if (p && p.nx) return String(p.name || "");   // স্টুডিওতে এডিট করা নাম: হুবহু যেমন লেখা, কোনো কাটাছেঁড়া নয়
   const full = pbFixTypos(String(decodeEntities(p.name) || "").normalize("NFKC"));
   try {
     let t = full;
@@ -891,6 +892,7 @@ function pbQualityLabel(p, shown) {
   } catch (e) { return ""; }
 }
 function pbDropdownName(p) {
+  if (p && p.nx) return String(p.name || "");   // স্টুডিওতে এডিট করা নাম: হুবহু (ফ্ল্যাগ/[কোয়ালিটি] যোগ হবে না)
   const sn = pbShortName(p), q = pbQualityLabel(p, sn), fl = pbFlags(p);
   return (fl ? fl + " " : "") + (q ? sn + " " + q : sn);
 }

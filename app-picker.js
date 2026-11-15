@@ -273,11 +273,11 @@
     svcItems = pool.map(function (p) {
       var price = ""; try { price = (typeof pbFmtPrice === "function" ? pbFmtPrice(packageSellPrice(p)) : "৳" + money(packageSellPrice(p))) + " / 1K"; } catch (e) {}
       var nm = ""; try { nm = pbDropdownName(p); } catch (e) { nm = String(p.name || ""); }
-      var t = splitTags(nm), tg = [];
+      var t = p.nx ? { name: String(p.name || ""), tags: [] } : splitTags(nm), tg = [];
       t.tags.forEach(function (x) { String(x).split(/\s*·\s*/).forEach(function (y) { y = y.trim(); if (y && !tg.some(function (z) { return z.toLowerCase() === y.toLowerCase(); })) tg.push(y); }); });
       try { (Array.isArray(p.tags) ? p.tags : []).forEach(function (x) { x = String(x || "").trim(); if (x && !tg.some(function (y) { return y.toLowerCase() === x.toLowerCase(); })) tg.push(x); }); } catch (e) {}
       var more = tg.length > 3 ? tg.length - 3 : 0; tg = tg.slice(0, 3); if (more) tg.push("+" + more);
-      return { v: String(p.code), name: t.name, full: (function () { try { return decodeEntities(String(p.name || "")).normalize("NFKC").replace(/\s{2,}/g, " ").trim(); } catch (e) { return String(p.name || ""); } })() || t.name, tags: tg, price: price };
+      return { v: String(p.code), name: t.name, full: p.nx ? String(p.name || "") : (function () { try { return decodeEntities(String(p.name || "")).normalize("NFKC").replace(/\s{2,}/g, " ").trim(); } catch (e) { return String(p.name || ""); } })() || t.name, tags: tg, price: price };
     });
     syncTriggers();
 
