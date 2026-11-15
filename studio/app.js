@@ -728,10 +728,9 @@ async function pload(label,more){
 /* ---------- সাইটের সার্ভিস ম্যানেজ: নাম বদল / লুকান / ফেরান ---------- */
 let ms={q:'',plat:'',cat:'',type:'',state:'on',off:0};const ssel=new Set();
 function mng(){
-  cur=null;$('#title').textContent='সাইটের সার্ভিস';$('#back').hidden=true;const el=$('#main');
-  el.innerHTML=nav('mng')+`<div class="card" id="fxd"><b>⚙ অটো: যোগ হওয়া মার্কআপ সরান</b><p class="sub">সব সার্ভিসের দাম প্রভাইডারের আসল রেটের সাথে মিলিয়ে দেখে — যেগুলোতে রেটের চেয়ে বেশি দাম বসে আছে (মার্কআপ যোগ হয়ে গেছে), সেগুলো একসাথে প্রভাইডারের আসল রেটে ফেরায়। এরপর সাইট একবারই মার্কআপ দেবে। নিজে খুঁজতে হবে না।</p><div class="acts"><button class="sm" id="fxdChk">🔍 সব যাচাই করুন</button><button class="sm dng" id="fxdGo" hidden>✔ সবগুলো ঠিক করুন</button></div><div id="fxdOut" class="sub"></div></div><div id="mps"></div><div class="bar"><input id="mq" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি" value="${esc(ms.q)}" aria-label="খুঁজুন"></div><div id="mcats"></div><div id="mcm"></div><div class="chips">${[['on','চালু'],['off','লুকানো'],['all','সব']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${ms.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="msa">সব বাছুন</button><button class="chip" id="msy">⟳ সিঙ্ক</button></div><p class="sub" id="mcnt"></p><div class="list" id="ml"></div><div id="mmore"></div>`;
+  cur=null;ms.state='on';$('#title').textContent='সাইটের সার্ভিস';$('#back').hidden=true;const el=$('#main');
+  el.innerHTML=nav('mng')+`<div class="card" id="fxd"><b>⚙ অটো: যোগ হওয়া মার্কআপ সরান</b><p class="sub">সব সার্ভিসের দাম প্রভাইডারের আসল রেটের সাথে মিলিয়ে দেখে — যেগুলোতে রেটের চেয়ে বেশি দাম বসে আছে (মার্কআপ যোগ হয়ে গেছে), সেগুলো একসাথে প্রভাইডারের আসল রেটে ফেরায়। এরপর সাইট একবারই মার্কআপ দেবে। নিজে খুঁজতে হবে না।</p><div class="acts"><button class="sm" id="fxdChk">🔍 সব যাচাই করুন</button><button class="sm dng" id="fxdGo" hidden>✔ সবগুলো ঠিক করুন</button></div><div id="fxdOut" class="sub"></div></div><div id="mps"></div><div class="bar"><input id="mq" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি" value="${esc(ms.q)}" aria-label="খুঁজুন"></div><div id="mcats"></div><div id="mcm"></div><div class="chips"><button class="chip" id="msa">সব বাছুন</button><button class="chip" id="msy">⟳ সিঙ্ক</button></div><p class="sub" id="mcnt"></p><div class="list" id="ml"></div><div id="mmore"></div>`;
   $('#mq').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{ms.q=e.target.value;mload()},350)};
-  el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ms.state=b.dataset.s;el.querySelectorAll('[data-s]').forEach(x=>x.setAttribute('aria-pressed',x===b));mload()});
   $('#msa').onclick=()=>el.querySelectorAll('.msel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange()}});
   $('#fxdChk').onclick=async()=>{const o=$('#fxdOut');o.textContent='খোঁজা হচ্ছে…';try{const d=await api('svc_fix_double',{apply:false});$('#fxdGo').hidden=!d.count;o.innerHTML=d.count?`<b>${bn(d.count)}টি</b> সার্ভিসে দাম বেশি বসে আছে:<br>`+d.items.map(i=>`#${esc(i.code)} ${esc(i.name)} — এখন $${esc(i.stored)} → হবে $${esc(i.rate)}`).join('<br>')+(d.count>d.items.length?`<br>… আরও ${bn(d.count-d.items.length)}টি`:''):'কোনো যোগ-হওয়া মার্কআপ পাওয়া যায়নি ✔ ('+bn(d.checked||0)+'টি যাচাই হয়েছে)'+(d.no_provider?` (${bn(d.no_provider)}টি সার্ভিসে প্রভাইডারের নাম নেই, সেগুলো মেলানো যায়নি)`:'')}catch(e){o.textContent='';if(!authFail(e))toast(e.message)}};
   $('#fxdGo').onclick=async()=>{const b=$('#fxdGo'),o=$('#fxdOut');if(!confirm('এই সার্ভিসগুলোর দাম প্রভাইডারের রেটে ফেরানো হবে। চালিয়ে যাবেন?'))return;b.disabled=true;try{const d=await api('svc_fix_double',{apply:true});o.textContent='ঠিক হয়েছে — '+bn(d.count)+'টি সার্ভিস';b.hidden=true;try{await catSyncNow()}catch(_){}}catch(e){if(!authFail(e))toast(e.message)}b.disabled=false};
@@ -745,8 +744,8 @@ async function mload(more){
     $('#mcats').innerHTML=catUI(d.categories.map(c=>({c,n:0})),ms);bindCat($('#mcats'),ms,()=>mload());
     $('#mcm').innerHTML=ms.cat?`<div class="card catbar"><b>${esc(ms.cat)}</b><div class="acts"><button class="sm" id="cren">✎ নাম বদলান</button><button class="sm dng" id="cdel">🗑 ক্যাটেগরি মুছুন</button></div></div>`:'';
     if(ms.cat){$('#cren').onclick=()=>catRename(ms.cat);$('#cdel').onclick=()=>catDelete(ms.cat)}
-    $('#mcnt').textContent=ms.type&&!ms.cat?`${TLBL[ms.type]} ধরন · লোড হয়েছে ${bn(d.next)}/${bn(d.total)}টি থেকে`:`মোট ${bn(d.total)}টি`;
-    if(!more)box.innerHTML='';if(!d.rows.length&&!more)box.innerHTML='<div class="card empty">কিছু পাওয়া যায়নি</div>';
+    window._mt=d.total;$('#mcnt').textContent=ms.type&&!ms.cat?`${TLBL[ms.type]} ধরন · লোড হয়েছে ${bn(d.next)}/${bn(d.total)}টি থেকে`:`সাইটে চালু ${bn(d.total)}টি সার্ভিস`;
+    if(!more)box.innerHTML='';if(!d.rows.length&&!more)box.innerHTML='<div class="card empty">সাইটে এমন কোনো চালু সার্ভিস পাওয়া যায়নি</div>';
     d.rows.forEach(r=>box.appendChild(mrow(r)));ms.off=d.next;
     $('#mmore').innerHTML=ms.off<d.total?'<button class="sm" id="mm" style="width:100%;margin-top:8px">আরও দেখান</button>':'';const m=$('#mm');if(m)m.onclick=()=>mload(true);
   }catch(e){if(!authFail(e))box.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`}}
@@ -758,7 +757,11 @@ function mrow(r){
   mc.onchange=e=>{e.target.checked?ssel.add(r):ssel.delete(r);msBar()}}
   c.querySelector('[data-e]').onclick=()=>editSheet(r);
   c.querySelector('[data-h]').onclick=async ev=>{if(busy)return;const on=r.state==='off',b=ev.currentTarget;busy=true;b.disabled=true;
-    try{await api('svc_site_hide',{codes:[r.code],on});r.state=on?'on':'off';b.setAttribute('aria-checked',on);c.classList.toggle('dim',!on);toastU(on?'চালু হয়েছে':'বন্ধ হয়েছে',()=>api('svc_site_hide',{codes:[r.code],on:!on}))}catch(e){if(!authFail(e))toast(e.message)}b.disabled=false;busy=false};
+    try{await api('svc_site_hide',{codes:[r.code],on});r.state=on?'on':'off';
+      if(!on){ssel.forEach(x=>{if(x.code===r.code)ssel.delete(x)});c.remove();msBar();const n=$('#mcnt');if(n&&/^সাইটে চালু/.test(n.textContent)){window._mt=Math.max(0,(window._mt||1)-1);n.textContent='সাইটে চালু '+bn(window._mt)+'টি সার্ভিস'}
+        if(!$('#ml').children.length)$('#ml').innerHTML='<div class="card empty">সাইটে এমন কোনো চালু সার্ভিস পাওয়া যায়নি</div>';
+        toastU('সাইট থেকে সরানো হয়েছে',()=>api('svc_site_hide',{codes:[r.code],on:true}))}
+      else toast('চালু হয়েছে')}catch(e){if(!authFail(e))toast(e.message)}b.disabled=false;busy=false};
   return c}
 
 /* ---------- সার্ভিসের দাম কাস্টমাইজ (সাইটের কাস্টম দাম = প্রতি ১০০০-এ ৳; ডিফল্টে সাইটের মার্কআপ নিয়ম) ---------- */
@@ -829,12 +832,12 @@ async function catDelete(cat,after){
   if(busy)return;busy=true;toast('দেখা হচ্ছে…');
   try{const codes=await catCodes(cat,'on');
     if(!codes.length){toast('এই ক্যাটেগরিতে চালু সার্ভিস নেই');busy=false;return}
-    if(!confirm('"'+cat+'" ক্যাটেগরির চালু '+bn(codes.length)+'টি সার্ভিস সাইট থেকে মুছে/লুকানো হবে।\n(পুরনোগুলো "লুকানো" ফিল্টার থেকে আবার ফেরানো যাবে)\nনিশ্চিত?')){busy=false;return}
+    if(!confirm('"'+cat+'" ক্যাটেগরির চালু '+bn(codes.length)+'টি সার্ভিস সাইট থেকে মুছে/লুকানো হবে।\n(পরে প্রভাইডার/প্ল্যাটফর্ম পাতা থেকে আবার যোগ করা যাবে, অথবা AI সহকারীকে ক্যাটেগরি ফেরাতে বললে ফিরবে)\nনিশ্চিত?')){busy=false;return}
     let done=0;for(const c of chunks(codes,200)){const r=await api('svc_site_hide',{codes:c,on:false,del:true});done+=r.done}
     SC=null;toast(bn(done)+'টি সার্ভিস সরানো হয়েছে');busy=false;if(after)after();else{ms.cat='';mload()}}
   catch(e){busy=false;if(!authFail(e))toast(e.message)}}
 function msBar(){let b=$('#bulk');if(!b){b=document.createElement('div');b.id='bulk';b.className='bulk';document.body.appendChild(b)}
-  b.hidden=!ssel.size;b.innerHTML=`<b>${bn(ssel.size)}টি</b><button class="sm" data-a="show">চালু</button><button class="sm" data-a="hide">বন্ধ</button><button class="sm" data-a="del">মুছুন</button><button class="sm" data-a="cat">ক্যাটেগরি</button><button class="sm" data-a="tidy">সাজান</button><button class="sm" data-a="price">💲 দাম</button><button class="sm" data-a="x" aria-label="বাতিল">✕</button>`;
+  b.hidden=!ssel.size;b.innerHTML=`<b>${bn(ssel.size)}টি</b><button class="sm" data-a="hide">বন্ধ</button><button class="sm" data-a="del">মুছুন</button><button class="sm" data-a="cat">ক্যাটেগরি</button><button class="sm" data-a="tidy">সাজান</button><button class="sm" data-a="price">💲 দাম</button><button class="sm" data-a="x" aria-label="বাতিল">✕</button>`;
   b.querySelectorAll('[data-a]').forEach(x=>x.onclick=()=>mact(x.dataset.a))}
 async function mact(k){
   if(k==='x'){ssel.clear();document.querySelectorAll('.msel').forEach(x=>x.checked=false);return msBar()}
@@ -872,17 +875,18 @@ function askText(title,val,emo){return new Promise(res=>{let d=$('#ask');if(!d){
 async function catsPage(){
   cur=null;$('#title').textContent='ক্যাটেগরি';$('#back').hidden=true;const el=$('#main');
   el.innerHTML=nav('cats')+'<div class="sk"></div><div class="sk" style="margin-top:12px"></div>';
-  try{const rows=await siteRows(true),G={},all=new Set();
-    rows.forEach(r=>{if(!r.category)return;all.add(r.category);const p=r.platform_label||'other',g=G[p]||(G[p]={}),c=g[r.category]||(g[r.category]={n:0,on:0});c.n++;if(r.state!=='off')c.on++});
+  try{const rows=(await siteRows(true)).filter(r=>r.state!=='off'),G={},all=new Set();
+    rows.forEach(r=>{if(!r.category)return;all.add(r.category);const p=r.platform_label||'other',g=G[p]||(G[p]={}),c=g[r.category]||(g[r.category]={n:0,on:0});c.n++;c.on++});
     const PRI=['facebook','instagram','tiktok','youtube','twitter','x','telegram','whatsapp','spotify','google','linkedin','snapchat','threads'],pri=p=>{const i=PRI.indexOf(String(p).toLowerCase());return i<0?99:i},pls=Object.keys(G).sort((a,b)=>pri(a)-pri(b)||Object.keys(G[b]).length-Object.keys(G[a]).length);if(CPS&&!G[CPS])CPS='';
     const pchips=()=>'<button class="chip" data-p="" aria-pressed="'+(!CPS)+'">সব '+bn(all.size)+'</button>'+pls.map(p=>'<button class="chip" data-p="'+esc(p)+'" aria-pressed="'+(CPS===p)+'">'+logo(p,16)+' '+esc(p)+' '+bn(Object.keys(G[p]).length)+'</button>').join('');
-    el.innerHTML=nav('cats')+'<div class="chips pchips" id="cpl" role="group" aria-label="প্ল্যাটফর্ম" style="margin-top:10px">'+pchips()+'</div>'+`<div class="bar"><button class="btn" id="cnew">➕ নতুন ক্যাটেগরি</button></div><div class="bar"><button class="sm" id="cemo" style="flex:1">✨ সব ক্যাটেগরিতে ইমুজি দিন</button><button class="chip" id="cemt" aria-pressed="${emoOn()}" title="ইমুজি দিয়ে সাজানো চালু/বন্ধ">🙂 ইমুজি ${emoOn()?'চালু':'বন্ধ'}</button></div><div class="bar"><input id="cqs" type="search" placeholder="ক্যাটেগরি খুঁজুন" aria-label="ক্যাটেগরি খুঁজুন"></div><p class="sub" id="ccn">মোট ${bn(all.size)}টি ক্যাটেগরি · ${bn(rows.length)}টি সার্ভিস</p><p class="sub" id="cprog" role="status"></p><div id="cgl"></div>`;
+    el.innerHTML=nav('cats')+'<div class="chips pchips" id="cpl" role="group" aria-label="প্ল্যাটফর্ম" style="margin-top:10px">'+pchips()+'</div>'+`<div class="bar"><button class="btn" id="cnew">➕ নতুন ক্যাটেগরি</button></div><div class="bar"><button class="sm" id="cemo" style="flex:1">✨ সব ক্যাটেগরিতে ইমুজি দিন</button><button class="chip" id="cemt" aria-pressed="${emoOn()}" title="ইমুজি দিয়ে সাজানো চালু/বন্ধ">🙂 ইমুজি ${emoOn()?'চালু':'বন্ধ'}</button></div><div class="bar"><input id="cqs" type="search" placeholder="ক্যাটেগরি খুঁজুন" aria-label="ক্যাটেগরি খুঁজুন"></div><p class="sub" id="ccn">সাইটে চালু ${bn(all.size)}টি ক্যাটেগরি · ${bn(rows.length)}টি সার্ভিস</p><p class="sub" id="cprog" role="status"></p><div id="cgl"></div>`;
     const draw=q=>{q=q.trim().toLowerCase();let h='';
       (CPS?pls.filter(x=>x===CPS):pls).forEach(p=>{const cs=Object.keys(G[p]).filter(c=>!q||c.toLowerCase().indexOf(q)>=0).sort((a,b)=>a.localeCompare(b));if(!cs.length)return;
-        h+=`<h3 class="sec pc">${logo(p,24)} ${esc(p)} <span class="sub">· ${bn(cs.length)}টি</span></h3><div class="list">`+cs.map(c=>`<a class="card cat" href="${esc(catUrl(c))}"><span><b>${esc(c)}</b><span class="sub" style="display:block">${bn(G[p][c].n)}টি সার্ভিস · চালু ${bn(G[p][c].on)}</span></span><span aria-hidden="true">›</span></a>`).join('')+'</div>'});
-      $('#cgl').innerHTML=h||'<div class="card empty">কিছু পাওয়া যায়নি</div>';{const ps=CPS?[CPS]:pls,nc=ps.reduce((a,p)=>a+Object.keys(G[p]).length,0),ns=ps.reduce((a,p)=>a+Object.keys(G[p]).reduce((b,c)=>b+G[p][c].n,0),0);$('#ccn').textContent='মোট '+bn(nc)+'টি ক্যাটেগরি · '+bn(ns)+'টি সার্ভিস'+(CPS?' ('+CPS+')':'')}};
+        h+=`<h3 class="sec pc">${logo(p,24)} ${esc(p)} <span class="sub">· ${bn(cs.length)}টি</span></h3><div class="list">`+cs.map(c=>`<div class="card cat"><a class="cl" href="${esc(catUrl(c))}"><b>${esc(c)}</b><span class="sub" style="display:block">${bn(G[p][c].n)}টি সার্ভিস</span></a><span class="ca"><button class="sm" type="button" data-ren="${esc(c)}" aria-label="নাম বদলান" title="নাম বদলান">✎</button><button class="sm dng" type="button" data-del="${esc(c)}" aria-label="ক্যাটেগরি সরান" title="সাইট থেকে সরান">🗑</button></span></div>`).join('')+'</div>'});
+      $('#cgl').innerHTML=h||'<div class="card empty">সাইটে চালু কোনো ক্যাটেগরি পাওয়া যায়নি</div>';{const ps=CPS?[CPS]:pls,nc=ps.reduce((a,p)=>a+Object.keys(G[p]).length,0),ns=ps.reduce((a,p)=>a+Object.keys(G[p]).reduce((b,c)=>b+G[p][c].n,0),0);$('#ccn').textContent='সাইটে চালু '+bn(nc)+'টি ক্যাটেগরি · '+bn(ns)+'টি সার্ভিস'+(CPS?' ('+CPS+')':'')}};
     draw('');$('#cqs').oninput=e=>draw(e.target.value);
     $('#cpl').onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;CPS=b.dataset.p;$('#cpl').querySelectorAll('[data-p]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.p===CPS)));draw($('#cqs').value)};
+    $('#cgl').onclick=e=>{const r=e.target.closest('[data-ren]'),d=e.target.closest('[data-del]');if(r){e.preventDefault();catRename(r.dataset.ren,()=>catsPage())}else if(d){e.preventDefault();catDelete(d.dataset.del,()=>catsPage())}};
     $('#cnew').onclick=()=>catSheet({mode:'new'});
     $('#cemt').onclick=()=>{ls.set('pb_emo',emoOn()?'0':'1');catsPage()};
     $('#cemo').onclick=()=>catsEmoji(rows)}
@@ -905,14 +909,14 @@ async function catsEmoji(rows){
 async function catPage(name){
   cur=null;$('#title').textContent=name;$('#back').hidden=false;const el=$('#main');
   el.innerHTML='<div class="sk"></div><div class="sk" style="margin-top:12px"></div>';
-  try{const rows=await scanSite({category:name,state:'all'}),on=rows.filter(r=>r.state!=='off').length,pl=(rows.find(r=>r.platform_label)||{}).platform_label||'';window._sc=window._sc||[];
-    el.innerHTML=`<div class="card catbar"><div><b style="font-size:18px;word-break:break-word">${esc(name)}</b><div class="sub">${bn(rows.length)}টি সার্ভিস · চালু ${bn(on)}</div>${pl?`<button class="chip" id="kpl" type="button" style="margin-top:8px" aria-label="${esc(pl)} প্ল্যাটফর্মের সব ক্যাটেগরি">${logo(pl,16)} ${esc(pl)} · সব ক্যাটেগরি ›</button>`:''}</div><div class="acts"><button class="sm" id="kr">✎ নাম বদলান</button><button class="sm" id="ke">✨ ইমুজি</button><button class="sm" id="ka">➕ সার্ভিস যোগ</button><button class="sm" id="kt">🧹 সার্ভিসের নাম সাজান</button><button class="sm dng" id="kd">🗑 মুছুন</button></div></div><div class="bar"><input id="kq" type="search" placeholder="এই ক্যাটেগরির সার্ভিস খুঁজুন (নাম বা আইডি)" aria-label="খুঁজুন"></div><p class="sub">নামের ঘরে সরাসরি লিখুন → 💾 চাপুন। ✨ চাপলে অটো নাম (ইমুজিসহ) বসবে।</p><div class="list" id="kl"></div><div id="kmore"></div>`;
+  try{const rows=await scanSite({category:name,state:'on'}),pl=(rows.find(r=>r.platform_label)||{}).platform_label||'';window._sc=window._sc||[];
+    el.innerHTML=`<div class="card catbar"><div><b style="font-size:18px;word-break:break-word">${esc(name)}</b><div class="sub" id="kcn">সাইটে চালু ${bn(rows.length)}টি সার্ভিস</div>${pl?`<button class="chip" id="kpl" type="button" style="margin-top:8px" aria-label="${esc(pl)} প্ল্যাটফর্মের সব ক্যাটেগরি">${logo(pl,16)} ${esc(pl)} · সব ক্যাটেগরি ›</button>`:''}</div><div class="acts"><button class="sm" id="kr">✎ নাম বদলান</button><button class="sm" id="ke">✨ ইমুজি</button><button class="sm" id="ka">➕ সার্ভিস যোগ</button><button class="sm" id="kt">🧹 সার্ভিসের নাম সাজান</button><button class="sm dng" id="kd">🗑 মুছুন</button></div></div><div class="bar"><input id="kq" type="search" placeholder="এই ক্যাটেগরির সার্ভিস খুঁজুন (নাম বা আইডি)" aria-label="খুঁজুন"></div><p class="sub">নামের ঘরে সরাসরি লিখুন → 💾 চাপুন। ✨ চাপলে অটো নাম (ইমুজিসহ) বসবে।</p><div class="list" id="kl"></div><div id="kmore"></div>`;
     let q='',shown=0;const reload=()=>route();
     const list=()=>rows.filter(r=>!q||qOK(q,r.name+' '+r.code));
     const more=()=>{const L=list();L.slice(shown,shown+60).forEach(r=>$('#kl').appendChild(krow(r,reload)));shown=Math.min(L.length,shown+60);
       $('#kmore').innerHTML=shown<L.length?`<button class="sm" id="kmb" style="width:100%;margin-top:8px">আরও দেখান (${bn(L.length-shown)}টি বাকি)</button>`:'';const m=$('#kmb');if(m)m.onclick=more};
     const fresh=()=>{$('#kl').innerHTML='';shown=0;more();if(!list().length)$('#kl').innerHTML='<div class="card empty">কিছু পাওয়া যায়নি</div>'};
-    fresh();$('#kq').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{q=e.target.value.trim().toLowerCase();fresh()},250)};
+    if(!rows.length)$('#kl').innerHTML='<div class="card empty">এই ক্যাটেগরিতে সাইটে চালু কোনো সার্ভিস নেই</div>';else fresh();$('#kq').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{q=e.target.value.trim().toLowerCase();fresh()},250)};
     $('#kr').onclick=()=>catRename(name,nn=>{location.hash=catUrl(nn)});
     const kp=$('#kpl');if(kp)kp.onclick=()=>{CPS=pl;location.hash='cats'};
     $('#ke').onclick=async()=>{if(busy)return;const nn=catNice(name);if(!nn||nn===name){toast('আগে থেকেই এই নামে সাজানো আছে');return}
@@ -920,7 +924,7 @@ async function catPage(name){
       busy=true;try{await catsEmojiDo([[name,nn]]);toast('ক্যাটেগরির নাম সাজানো হয়েছে ✔');busy=false;location.hash=catUrl(nn)}catch(e){busy=false;if(!authFail(e))toast(e.message)}};
     $('#ka').onclick=()=>catSheet({mode:'add',name,after:reload});
     $('#kt').onclick=async()=>{if(busy)return;busy=true;const b=$('#kt');b.disabled=true;
-      try{const t=await tidyItems({category:name,state:'all'});
+      try{const t=await tidyItems({category:name,state:'on'});
         if(!t.it.length){toast('সব সার্ভিস আগেই সাজানো ✔');busy=false;b.disabled=false;return}
         if(!confirm(bn(t.it.length)+'টি সার্ভিসের নাম বদলাবে। যেমন:\n'+t.it.slice(0,3).map(x=>x.cn+'\n→ '+x.nn).join('\n\n')+'\n\nচালিয়ে যাবেন?')){busy=false;b.disabled=false;return}
         const n=await tidyDo(t.it);SC=null;toast(bn(n)+'টির নাম সাজানো হয়েছে ✔');busy=false;reload()}
@@ -945,7 +949,11 @@ function krow(r,reload){
   {const pv=c.querySelector('.pvn'),v0=provNameFor(r);if(v0){pv.hidden=false;pv.textContent='প্রভাইডার ('+v0.p+'): '+v0.n}}
   c.querySelector('[data-pn]').onclick=async()=>{const v=await provNameGet(r);if(!v){toast('প্রভাইডারের নাম পাওয়া যায়নি — আগে সিঙ্ক করুন');return}inp.value=v.n;chk();const pv=c.querySelector('.pvn');pv.hidden=false;pv.textContent='প্রভাইডার ('+v.p+'): '+v.n;inp.focus()};
   c.querySelector('[data-h]').onclick=async ev=>{if(busy)return;const on=r.state==='off',b=ev.currentTarget;busy=true;b.disabled=true;
-    try{await api('svc_site_hide',{codes:[r.code],on});r.state=on?'on':'off';b.setAttribute('aria-checked',on);c.classList.toggle('dim',!on);toastU(on?'চালু হয়েছে':'বন্ধ হয়েছে',()=>api('svc_site_hide',{codes:[r.code],on:!on}))}catch(e){if(!authFail(e))toast(e.message)}b.disabled=false;busy=false};
+    try{await api('svc_site_hide',{codes:[r.code],on});r.state=on?'on':'off';
+      if(!on){c.remove();const n=document.getElementById('kcn'),k=document.querySelectorAll('#kl .krow').length;if(n)n.textContent='সাইটে চালু '+bn(k)+'টি সার্ভিস';
+        if(!k&&!document.getElementById('kmb'))document.getElementById('kl').innerHTML='<div class="card empty">এই ক্যাটেগরিতে সাইটে চালু কোনো সার্ভিস নেই</div>';
+        toastU('সাইট থেকে সরানো হয়েছে',async()=>{await api('svc_site_hide',{codes:[r.code],on:true});reload()})}
+      else toast('চালু হয়েছে')}catch(e){if(!authFail(e))toast(e.message)}b.disabled=false;busy=false};
   return c}
 /* নতুন ক্যাটেগরি (সার্ভিস বেছে) / বিদ্যমান ক্যাটেগরিতে সার্ভিস যোগ */
 function catSheet(o){
@@ -1005,17 +1013,18 @@ function aiFabInit(F){let dr=null;
 const GK='pb_gem_key',GM='pb_gem_model',GOK='pb_gem_ok',GDEF='gemini-3.6-flash';
 const gmodel=()=>{const m=(ls.get(GM)||'').trim(),a=(ls.get('pb_gem_auto')||'').trim();if(a&&(!m||m===GDEF))return a;return m&&!/^gemini-(1|2)\./.test(m)?m:GDEF};let gh=[],gbusy=false;
 const SYS=`তুমি "boostplus সার্ভিস স্টুডিও"-র AI সহকারী। সবসময় বাংলায়, ছোট ও পরিষ্কার উত্তর দাও।
-টুল দিয়ে তুমি সাইটের সার্ভিস ও ১০ প্রভাইডারের সার্ভিস খুঁজতে, ক্যাটেগরি/নাম সাজাতে, চালু-বন্ধ করতে, ক্যাটেগরির নাম বদলাতে/মুছতে পারো।
+টুল দিয়ে তুমি সাইটের সার্ভিস ও ১০ প্রভাইডারের সার্ভিস খুঁজতে, নাম সাজাতে, চালু-বন্ধ করতে, আর ক্যাটেগরি তালিকা (সংখ্যাসহ) দেখতে, নাম বদলাতে, দুই বা বেশি ক্যাটেগরি এক করতে, সার্ভিস এক ক্যাটেগরি থেকে অন্যটায় সরাতে, ক্যাটেগরি সরাতে (লুকাতে) ও ফিরিয়ে আনতে, ইমুজি বসাতে/তুলতে পারো।
 নিয়ম:
 ১) কোয়ালিটি/ট্যাগ শুধু প্রভাইডারের নিজের নামে যা আছে তা-ই; নিজে কিছু বানাবে না। কিছু না পেলে স্পষ্ট বলো।
 ২) যেকোনো পরিবর্তনের টুল ব্যবহারকারীর কাছে নিশ্চিতকরণ চায়। তবু টুল ডাকার আগে এক লাইনে বলো কী করছ।
 ৩) নাম সাজাতে tidy_preview/tidy_apply ব্যবহার করো। ব্যবহারকারী নির্দিষ্ট নাম না বললে set_service দিয়ে নিজে নাম বানিয়ো না।
-৪) সাইটের নামের ছাঁচ: "ধরন – কোয়ালিটি · দেশ · ড্রপ · ♻রিফিল · স্পিড · ⚡স্টার্ট · Max", ইমুজিসহ (যেমন 👥 Followers – 💎 HQ Real · 🛡️ NoDrop · ♻30D · 🚀 50K/D · 📈 Max1M)। ক্যাটেগরির নামের আগে প্ল্যাটফর্মের ইমুজি বসে (📸 Instagram Followers)। নতুন ক্যাটেগরি বানাতে create_category, ইমুজি বসাতে emoji_categories ব্যবহার করো।
-৫) দাম ৳ প্রতি ১০০০; প্রভাইডারের রেট USD। ফল তালিকা ছোট রাখো (সর্বোচ্চ ১০টা), বাকিটা কতগুলো আছে বলো।`;
+৪) সাইটের নামের ছাঁচ: "ধরন – কোয়ালিটি · দেশ · ড্রপ · ♻রিফিল · স্পিড · ⚡স্টার্ট · Max", ইমুজিসহ (যেমন 👥 Followers – 💎 HQ Real · 🛡️ NoDrop · ♻30D · 🚀 50K/D · 📈 Max1M)। ক্যাটেগরির নামের আগে প্ল্যাটফর্মের ইমুজি বসে (📸 Instagram Followers)। নতুন ক্যাটেগরি বানাতে create_category, ইমুজি বসাতে emoji_categories, তুলতে strip_emoji_categories ব্যবহার করো।
+৫ক) ক্যাটেগরির কাজে ব্যবহারকারীর দেওয়া নাম অস্পষ্ট হলে আগে list_categories দিয়ে হুবহু নাম দেখে নাও। নাম ইমুজি ছাড়াও মিলবে; না মিললে কাছাকাছি নামগুলো দেখিয়ে জিজ্ঞেস করো, অনুমান করে কিছু বদলাবে না। ক্যাটেগরি 'মুছে ফেলা' মানে সাইট থেকে লুকানো (ফেরানো যায়) — তাই ব্যবহারকারীকে সেটা বলো।
+৬) দাম ৳ প্রতি ১০০০; প্রভাইডারের রেট USD। ফল তালিকা ছোট রাখো (সর্বোচ্চ ১০টা), বাকিটা কতগুলো আছে বলো।`;
 const TOOLS=[{functionDeclarations:[
  {name:'search_site',description:'সাইটে থাকা সার্ভিস খোঁজে। মোট সংখ্যা ও কিছু সার্ভিস ফেরত দেয়।',parameters:{type:'OBJECT',properties:{q:{type:'STRING',description:'নাম/আইডি/ক্যাটেগরির অংশ'},platform:{type:'STRING',description:'যেমন Instagram, Facebook, TikTok'},category:{type:'STRING',description:'হুবহু ক্যাটেগরির নাম'},state:{type:'STRING',description:'on, off বা all (ডিফল্ট on)'},limit:{type:'INTEGER'}}}},
  {name:'search_providers',description:'১০ প্রভাইডারের সব সার্ভিসে খোঁজে, সস্তা আগে (দাম তুলনা)। q কমপক্ষে ২ অক্ষর, যেমন "instagram followers"।',parameters:{type:'OBJECT',properties:{q:{type:'STRING'},refill:{type:'BOOLEAN',description:'শুধু রিফিল আছে এমন'},limit:{type:'INTEGER'}},required:['q']}},
- {name:'list_categories',description:'সাইটের প্ল্যাটফর্ম ও ক্যাটেগরির তালিকা (platform দিলে শুধু ওটার)।',parameters:{type:'OBJECT',properties:{platform:{type:'STRING'}}}},
+ {name:'list_categories',description:'সাইটের ক্যাটেগরির তালিকা — প্রতিটার মোট সার্ভিস, চালু ও বন্ধ সংখ্যাসহ। platform দিলে শুধু ওটার; q দিলে নামে খোঁজে; only_empty=true দিলে যেগুলোতে কোনো চালু সার্ভিস নেই শুধু সেগুলো।',parameters:{type:'OBJECT',properties:{platform:{type:'STRING'},q:{type:'STRING'},only_empty:{type:'BOOLEAN'}}}},
  {name:'tidy_preview',description:'নাম সাজালে কতগুলো বদলাবে ও নমুনা দেখায় (কিছু বদলায় না)। category/q দিয়ে সীমিত করা যায়।',parameters:{type:'OBJECT',properties:{category:{type:'STRING'},q:{type:'STRING'},platform:{type:'STRING'}}}},
  {name:'tidy_apply',description:'সাইটের চালু সার্ভিসের নাম সাইটের ছাঁচে সাজায় (নিশ্চিতকরণ চায়)। category/q/platform দিয়ে সীমিত করা যায়।',parameters:{type:'OBJECT',properties:{category:{type:'STRING'},q:{type:'STRING'},platform:{type:'STRING'}}}},
  {name:'set_service',description:'একটা সার্ভিসের নাম বা ক্যাটেগরি বদলায় (নিশ্চিতকরণ চায়)।',parameters:{type:'OBJECT',properties:{code:{type:'STRING'},name:{type:'STRING'},category:{type:'STRING'}},required:['code']}},
@@ -1023,26 +1032,46 @@ const TOOLS=[{functionDeclarations:[
  {name:'rename_category',description:'একটা ক্যাটেগরির সব সার্ভিসের ক্যাটেগরির নাম বদলায় (নিশ্চিতকরণ চায়)।',parameters:{type:'OBJECT',properties:{old:{type:'STRING'},new:{type:'STRING'}},required:['old','new']}},
  {name:'create_category',description:'নতুন ক্যাটেগরি বানায়: আইডি দিয়ে দেওয়া সার্ভিসগুলো ওই নামের ক্যাটেগরিতে নেয় (নিশ্চিতকরণ চায়)। সার্ভিস ছাড়া ক্যাটেগরি হয় না।',parameters:{type:'OBJECT',properties:{name:{type:'STRING',description:'নতুন ক্যাটেগরির নাম'},codes:{type:'ARRAY',items:{type:'STRING'},description:'সার্ভিসের আইডি'},platform:{type:'STRING',description:'ঐচ্ছিক: instagram, facebook, tiktok, youtube, telegram, twitter, whatsapp'}},required:['name','codes']}},
  {name:'emoji_categories',description:'ক্যাটেগরির নামের আগে প্ল্যাটফর্মের ইমুজি বসায় — category দিলে শুধু ওটা, না দিলে সব (নিশ্চিতকরণ চায়)।',parameters:{type:'OBJECT',properties:{category:{type:'STRING'}}}},
- {name:'delete_category',description:'একটা ক্যাটেগরির সব চালু সার্ভিস সাইট থেকে সরায় (নিশ্চিতকরণ চায়, পরে ফেরানো যায়)।',parameters:{type:'OBJECT',properties:{category:{type:'STRING'}},required:['category']}}
+ {name:'delete_category',description:'একটা ক্যাটেগরির সব চালু সার্ভিস সাইট থেকে সরায়/লুকায় (নিশ্চিতকরণ চায়, restore_category দিয়ে ফেরানো যায়)।',parameters:{type:'OBJECT',properties:{category:{type:'STRING'}},required:['category']}},
+ {name:'restore_category',description:'লুকানো/সরানো ক্যাটেগরির সব সার্ভিস আবার সাইটে চালু করে (নিশ্চিতকরণ চায়)।',parameters:{type:'OBJECT',properties:{category:{type:'STRING'}},required:['category']}},
+ {name:'merge_categories',description:'এক বা একাধিক ক্যাটেগরির (from) সব সার্ভিস অন্য একটা ক্যাটেগরিতে (into) নিয়ে এক করে (নিশ্চিতকরণ চায়)। into নতুন নামও হতে পারে।',parameters:{type:'OBJECT',properties:{from:{type:'ARRAY',items:{type:'STRING'},description:'যেসব ক্যাটেগরি মিশবে'},into:{type:'STRING',description:'গন্তব্য ক্যাটেগরি'}},required:['from','into']}},
+ {name:'move_services',description:'নির্দিষ্ট সার্ভিস আইডিগুলো একটা ক্যাটেগরিতে সরায়, নাম অপরিবর্তিত (নিশ্চিতকরণ চায়)। category নতুন নামও হতে পারে।',parameters:{type:'OBJECT',properties:{codes:{type:'ARRAY',items:{type:'STRING'}},category:{type:'STRING'}},required:['codes','category']}},
+ {name:'strip_emoji_categories',description:'ক্যাটেগরির নামের আগের ইমুজি তুলে ফেলে — category দিলে শুধু ওটা, না দিলে সব (নিশ্চিতকরণ চায়)।',parameters:{type:'OBJECT',properties:{category:{type:'STRING'}}}}
 ]}];
-const LBL={search_site:'🔎 সাইটে খুঁজছি…',search_providers:'🔎 ১০ প্রভাইডারে খুঁজছি…',list_categories:'🗂 ক্যাটেগরি দেখছি…',tidy_preview:'🧹 নাম পরীক্ষা করছি…',tidy_apply:'🧹 নাম সাজাচ্ছি…',set_service:'✎ সার্ভিস বদলাচ্ছি…',set_visibility:'👁 চালু/বন্ধ করছি…',rename_category:'✎ ক্যাটেগরির নাম বদলাচ্ছি…',delete_category:'🗑 ক্যাটেগরি সরাচ্ছি…',create_category:'➕ ক্যাটেগরি বানাচ্ছি…',emoji_categories:'✨ ইমুজি বসাচ্ছি…'};
+const LBL={search_site:'🔎 সাইটে খুঁজছি…',search_providers:'🔎 ১০ প্রভাইডারে খুঁজছি…',list_categories:'🗂 ক্যাটেগরি দেখছি…',tidy_preview:'🧹 নাম পরীক্ষা করছি…',tidy_apply:'🧹 নাম সাজাচ্ছি…',set_service:'✎ সার্ভিস বদলাচ্ছি…',set_visibility:'👁 চালু/বন্ধ করছি…',rename_category:'✎ ক্যাটেগরির নাম বদলাচ্ছি…',delete_category:'🗑 ক্যাটেগরি সরাচ্ছি…',create_category:'➕ ক্যাটেগরি বানাচ্ছি…',emoji_categories:'✨ ইমুজি বসাচ্ছি…',restore_category:'↩ ক্যাটেগরি ফেরাচ্ছি…',merge_categories:'🔗 ক্যাটেগরি এক করছি…',move_services:'➡ সার্ভিস সরাচ্ছি…',strip_emoji_categories:'🧽 ইমুজি তুলছি…'};
 const glim=n=>Math.max(1,Math.min(+n||12,30)),gref=()=>{SC=null;const h=location.hash;if(h==='#mng')mload();else if(h==='#cats'||h.indexOf('#cat=')===0)route()};
 const gslim=r=>({code:r.code,name:r.name,category:r.category,platform:r.platform_label,cost_usd:r.cost,min:r.min,max:r.max,state:r.state});
 async function scanSite(f){const R=[];let off=0,tot=1;while(off<tot){const d=await api('svc_site_list',{q:f.q||'',platform:f.platform||'',category:f.category||'',state:f.state||'on',offset:off,limit:100});tot=d.total;if(!d.rows.length)break;R.push(...d.rows);off+=d.rows.length}return R}
 async function tidyItems(f){const rows=await scanSite(f||{}),it=[];rows.forEach(r=>{const nm=nice(r);if(nm&&nm!==r.name)it.push({code:r.code,cn:r.name,nn:nm,category:r.category,src:r.src,ov:r.ov})});return{n:rows.length,it}}
 async function tidyDo(it){const need=it.filter(r=>r.src==='static'&&!r.ov).map(r=>r.code);for(const c of chunks(need,200))await api('svc_site_bulk',{codes:c});
   let done=0;for(const c of chunks(it.map(r=>({code:r.code,name:r.nn,cat:r.category})),300)){const x=await api('svc_tidy_apply',{items:c});done+=x.done}return done}
+/* ক্যাটেগরির নাম মেলানো: হুবহু → ইমুজি/বড়-ছোট হাত ছাড়া → একমাত্র অংশ-মিল; না মিললে কাছাকাছি নাম দেখায় */
+async function resolveCat(name,soft){const nm=String(name||'').trim();if(!nm)return{error:'ক্যাটেগরির নাম দিন'};
+  const rows=await siteRows(),names=[...new Set(rows.map(r=>r.category).filter(Boolean))];
+  if(names.indexOf(nm)>=0)return{name:nm,exists:true};
+  const k=stripEmo(nm).toLowerCase(),eq=names.filter(c=>stripEmo(c).toLowerCase()===k);
+  if(eq.length===1)return{name:eq[0],exists:true};
+  if(eq.length>1)return{error:'একই নামের একাধিক ক্যাটেগরি আছে (ইমুজি আলাদা): '+eq.slice(0,6).join(' | ')+' — হুবহু কোনটা বলুন'};
+  if(soft)return{name:nm,exists:false};
+  const part=k?names.filter(c=>stripEmo(c).toLowerCase().indexOf(k)>=0):[];
+  if(part.length===1)return{name:part[0],exists:true};
+  return{error:'"'+nm+'" নামে ক্যাটেগরি পাওয়া যায়নি'+(part.length?' — কাছাকাছি: '+part.slice(0,6).join(' | '):'')}}
+async function catSummary(a){const rows=await siteRows(),pl=String(a.platform||'').trim().toLowerCase(),q=String(a.q||'').trim().toLowerCase(),G={};
+  rows.forEach(r=>{if(!r.category)return;if(pl&&String(r.platform_label||'').toLowerCase()!==pl)return;const g=G[r.category]||(G[r.category]={name:r.category,platform:r.platform_label||'',services:0,on:0,off:0});g.services++;if(r.state==='off')g.off++;else g.on++});
+  let L=Object.values(G).filter(c=>!q||c.name.toLowerCase().indexOf(q)>=0);if(a.only_empty)L=L.filter(c=>c.on===0);
+  L.sort((x,y)=>x.name.localeCompare(y.name));return{total:L.length,list:L}}
 async function catRenameCore(cat,nn){nn=String(nn||'').trim();if(!cat||!nn||nn===cat)return{error:'নাম ঠিক নয়'};if(nn.length>80)return{error:'নাম ৮০ অক্ষরের বেশি'};
   const codes=await catCodes(cat,'all');if(!codes.length)return{error:'এই ক্যাটেগরিতে কিছু নেই'};
-  if(!confirm('"'+cat+'" ক্যাটেগরির '+bn(codes.length)+'টি সার্ভিসের ক্যাটেগরি বদলে "'+nn+'" হবে। চালিয়ে যাবেন?'))return{cancelled:true};
+  const ex=(await siteRows()).some(r=>r.category===nn);
+  if(!confirm('"'+cat+'" ক্যাটেগরির '+bn(codes.length)+'টি সার্ভিসের ক্যাটেগরি বদলে "'+nn+'" হবে।'+(ex?'\n(এই নামে আগে থেকেই ক্যাটেগরি আছে — দুটো মিশে এক হয়ে যাবে)':'')+'\n\nচালিয়ে যাবেন?'))return{cancelled:true};
   let done=0;for(const c of chunks(codes,200)){const r=await api('svc_site_bulk',{codes:c,category:nn});done+=r.done}gref();return{done}}
 async function catDeleteCore(cat){const codes=await catCodes(cat,'on');if(!codes.length)return{error:'এই নামে চালু সার্ভিস নেই'};
-  if(!confirm('"'+cat+'" ক্যাটেগরির চালু '+bn(codes.length)+'টি সার্ভিস সাইট থেকে সরানো হবে (পরে "লুকানো" থেকে ফেরানো যাবে)। নিশ্চিত?'))return{cancelled:true};
+  if(!confirm('"'+cat+'" ক্যাটেগরির চালু '+bn(codes.length)+'টি সার্ভিস সাইট থেকে সরানো হবে (পরে প্রভাইডার/প্ল্যাটফর্ম পাতা থেকে আবার যোগ করা যাবে, অথবা AI-কে ক্যাটেগরি ফেরাতে বলুন)। নিশ্চিত?'))return{cancelled:true};
   let done=0;for(const c of chunks(codes,200)){const r=await api('svc_site_hide',{codes:c,on:false,del:true});done+=r.done}gref();return{done}}
 const TOOLFN={
  async search_site(a){const d=await api('svc_site_list',{q:a.q||'',platform:a.platform||'',category:a.category||'',state:a.state||'on',offset:0,limit:glim(a.limit)});return{total:d.total,rows:d.rows.map(gslim),categories_in_result:d.categories.slice(0,40)}},
  async search_providers(a){const d=await api('svc_compare',{q:a.q||'',refill:!!a.refill});return{total:d.total,rows:d.rows.slice(0,glim(a.limit)).map(r=>({provider:r.provider,id:r.service_id,name:r.name,category:r.category,rate_usd_per_1k:r.rate,min:r.min,max:r.max,refill:r.refill==='1',on_site:r.state==='on',avg_time_sec:r.spd?Math.round(r.spd.m):null}))}},
- async list_categories(a){const d=await api('svc_site_list',{q:'',platform:a.platform||'',category:'',state:'on',offset:0,limit:1});return{total_services:d.total,platforms:d.platforms,categories:d.categories}},
+ async list_categories(a){const s=await catSummary(a),d=await api('svc_site_list',{q:'',platform:'',category:'',state:'on',offset:0,limit:1});return{categories_total:s.total,showing:Math.min(s.total,100),categories:s.list.slice(0,100),platforms:d.platforms}},
  async tidy_preview(a){const t=await tidyItems(a);return{scanned:t.n,would_change:t.it.length,samples:t.it.slice(0,12).map(x=>({code:x.code,from:x.cn,to:x.nn}))}},
  async tidy_apply(a){const t=await tidyItems(a);if(!t.it.length)return{message:'সব সার্ভিস আগেই সাজানো',scanned:t.n};
   if(!confirm(bn(t.it.length)+'টি সার্ভিসের নাম সাইটের ছাঁচে বদলানো হবে। যেমন:\n'+t.it.slice(0,3).map(x=>x.cn+'\n→ '+x.nn).join('\n\n')+'\n\nচালিয়ে যাবেন?'))return{cancelled:true};
@@ -1054,7 +1083,7 @@ const TOOLFN={
  async set_visibility(a){const codes=(a.codes||[]).map(String).slice(0,400);if(!codes.length)return{error:'কোনো আইডি নেই'};
   if(!confirm(bn(codes.length)+'টি সার্ভিস সাইটে '+(a.on?'চালু':'বন্ধ')+' করা হবে। আইডি: '+codes.slice(0,8).join(', ')+(codes.length>8?'…':'')))return{cancelled:true};
   let done=0;for(const c of chunks(codes,200)){const r=await api('svc_site_hide',{codes:c,on:!!a.on});done+=r.done}gref();return{done}},
- rename_category(a){return catRenameCore(a.old,a.new)},
+ async rename_category(a){const r=await resolveCat(a.old);if(r.error)return r;return catRenameCore(r.name,a.new)},
  async create_category(a){const name=String(a.name||'').trim(),codes=(a.codes||[]).map(String).slice(0,400);if(!name||name.length>80)return{error:'ক্যাটেগরির নাম ঠিক নয় (১–৮০ অক্ষর)'};if(!codes.length)return{error:'কোনো সার্ভিস আইডি নেই'};
   const pl=PLAT.slice(0,7).some(p=>p[0]===String(a.platform||'').toLowerCase())?String(a.platform).toLowerCase():'';
   if(!confirm('নতুন ক্যাটেগরি: "'+name+'"\n'+bn(codes.length)+'টি সার্ভিস এতে আসবে। আইডি: '+codes.slice(0,8).join(', ')+(codes.length>8?'…':'')+'\nচালিয়ে যাবেন?'))return{cancelled:true};
@@ -1062,7 +1091,25 @@ const TOOLFN={
  async emoji_categories(a){const rows=await siteRows(true),names=a.category?[String(a.category)]:rows.map(r=>r.category),pairs=emojiPairs(names);if(!pairs.length)return{message:'বদলানোর কিছু নেই — আগেই ইমুজি আছে বা ক্যাটেগরি পাওয়া যায়নি'};
   if(!confirm(bn(pairs.length)+'টি ক্যাটেগরির নাম বদলাবে। যেমন:\n'+pairs.slice(0,4).map(p=>p[0]+'\n→ '+p[1]).join('\n\n')+'\n\nচালিয়ে যাবেন?'))return{cancelled:true};
   const done=await catsEmojiDo(pairs);gref();return{renamed:pairs.length,services:done}},
- delete_category(a){return catDeleteCore(a.category)}};
+ async delete_category(a){const r=await resolveCat(a.category);if(r.error)return r;return catDeleteCore(r.name)},
+ async restore_category(a){const r=await resolveCat(a.category);if(r.error)return r;const codes=await catCodes(r.name,'off');if(!codes.length)return{error:'এই ক্যাটেগরিতে বন্ধ/লুকানো সার্ভিস নেই'};
+  if(!confirm('"'+r.name+'" ক্যাটেগরির '+bn(codes.length)+'টি বন্ধ সার্ভিস আবার সাইটে চালু হবে। চালিয়ে যাবেন?'))return{cancelled:true};
+  let done=0,blocked=0;for(const c of chunks(codes,200)){const x=await api('svc_site_hide',{codes:c,on:true});done+=x.done;blocked+=x.blocked||0}gref();return{done,blocked_provider_off:blocked}},
+ async merge_categories(a){const into=await resolveCat(a.into,true);if(into.error)return into;const src=[];
+  for(const f of (a.from||[]).slice(0,12)){const r=await resolveCat(f);if(r.error)return r;if(r.name!==into.name&&src.indexOf(r.name)<0)src.push(r.name)}
+  if(!src.length)return{error:'এক করার মতো আলাদা ক্যাটেগরি নেই'};const plan=[];let tot=0;
+  for(const s of src){const codes=await catCodes(s,'all');plan.push([s,codes]);tot+=codes.length}
+  if(!tot)return{error:'ওই ক্যাটেগরিগুলোতে কোনো সার্ভিস নেই'};
+  if(!confirm(bn(tot)+'টি সার্ভিস নিয়ে এক হবে → "'+into.name+'"'+(into.exists?'':' (নতুন ক্যাটেগরি)')+'\n\n'+plan.map(p=>'• '+p[0]+' ('+bn(p[1].length)+')').join('\n')+'\n\nচালিয়ে যাবেন?'))return{cancelled:true};
+  let done=0;for(const p of plan)for(const c of chunks(p[1],200)){const x=await api('svc_site_bulk',{codes:c,category:into.name});done+=x.done}gref();return{moved:done,into:into.name,merged_from:src}},
+ async move_services(a){const codes=(a.codes||[]).map(String).slice(0,400);if(!codes.length)return{error:'কোনো সার্ভিস আইডি নেই'};const r=await resolveCat(a.category,true);if(r.error)return r;
+  if(!confirm(bn(codes.length)+'টি সার্ভিস "'+r.name+'" ক্যাটেগরিতে যাবে'+(r.exists?'':' (নতুন ক্যাটেগরি)')+'। আইডি: '+codes.slice(0,8).join(', ')+(codes.length>8?'…':'')+'\nচালিয়ে যাবেন?'))return{cancelled:true};
+  let done=0;for(const c of chunks(codes,200)){const x=await api('svc_site_bulk',{codes:c,category:r.name});done+=x.done}gref();return{done,category:r.name}},
+ async strip_emoji_categories(a){let names;if(a.category){const r=await resolveCat(a.category);if(r.error)return r;names=[r.name]}else names=(await siteRows()).map(x=>x.category);
+  const pairs=[...new Set(names)].filter(Boolean).map(c=>[c,stripEmo(c)]).filter(p=>p[1]&&p[1]!==p[0]);
+  if(!pairs.length)return{message:'তোলার মতো ইমুজি নেই'};
+  if(!confirm(bn(pairs.length)+'টি ক্যাটেগরির নাম থেকে ইমুজি উঠবে। যেমন:\n'+pairs.slice(0,4).map(p=>p[0]+'\n→ '+p[1]).join('\n\n')+'\n\nচালিয়ে যাবেন?'))return{cancelled:true};
+  const done=await catsEmojiDo(pairs);gref();return{renamed:pairs.length,services:done}}};
 const gmd=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
 function addMsg(k,t){const b=$('#aiMsgs');if(!b)return null;const d=document.createElement('div');d.className='am '+k;if(k==='ai')d.innerHTML=gmd(t);else d.textContent=t;b.appendChild(d);b.scrollTop=b.scrollHeight;return d}
 const GURL='https://generativelanguage.googleapis.com/v1beta/';
@@ -1080,10 +1127,10 @@ async function gcall(){const key=ls.get(GK),model=gmodel(),body={systemInstructi
       if(x.r.ok)return x.d;
       const e=new Error((x.d.error&&x.d.error.message)||('HTTP '+x.r.status));e.status=x.r.status;
       if([400,401,403,404].indexOf(x.r.status)<0)throw e;derr=e}
-    catch(e){if(e&&e.status)throw e}}
-  try{const p=await api('ai_gemini',Object.assign({model,body},key&&/^AQ\./.test(key)?{key}:{}));
+    catch(e){if(e&&e.status)throw e;derr=e}}
+  try{const p=await api('svc_ai',Object.assign({model,body},key&&/^AQ\./.test(key)?{key}:{}));
     if(p.status!==200){const e=new Error((p.data&&p.data.error&&p.data.error.message)||('HTTP '+p.status));e.status=p.status;throw e}return p.data}
-  catch(se){if(derr&&se&&se.code==='unknown_action')throw derr;throw se}}
+  catch(se){if(se&&se.code==='unknown_action'){if(derr&&derr.status)throw derr;if(derr)se.direct=String(derr.message||derr)}throw se}}
 function gtrim(){if(gh.length<=40)return;let i=gh.length-14;while(i<gh.length&&!(gh[i].role==='user'&&gh[i].parts&&gh[i].parts[0]&&gh[i].parts[0].text!==undefined))i++;gh=i<gh.length?gh.slice(i):gh.slice(-2)}
 async function agent(text){gtrim();gh.push({role:'user',parts:[{text}]});
   for(let i=0;i<8;i++){const d=await gcall(),c=d.candidates&&d.candidates[0];
@@ -1095,11 +1142,14 @@ async function agent(text){gtrim();gh.push({role:'user',parts:[{text}]});
       resp.push({functionResponse:{name:fc.name,response:{result:out}}})}
     gh.push({role:'user',parts:resp})}
   addMsg('ai','অনেক ধাপ হয়ে গেছে — আবার বলুন, কোথায় থেমেছি সেখান থেকে চালাব।')}
-const gerr=e=>e.code==='unknown_action'?'Apps Script-এ নতুন PtServices.gs বসিয়ে আবার Deploy করুন (ai_gemini অ্যাকশন নেই)':e.status===429?'ফ্রি কোটা শেষ বা অনেক দ্রুত পাঠানো হয়েছে — একটু পরে চেষ্টা করুন':e.status===400&&/key/i.test(e.message)||e.status===403||e.status===401?'API key ঠিক নয় বা অনুমতি নেই — ⚙ থেকে দেখুন ('+String(e.message||'').slice(0,160)+')':e.status===404?'মডেল পাওয়া যায়নি ও নিজে থেকে খুঁজেও মেলেনি — ⚙ থেকে মডেলের নাম বদলে দেখুন ('+String(e.message||'').slice(0,140)+')':e.name==='TypeError'?'ইন্টারনেট/নেটওয়ার্ক সমস্যা':e.message;
+const gerr=e=>e.code==='unknown_action'?'Apps Script-এ নতুন PtServices.gs বসিয়ে আবার Deploy → New version দিন (svc_ai অ্যাকশন নেই)'+(e.direct?' [সরাসরি Google-এও যায়নি: '+e.direct.slice(0,90)+']':'')
+  :e.code==='no_key'?'কোনো Gemini key নেই — ⚙ থেকে নিজের key দিন, অথবা Apps Script → Project Settings → Script properties-এ GEMINI_API_KEY বসান'
+  :e.code==='bad_model'?'মডেলের নাম ঠিক নয় — ⚙ থেকে দেখুন'
+  :e.code==='svc_failed'?'সার্ভার থেকে Google-এ যেতে সমস্যা: '+String(e.message||'').slice(0,120):e.status===429?'ফ্রি কোটা শেষ বা অনেক দ্রুত পাঠানো হয়েছে — একটু পরে চেষ্টা করুন':e.status===400&&/key/i.test(e.message)||e.status===403||e.status===401?'API key ঠিক নয় বা অনুমতি নেই — ⚙ থেকে দেখুন ('+String(e.message||'').slice(0,160)+')':e.status===404?'মডেল পাওয়া যায়নি ও নিজে থেকে খুঁজেও মেলেনি — ⚙ থেকে মডেলের নাম বদলে দেখুন ('+String(e.message||'').slice(0,140)+')':e.name==='TypeError'?'ইন্টারনেট/নেটওয়ার্ক সমস্যা':e.message;
 function aiStatus(){const k=ls.get(GK);$('#aiSt').textContent=k?(ls.get(GOK)?'● সংযুক্ত':'● key আছে'):(ls.get(GOK)?'● সার্ভার key':'○ সার্ভার key');$('#aiSt').className='sub'+(k&&ls.get(GOK)?' ok':'')}
 function aiInit(){if($('#aiFab'))return;
   document.body.insertAdjacentHTML('beforeend',`<button id="aiFab" class="aifab" popover="manual" aria-label="AI সহকারী — টেনে সরানো যায়" title="AI সহকারী (টেনে সরান)" hidden>${ROBOT}</button><section id="ai" class="aipanel" popover="manual" role="dialog" aria-label="AI সহকারী" hidden><header><b class="aiti">${ROBOT.replace('width="30" height="30"','width="22" height="22"')} AI সহকারী</b><span id="aiSt" class="sub"></span><span class="aihs"><button class="ib" id="aiSet" aria-label="সেটিং">⚙</button><button class="ib" id="aiNew" aria-label="নতুন চ্যাট" title="নতুন চ্যাট">↺</button><button class="ib" id="aiX" aria-label="বন্ধ">✕</button></span></header>
-<div id="aiKey" class="aikey" hidden><label for="aiK">Gemini API key</label><input id="aiK" type="password" autocomplete="off" placeholder="AIza…"><label for="aiM">মডেল</label><input id="aiM" autocomplete="off"><p class="sub">key শুধু এই ফোনের ব্রাউজারে থাকে। Google AI Studio-তে key-তে সীমা (restriction) বেঁধে রাখুন। (অ্যাপ সংস্করণ v93)</p><p class="err" id="aiKe" role="alert"></p><div class="acts"><button class="sm" id="aiDel" type="button">key মুছুন</button><button class="btn" id="aiSave" type="button">সংরক্ষণ ও পরীক্ষা</button></div></div>
+<div id="aiKey" class="aikey" hidden><label for="aiK">Gemini API key</label><input id="aiK" type="password" autocomplete="off" placeholder="AIza…"><label for="aiM">মডেল</label><input id="aiM" autocomplete="off"><p class="sub">key শুধু এই ফোনের ব্রাউজারে থাকে। Google AI Studio-তে key-তে সীমা (restriction) বেঁধে রাখুন। (অ্যাপ সংস্করণ v96)</p><p class="err" id="aiKe" role="alert"></p><div class="acts"><button class="sm" id="aiDel" type="button">key মুছুন</button><button class="btn" id="aiSave" type="button">সংরক্ষণ ও পরীক্ষা</button></div></div>
 <div id="aiMsgs" class="aimsgs" aria-live="polite"></div><div id="aiChips" class="chips"></div><form id="aiForm"><input id="aiIn" placeholder="যা করাতে চান লিখুন…" autocomplete="off" aria-label="বার্তা"><button class="btn" id="aiGo">পাঠান</button></form></section>`);
   const P=$('#ai'),F=$('#aiFab');aiFabInit(F);topLayer(P);topLayer(F);
   const open=()=>{P.hidden=false;F.hidden=true;topLayer(P);aiStatus();$('#aiIn').focus()};
@@ -1118,8 +1168,8 @@ function aiInit(){if($('#aiFab'))return;
     try{await agent(t);ls.set(GOK,'1')}catch(e){addMsg('err',gerr(e))}
     if(w)w.remove();gbusy=false;$('#aiGo').disabled=false;aiStatus();$('#aiIn').focus()};
   $('#aiForm').onsubmit=e=>{e.preventDefault();send($('#aiIn').value)};
-  const hello=()=>{addMsg('ai','আমি সাইটের সার্ভিস খুঁজতে, ক্যাটেগরি/নাম সাজাতে, চালু-বন্ধ করতে পারি। কী করাতে চান?');
-    $('#aiChips').innerHTML=['TikTok Followers-এর সবচেয়ে সস্তা ৫টা (সব প্রভাইডার)','ফেসবুকের ক্যাটেগরিগুলো দেখাও','কতগুলো সার্ভিসের নাম সাজানো বাকি?','Instagram Followers-এর নাম সাজাও'].map(x=>`<button class="chip" type="button">${esc(x)}</button>`).join('');
+  const hello=()=>{addMsg('ai','আমি সাইটের সার্ভিস খুঁজতে, নাম সাজাতে, চালু-বন্ধ করতে পারি। ক্যাটেগরির নাম বদলানো, এক করা, সার্ভিস সরানো, সরানো/ফেরানো — সবই এখান থেকে বললেই হবে। কী করাতে চান?');
+    $('#aiChips').innerHTML=['ফেসবুকের ক্যাটেগরিগুলো সংখ্যাসহ দেখাও','যেসব ক্যাটেগরিতে কোনো চালু সার্ভিস নেই সেগুলো দেখাও','একটা ক্যাটেগরির নাম বদলাব','দুটো ক্যাটেগরি এক করব','একটা ক্যাটেগরি সরাব বা ফেরাব','TikTok Followers-এর সবচেয়ে সস্তা ৫টা (সব প্রভাইডার)','কতগুলো সার্ভিসের নাম সাজানো বাকি?','Instagram Followers-এর নাম সাজাও'].map(x=>`<button class="chip" type="button">${esc(x)}</button>`).join('');
     $('#aiChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>send(b.textContent))};
   hello();aiStatus();window._aiClose=close}
 /* AI সহকারী: লগইনের পর সব পাতার ওপরে ভাসমান বাটন; লগআউটে লুকায় */
@@ -1132,7 +1182,7 @@ function aiShow(a){
 /* ---------- রাউটার, লগইন, ইনস্টল ---------- */
 function exc(){cur=null;$('#title').textContent='ব্যতিক্রম';$('#back').hidden=true;const el=$('#main'),I=EXC.items,G=[['new','🆕 নতুন সার্ভিস'],['gone','⚠ প্রভাইডার থেকে চলে গেছে (সাইটে চালু ছিল)'],['price','💲 দাম বদলেছে (৫%+)']];
   el.innerHTML=nav('exc')+`<div class="bar"><button class="btn" id="xs" style="max-width:220px">⟳ এখনই সিঙ্ক</button>${I.length?'<button class="chip" id="xd">সব দেখেছি</button>':''}</div><p class="sub">সিঙ্কের সময় আগের ক্যাটালগের সাথে মিলিয়ে দেখানো হয়। বাকি সব আপনার না দেখলেও চলে।${CAT?'':' (প্রথম সিঙ্ক এখনো হয়নি)'}</p>`+(I.length?G.map(g=>{const l=I.filter(x=>x.t===g[0]);return l.length?`<h3>${g[1]} · ${bn(l.length)}</h3><div class="list">`+l.slice(0,60).map(x=>`<a class="card" href="#mng" data-c="${esc(x.code)}" style="display:block;text-decoration:none;color:inherit"><b>${esc(x.name)}</b><div class="sub">${esc(x.pl)} · #${esc(x.code)}${x.t==='price'?` · ${bn(x.a)} → ${bn(x.b)} `:''}</div></a>`).join('')+'</div>':''}).join(''):'<p class="mut">এখন কোনো ব্যতিক্রম নেই ✔</p>');
-  el.querySelectorAll('[data-c]').forEach(a=>a.onclick=()=>{ms.q=a.dataset.c;ms.state='all';ms.plat='';ms.cat=''});
+  el.querySelectorAll('[data-c]').forEach(a=>a.onclick=()=>{ms.q=a.dataset.c;ms.state='on';ms.plat='';ms.cat=''});
   const xd=$('#xd');if(xd)xd.onclick=()=>{EXC={items:[]};idb.set(EXK,EXC);exc()};
   $('#xs').onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{await catSyncNow((a,t)=>{b.textContent='⟳ '+bn(a)+'/'+bn(t)});exc()}catch(x){if(!authFail(x))toast(x.message);b.disabled=false}}}
 /* ---------- পোস্টার: সার্ভিস বেছে সুন্দর ছবি বানিয়ে সব জায়গায় শেয়ার ---------- */
@@ -1297,6 +1347,19 @@ const spKey=r=>r.provider+'|'+r.provider_order;
 const spFin=r=>r.completed_at>0||/completed|partial|cancel|refund|fail|error/.test(String(r.status||'').toLowerCase());
 const spBad=r=>/partial|cancel|refund|fail|error/.test(String(r.status||'').toLowerCase());
 const spCan=r=>/cancel|refund|fail|error/.test(String(r.status||'').toLowerCase());
+/* ---------- 📝 দ্রুত সম্পন্ন সার্ভিসের নোট: সার্ভিস কোড, নাম, প্রভাইডার, গড় সময় (ফোনে জমা থাকে) ---------- */
+const SPK_F='pb_sp_fast_v1',SPK_FT='pb_sp_fast_th';
+const spTot=r=>r.total_secs>0?r.total_secs:(r.completed_at>0&&r.ordered_at>0?(r.completed_at-r.ordered_at)/1000:0);
+function spFastLearn(rows){const f=spLoad(SPK_F)||{seen:{},s:{}};let ch=false;
+  rows.forEach(r=>{if(r._local||!spFin(r)||spBad(r))return;const t=spTot(r);if(!(t>0))return;const o=spKey(r);if(f.seen[o])return;f.seen[o]=1;ch=true;
+    const k=r.provider+'|'+r.service_id,e=f.s[k]||(f.s[k]={code:String(r.service_id),name:'',prov:r.provider,sum:0,n:0,min:t,max:t,last:0});
+    if(r.name||r.label)e.name=r.name||r.label;e.sum+=t;e.n++;e.min=Math.min(e.min,t);e.max=Math.max(e.max,t);e.last=Math.max(e.last,r.completed_at||0)});
+  const ks=Object.keys(f.seen);if(ks.length>3000){ks.slice(0,ks.length-3000).forEach(k=>delete f.seen[k]);ch=true}
+  if(ch)spSave(SPK_F,f);return f}
+const spFastTh=()=>{const v=+ls.get(SPK_FT);return v>0?v:1800};
+function spFastList(f,prov){const th=spFastTh();return Object.keys(f.s).map(k=>Object.assign({k,avg:f.s[k].sum/f.s[k].n},f.s[k])).filter(e=>e.avg<=th&&(!prov||e.prov===prov)).sort((a,b)=>a.avg-b.avg)}
+function spFastText(L,th){const o=['📝 দ্রুত সম্পন্ন সার্ভিস — নোট','────────────────','শর্ত: গড় মোট সময় '+mnT(th)+' বা কম','সার্ভিস: '+bn(L.length)+'টি',''];
+  L.forEach((e,i)=>{o.push(bn(i+1)+'. সার্ভিস কোড: '+e.code);o.push('   সার্ভিস নাম: '+(e.name||'—'));o.push('   প্রভাইডার: '+e.prov);o.push('   গড় সময়: ~'+mnT(e.avg)+' ('+bn(e.n)+'টি অর্ডার)');o.push('')});return o.join('\n')}
 /* ---------- টেলিগ্রাম: অর্ডার শেষ/ক্যান্সেল হলে লিংকসহ মেসেজ (টোকেন শুধু এই ব্রাউজারে) ---------- */
 const SPK_T='sp_tg_sent_v1';
 const tgCfg=()=>({t:(ls.get('pb_tg_token')||'').trim(),c:(ls.get('pb_tg_chat')||'').trim()});
@@ -1404,18 +1467,22 @@ async function spd(){
   const draw=()=>{const b=$('#spb');if(!D||!b)return;
     const rows=rowsAll,provs=[...new Set(rows.map(r=>r.provider))].sort(),
       cnt={run:rows.filter(r=>!spFin(r)).length,wait:rows.filter(r=>!spFin(r)&&!(r.started_at>0)).length,ok:rows.filter(r=>spFin(r)&&!spCan(r)).length,bad:rows.filter(spCan).length},
-      stOk=r=>SP.st==='all'||(SP.st==='run'?!spFin(r):SP.st==='can'?spCan(r):spFin(r)&&!spCan(r)),isAll=SP.st==='all',show=isAll?[]:rows.filter(r=>(!SP.prov||r.provider===SP.prov)&&stOk(r)),
+      stOk=r=>SP.st==='all'||SP.st==='note'||(SP.st==='run'?!spFin(r):SP.st==='can'?spCan(r):spFin(r)&&!spCan(r)),isAll=SP.st==='all',isNote=SP.st==='note',FN=spFastList(spFastLearn([]),SP.prov),show=(isAll||isNote)?[]:rows.filter(r=>(!SP.prov||r.provider===SP.prov)&&stOk(r)),
       S=spStats(rows.filter(r=>(!SP.prov||r.provider===SP.prov)&&stOk(r))).filter(s=>s.n).sort((a,b2)=>((b2.start_n>0)-(a.start_n>0))||((a.start_med||1e12)-(b2.start_med||1e12))).slice(0,10),nm={};
     rows.forEach(r=>{const k=r.provider+'|'+r.service_id;if(r.name&&!nm[k])nm[k]=r.name});const BS=spBest(spStats(rows),nm),TR=spTrend(rows);
     b.innerHTML=`<div class="card lvb"><div class="lvh"><span class="tag lv"><i class="dot"></i>লাইভ</span><b id="spclk"></b></div><div class="lvg"><div><b>${bn(rows.length)}</b><span class="sub">মোট অর্ডার</span></div><div><b class="w">${bn(cnt.run)}</b><span class="sub">চলমান</span></div><div><b class="w">${bn(cnt.wait)}</b><span class="sub">শুরুর অপেক্ষায়</span></div><div><b class="g">${bn(cnt.ok)}</b><span class="sub">সম্পন্ন</span></div><div><b class="hi">${bn(cnt.bad)}</b><span class="sub">ক্যান্সেল</span></div></div></div>
-<div class="chips">${[['all','সব'],['run','⏳ চলমান'],['done','✅ শেষ'],['can','🚫 ক্যান্সেল']].map(x=>`<button type="button" class="chip" data-s="${x[0]}" aria-pressed="${SP.st===x[0]}">${x[1]}${x[0]==='run'?' ('+bn(cnt.run)+')':x[0]==='done'?' ('+bn(cnt.ok)+')':x[0]==='can'?' ('+bn(cnt.bad)+')':''}</button>`).join('')}${rows.some(spFin)?'<button type="button" class="chip" id="repAll">📊 সব রিপোর্ট</button>':''}<button type="button" class="chip" id="tgSet">✈ টেলিগ্রাম ${tgOn()?'●':'○'}</button></div><select id="spp" class="plmore" aria-label="প্রভাইডার"><option value="">সব প্রভাইডার</option>${provs.map(p=>`<option${p===SP.prov?' selected':''}>${esc(p)}</option>`).join('')}</select>`
+<div class="chips">${[['all','সব'],['run','⏳ চলমান'],['done','✅ শেষ'],['can','🚫 ক্যান্সেল'],['note','📝 নোট']].map(x=>`<button type="button" class="chip" data-s="${x[0]}" aria-pressed="${SP.st===x[0]}">${x[1]}${x[0]==='run'?' ('+bn(cnt.run)+')':x[0]==='done'?' ('+bn(cnt.ok)+')':x[0]==='can'?' ('+bn(cnt.bad)+')':x[0]==='note'?' ('+bn(FN.length)+')':''}</button>`).join('')}${rows.some(spFin)?'<button type="button" class="chip" id="repAll">📊 সব রিপোর্ট</button>':''}<button type="button" class="chip" id="tgSet">✈ টেলিগ্রাম ${tgOn()?'●':'○'}</button></div><select id="spp" class="plmore" aria-label="প্রভাইডার"><option value="">সব প্রভাইডার</option>${provs.map(p=>`<option${p===SP.prov?' selected':''}>${esc(p)}</option>`).join('')}</select>`
     +(isAll&&BS.groups.length?`<div class="card sps"><b>🏆 সেরা প্রভাইডার</b><div class="sub">একই ধরনের সার্ভিস তুলনা করে (শুরু + মোট সময় + ড্রপ)</div>${BS.groups.slice(0,8).map(g=>{const a=g.l[0],pa=a.k.split('|'),b2=g.l[1],pb=b2.k.split('|');return `<div class="spr" data-sv="${esc(a.k)}" role="button" tabindex="0" aria-label="বিস্তারিত দেখুন"><div><b>${esc(g.label)}</b><div class="sub">🏆 ${esc(pa[0])} · #${esc(pa[1])}${a.n<3?' · কম টেস্ট':''}</div><div class="sub">২য়: ${esc(pb[0])} · #${esc(pb[1])} (~${mnT(b2.start_med)})</div></div><div class="spv"><b class="g">~${mnT(a.start_med)}</b><div class="sub">মোট ${a.ok?'~'+mnT(a.total_med):'—'} · ড্রপ ${bn(a.bad)}%</div></div></div>`}).join('')}</div>`:'')
     +(isAll&&TR.length?`<div class="card sps"><b>📈 শুরুর সময়ের ধারা</b><div class="sub">প্রভাইডারভিত্তিক দৈনিক মিডিয়ান (শেষ ১৪ দিন)</div>${TR.map(t=>{const a=t.pts[0],z=t.pts[t.pts.length-1],up=z>a*1.15,dn=z<a*.85;return `<div class="spr"><div><b>${esc(t.p)}</b><div class="sub">${bn(t.pts.length)} দিনের তথ্য</div></div><div class="spv"><span class="spkw ${up?'hi':dn?'g':''}">${spSpark(t.pts,110,28)}</span><div class="sub">~${mnT(a)} → ~${mnT(z)}${up?' 🔺 ধীর':dn?' 🔻 দ্রুত':''}</div></div></div>`}).join('')}</div>`:'')
     +(isAll&&S.length?`<div class="card sps"><b>শুরুর গতি — দ্রুত আগে</b>${S.map(s=>{const p=s.k.split('|');return `<div class="spr" data-sv="${esc(s.k)}" role="button" tabindex="0" aria-label="বিস্তারিত দেখুন"><div><b>${esc(p[0])}</b> · #${esc(p[1])}${BS.by[s.k]?' <span class="bst">🏆 সেরা</span>':''}<div class="sub">${esc((nm[s.k]||'').slice(0,60))}</div></div><div class="spv"><b class="${s.start_n?'g':''}">${s.start_n?'~'+mnT(s.start_med):'শুরু হয়নি'}</b><div class="sub">মোট ${s.ok?'~'+mnT(s.total_med):'—'} · ড্রপ ${bn(s.bad)}% · টেস্ট ${bn(s.n)}টি</div></div></div>`}).join('')}</div>`:'')
-    +(isAll?'<div class="card empty">অর্ডার দেখতে ⏳ চলমান ('+bn(cnt.run)+'), ✅ শেষ ('+bn(cnt.ok)+') বা 🚫 ক্যান্সেল ('+bn(cnt.bad)+') ট্যাব চাপুন।</div>':show.length?show.map(spc).join(''):'<div class="card empty">'+(rows.length?(SP.st==='run'?'এখন কোনো চলমান অর্ডার নেই।':SP.st==='can'?'কোনো ক্যান্সেল অর্ডার নেই।':'এখনো কোনো শেষ হওয়া অর্ডার নেই।'):'স্টুডিও থেকে দেওয়া কোনো অর্ডার নেই। \'সেরা\' পাতা থেকে টেস্ট অর্ডার দিন।')+'</div>')
+    +(isNote?`<div class="card sps"><b>📝 দ্রুত সম্পন্ন সার্ভিসের নোট</b><div class="sub">গড় মোট সময় ${mnT(spFastTh())} বা কম · সবচেয়ে দ্রুত আগে · সম্পন্ন হওয়া অর্ডার থেকে নিজে জমা হয়</div><div class="chips" style="margin:8px 0">${[600,1800,3600].map(v=>`<button type="button" class="chip" data-th="${v}" aria-pressed="${spFastTh()===v}">≤ ${mnT(v)}</button>`).join('')}</div>${FN.length?FN.map(e=>`<div class="spr" data-sv="${esc(e.k)}" role="button" tabindex="0" aria-label="বিস্তারিত দেখুন"><div><b>#${esc(e.code)}</b> · ${esc((e.name||'—').slice(0,70))}<div class="sub">প্রভাইডার: ${esc(e.prov)}</div></div><div class="spv"><b class="g">~${mnT(e.avg)}</b><div class="sub">${bn(e.n)}টি অর্ডার · সবচেয়ে দ্রুত ${mnT(e.min)}</div></div></div>`).join(''):'<div class="sub">এখনো কোনো দ্রুত সার্ভিস নেই — স্পিড টেস্টের অর্ডার সম্পন্ন হলে এখানে জমা হবে।</div>'}${FN.length?'<div class="acts"><button type="button" class="sm" id="fnCp">📋 নোট কপি / শেয়ার</button><button type="button" class="sm" id="fnDel">🗑 নোট মুছুন</button></div>':''}</div>`:'')
+    +(isNote?'':isAll?'<div class="card empty">অর্ডার দেখতে ⏳ চলমান ('+bn(cnt.run)+'), ✅ শেষ ('+bn(cnt.ok)+') বা 🚫 ক্যান্সেল ('+bn(cnt.bad)+') ট্যাব চাপুন।</div>':show.length?show.map(spc).join(''):'<div class="card empty">'+(rows.length?(SP.st==='run'?'এখন কোনো চলমান অর্ডার নেই।':SP.st==='can'?'কোনো ক্যান্সেল অর্ডার নেই।':'এখনো কোনো শেষ হওয়া অর্ডার নেই।'):'স্টুডিও থেকে দেওয়া কোনো অর্ডার নেই। \'সেরা\' পাতা থেকে টেস্ট অর্ডার দিন।')+'</div>')
     +'<p class="sub">শুধু স্টুডিও থেকে দেওয়া অর্ডার এখানে আসে। সময় প্রতি সেকেন্ডে চলে; চলমান অর্ডার থাকলে প্রতি ২০ সেকেন্ডে প্রভাইডার থেকে স্ট্যাটাস মেলে (শুরুর সময় ±২০ সেকেন্ড হতে পারে)।</p>';
     b.querySelectorAll('[data-s]').forEach(x=>x.onclick=()=>{SP.st=x.dataset.s;draw()});$('#spp').onchange=e=>{SP.prov=e.target.value;draw()};
     const ra=$('#repAll');if(ra)ra.onclick=()=>spRepDlg(spReportAll(rows),'📊 সব রিপোর্ট');$('#tgSet').onclick=spTgDlg;
+    b.querySelectorAll('[data-th]').forEach(x=>x.onclick=()=>{ls.set(SPK_FT,x.dataset.th);draw()});
+    const fc=$('#fnCp');if(fc)fc.onclick=()=>spRepDlg(spFastText(FN,spFastTh()),'📝 দ্রুত সার্ভিস নোট');
+    const fd=$('#fnDel');if(fd)fd.onclick=()=>{if(confirm('সব নোট মুছে ফেলবেন?')){const f=spFastLearn([]);spSave(SPK_F,{seen:f.seen,s:{}});draw()}};
     const svD=k=>{const L=rows.filter(r=>r.provider+'|'+r.service_id===k&&(!SP.prov||r.provider===SP.prov)&&stOk(r));if(!L.length)return;let d=$('#svD');if(!d){d=document.createElement('dialog');d.id='svD';d.className='svd';d.setAttribute('aria-labelledby','svT');document.body.appendChild(d)}
       const p=k.split('|'),st=spStats(L)[0];
       d.innerHTML='<h3 id="svT" style="margin:0 0 4px"></h3><div class="sub" id="svS"></div><div id="svC"></div><div class="svl"></div><div class="acts"><button type="button" class="btn" id="svX">বন্ধ</button></div>';
@@ -1426,7 +1493,7 @@ async function spd(){
     b.querySelectorAll('[data-sv]').forEach(x=>{x.onclick=()=>svD(x.dataset.sv);x.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();svD(x.dataset.sv)}}});
     b.querySelectorAll('[data-rep]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.rep);if(r)spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order)});b.querySelectorAll('[data-tg]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.tg);if(r)spTgManual(r)});tick()};
   const load=async(refresh,quiet)=>{const b=$('#sprf'),n=$('#spn');if(!b)return;if(!quiet){b.disabled=true;n.textContent=refresh?'প্রভাইডার থেকে স্ট্যাটাস মেলানো হচ্ছে…':'লোড হচ্ছে…'}
-    try{const d=await api('svc_spd',{refresh:!!refresh,limit:150});if(my!==rid)return;D=d;if(d.now)SPoff=d.now-Date.now();rowsAll=spRows(d);spNotify(rowsAll,false);spTgRun(rowsAll);draw();const n2=$('#spn');if(n2)n2.textContent=(refresh?'মেলানো হয়েছে · ':'')+'হালনাগাদ '+dT(spNow())}
+    try{const d=await api('svc_spd',{refresh:!!refresh,limit:150});if(my!==rid)return;D=d;if(d.now)SPoff=d.now-Date.now();rowsAll=spRows(d);spNotify(rowsAll,false);spFastLearn(rowsAll);spTgRun(rowsAll);draw();const n2=$('#spn');if(n2)n2.textContent=(refresh?'মেলানো হয়েছে · ':'')+'হালনাগাদ '+dT(spNow())}
     catch(e){if(!authFail(e)&&!quiet&&$('#spb')){if(!D)$('#spb').innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`;else{const n2=$('#spn');if(n2)n2.textContent='মেলানো যায়নি: '+e.message}}}
     const b2=$('#sprf');if(b2)b2.disabled=false};
   $('#sprf').onclick=()=>load(true);
