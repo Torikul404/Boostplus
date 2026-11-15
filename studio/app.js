@@ -26,6 +26,7 @@ async function apiNet(action,x){
 }
 
 /* ---------- ফোন-ক্যাটালগ: সাইটের সব সার্ভিস ফোনে (IndexedDB) থাকে; তালিকা/খোঁজা/ফিল্টার তাৎক্ষণিক ---------- */
+const cutS=(s,n)=>{s=String(s==null?'':s);if(s.length<=n)return s;let x=s.substring(0,n);const c=x.charCodeAt(n-1);return c>=0xD800&&c<=0xDBFF?x.substring(0,n-1):x};
 const CATK='site_v1',QK='queue_v1',EXK='exc_v1';let CAT=null,catSync=null,catTm=null,Q=[],qBusy=false,EXC={items:[]};
 const idb={open(){return new Promise((res,rej)=>{const r=indexedDB.open('pb_studio',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})},
   async get(k){try{const db=await this.open();return await new Promise(res=>{const q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null)})}catch(e){return null}},
@@ -44,7 +45,7 @@ function excDiff(o,n){if(!o||!o.length)return;const om={},nm={},now=Date.now(),i
   if(!it.length)return;const k={};EXC.items=it.concat(EXC.items).filter(x=>{const id=x.t+x.code;if(k[id])return false;k[id]=1;return true}).slice(0,300);idb.set(EXK,EXC)}
 /* ---------- কোনো লেইট নয়: লেখার কাজ (চালু/বন্ধ, নাম/ক্যাটেগরি বদল, ব্যাচ) আগে ফোনে সাথে সাথে হয়, সার্ভারে যায় পেছনে — অনলাইন/অফলাইন একই ---------- */
 function qAdd(a,x){const lb={};CAT.rows.forEach(r=>{lb[r.platform]=r.platform_label});
-  if(a==='svc_toggle'){const c=String(x.code);if(x.on){let r=CAT.rows.find(y=>y.code===c);if(r)r.state='on';else{const pl=String(x.platform||'').toLowerCase().trim();CAT.rows.unshift({code:c,name:String(x.name||'').substring(0,120),category:String(x.category||'').substring(0,80),platform:pl,platform_label:lb[pl]||pl,state:'on',src:'custom',ov:0});catSoon()}}else catPatch('svc_site_hide',{codes:[c],on:false})}
+  if(a==='svc_toggle'){const c=String(x.code);if(x.on){let r=CAT.rows.find(y=>y.code===c);if(r)r.state='on';else{const pl=String(x.platform||'').toLowerCase().trim();CAT.rows.unshift({code:c,name:cutS(String(x.name||''),120),category:cutS(String(x.category||''),80),platform:pl,platform_label:lb[pl]||pl,state:'on',src:'custom',ov:0});catSoon()}}else catPatch('svc_site_hide',{codes:[c],on:false})}
   else catPatch(a,x);
   idb.set(CATK,CAT);Q.push({a,x});idb.set(QK,Q);mutTs=Date.now();
   if(navigator.onLine)setTimeout(qFlush,0);else toast('অফলাইন — ফোনে হয়েছে, নেট এলে সার্ভারে যাবে ('+bn(Q.length)+')');
@@ -146,8 +147,8 @@ function catPatch(a,x){const by={};CAT.rows.forEach(r=>{by[r.code]=r});const lb=
   const setPl=(r,pl)=>{pl=String(pl||'').toLowerCase().trim();if(!pl)return;r.platform=pl;if(lb[pl])r.platform_label=lb[pl];else{r.platform_label=pl;catSoon()}};
   const codes=(x.codes||[]).map(String);
   if(a==='svc_site_hide'){const gone={};codes.forEach(c=>{const r=by[c];if(!r)return;if(x.on)r.state='on';else{r.state='off';if(x.del&&r.src==='custom')gone[c]=1}});if(Object.keys(gone).length)CAT.rows=CAT.rows.filter(r=>!gone[r.code])}
-  else if(a==='svc_site_edit'){const r=by[String(x.code)];if(r){r.name=String(x.name||'').trim().substring(0,120);if(x.category)r.category=String(x.category).trim().substring(0,80);setPl(r,x.platform);r.ov=1;catSoon()}}
-  else if(a==='svc_site_bulk'){codes.forEach(c=>{const r=by[c];if(!r)return;let nm=r.name,ct=r.category;if(x.tidy&&r.tidy){nm=r.tidy.name;ct=r.tidy.cat}if(x.category)ct=String(x.category).trim();r.name=String(nm).substring(0,120);r.category=String(ct).substring(0,80);setPl(r,x.platform);r.ov=1});if(x.tidy)catSoon()}}
+  else if(a==='svc_site_edit'){const r=by[String(x.code)];if(r){r.name=cutS(String(x.name||'').trim(),120);if(x.category)r.category=cutS(String(x.category).trim(),80);setPl(r,x.platform);r.ov=1;catSoon()}}
+  else if(a==='svc_site_bulk'){codes.forEach(c=>{const r=by[c];if(!r)return;let nm=r.name,ct=r.category;if(x.tidy&&r.tidy){nm=r.tidy.name;ct=r.tidy.cat}if(x.category)ct=String(x.category).trim();r.name=cutS(String(nm),120);r.category=cutS(String(ct),80);setPl(r,x.platform);r.ov=1});if(x.tidy)catSoon()}}
 /* ---------- প্ল্যাটফর্ম পাতা: সার্ভার ছাড়া — ফোনে রাখা সব প্রভাইডারের CSV থেকে (সার্ভারের গোনার একই নিয়ম) ---------- */
 const LP_PLAT = [
   ["Instagram", "instagram", /insta(?!nt)|\big\b/i], ["Facebook", "facebook", /facebook|\bfb\b/i], ["TikTok", "tiktok", /tik.?tok/i],
@@ -394,7 +395,7 @@ function addList(list){
     it.name=nm||(a.length?a[st]:it.name);taken.add(nk2(it.name))});
   const cnt=()=>{const k=items.filter(x=>x.on).length;$('#bsOk').textContent=`সবগুলো চালু করুন (${bn(k)}টি)`;$('#bsOk').disabled=!k};
   items.forEach(it=>{const c=document.createElement('div');c.className='card bsi';
-    c.innerHTML=`<div class="bsh"><label class="bsk"><input type="checkbox" checked aria-label="চালু করুন"><b>#${esc(it.r.service_id)}</b></label><span class="sub">রেট ${rateTk(it.r.rate)}</span><button type="button" class="sm bsn" aria-label="অন্য নাম প্রস্তাব">↻ নাম</button></div><div class="sub bso"></div><textarea class="bn" rows="2" maxlength="120" aria-label="সাইটে নাম"></textarea><select class="bp" aria-label="প্ল্যাটফর্ম">${PO}</select><select class="bcs" aria-label="সাইটে থাকা ক্যাটেগরি থেকে বাছুন"></select><textarea class="bc" rows="1" autocomplete="off" aria-label="ক্যাটেগরি" placeholder="ক্যাটেগরি (বাছুন বা নিজে লিখুন)"></textarea>`;
+    c.innerHTML=`<div class="bsh"><label class="bsk"><input type="checkbox" checked aria-label="চালু করুন"><b>#${esc(it.r.service_id)}</b></label><span class="sub">রেট ${rateTk(it.r.rate)}</span><button type="button" class="sm bsn" aria-label="অন্য নাম প্রস্তাব">↻ নাম</button><button type="button" class="sm bsx" aria-label="রিমুভ">✕ রিমুভ</button></div><div class="sub bso"></div><textarea class="bn" rows="2" maxlength="120" aria-label="সাইটে নাম"></textarea><select class="bp" aria-label="প্ল্যাটফর্ম">${PO}</select><select class="bcs" aria-label="সাইটে থাকা ক্যাটেগরি থেকে বাছুন"></select><textarea class="bc" rows="1" autocomplete="off" aria-label="ক্যাটেগরি" placeholder="ক্যাটেগরি (বাছুন বা নিজে লিখুন)"></textarea>`;
     c.querySelector('.bso').textContent=(it.r.provider?it.r.provider+' · ':'')+'মূল: '+it.r.name;
     const ck=c.querySelector('input[type=checkbox]'),n=c.querySelector('.bn'),p=c.querySelector('.bp'),cc=c.querySelector('.bc');
     const cs=c.querySelector('.bcs');Object.assign(it,{c,ck,n,p,cc,cs});p.value=it.plat;n.value=it.name;cc.value=it.cat;
@@ -406,6 +407,13 @@ function addList(list){
       const u=new Set(items.filter(x=>x!==it).map(x=>nk2(x.name)));let ok2=false;for(let t=0;t<a.length;t++){it.k=(it.k+1)%a.length;if(!u.has(nk2(a[it.k]))&&!taken.has(nk2(a[it.k]))){ok2=true;break}}
       let nn=a[it.k];if(!ok2){for(let k=1;k<26;k++){const c=planName(a[it.k],k);if(!u.has(nk2(c))&&!taken.has(nk2(c))){nn=c;break}}}
       n.value=it.name=nn;n.classList.remove('bad');autoH(n)};
+    c.querySelector('.bsx').onclick=async()=>{if(busy)return;
+      const rm=()=>{const i=items.indexOf(it);if(i>=0)items.splice(i,1);c.remove();$('#bsT').textContent=`সাইটে চালু করুন — ${bn(items.length)}টি (নিচে একটার পর একটা)`;cnt();if(!items.length)d.close()};
+      if(!it.done){rm();return}   /* এখনো চালু হয়নি: শুধু তালিকা থেকে বাদ */
+      if(!confirm('#'+it.r.service_id+' সাইট থেকে রিমুভ করবেন?'))return;   /* চালু হয়ে গেছে: সাইট থেকেও লুকিয়ে ফেলে */
+      busy=true;try{await api('svc_toggle',{provider:it.r.provider||cur,code:it.r.service_id,on:false});it.r.state='off';
+        {const w=RW.get(it.r);if(w){w.cb&&(w.cb.checked=false);w.sw&&w.sw.setAttribute('aria-checked','false')}}any=true;rm();toast('সাইট থেকে রিমুভ হয়েছে')}
+      catch(e){if(!authFail(e))toast(e.message)}busy=false};
     box.appendChild(c)});
   const applyAll=v=>{v=(v||'').trim();if(!v)return;items.forEach(x=>{if(x.on&&!x.done){x.cat=v;x.cc.value=v;x.cc.classList.remove('bad');autoH(x.cc);x.fill()}})};
   $('#bsAllB').onclick=()=>applyAll($('#bsAll').value);
