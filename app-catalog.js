@@ -44,7 +44,7 @@ async function applyServiceMeta(list) {
       const tags = Array.isArray(c.tags) ? c.tags.slice() : [];
       if (sp === 'instant' && !tags.includes('Instant')) tags.unshift('Instant');
       if (sp === 'slow' && !tags.includes('Slow')) tags.unshift('Slow');
-      const entry = attachDelivery(Object.assign({}, c, { tags: tags, speed: sp || c.speed }));
+      const entry = attachDelivery(Object.assign({}, c, { tags: tags, speed: sp || c.speed, nx: c.nx === 0 ? 0 : 1 }));   // নিজে যোগ/এডিট করা সার্ভিসের নাম হুবহু
       if (exists >= 0) out[exists] = Object.assign({}, out[exists], entry);
       else out.push(entry);
     });

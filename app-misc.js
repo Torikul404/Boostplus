@@ -156,9 +156,7 @@ document.querySelectorAll(".faq-question").forEach((btn) => {
         const o = orders[idx % orders.length];
         idx++;
         shownCount++;
-        const service = (o.service_name || "").length > 42
-          ? o.service_name.slice(0, 42) + "…"
-          : (o.service_name || "");
+        const service = o.service_name || "";   // নাম হুবহু, কাটাকাটি নেই
         toastEl.innerHTML =
           '<span class="rt-icon">🎉</span>' +
           '<span class="rt-body"><b>' + escapeHtml(o.mobile_masked || "একজন কাস্টমার") + '</b> সবেমাত্র ' +
