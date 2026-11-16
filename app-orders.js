@@ -138,19 +138,10 @@
       const wait = Number(o.refill_next_ms) > Date.now();
       out.push('<button type="button" class="pb-oh-act pb-oh-refill" data-act="refill" data-id="' + id + '"' + (wait ? ' disabled title="পরের রিফিল: ' + esc(waitLabel(o.refill_next_ms)) + ' পর"' : '') + '>🔄 Refill' + (wait ? ' (' + esc(waitLabel(o.refill_next_ms)) + ')' : '') + '</button>');
     }
-    if (o.can_speedup) {
-      const waitS = Number(o.speedup_next_ms) > Date.now();
-      out.push('<button type="button" class="pb-oh-act pb-oh-speed" data-act="speedup" data-id="' + id + '"' + (waitS ? ' disabled title="পরের Speed up: ' + esc(waitLabel(o.speedup_next_ms)) + ' পর"' : '') + '>🚀 Speed up' + (waitS ? ' · ' + esc(waitLabel(o.speedup_next_ms)) : '') + '</button>');
-    }
-    if (o.can_cancel) {
-      if (o.cancel_requested) out.push('<span class="pb-oh-note">বাতিলের অনুরোধ পাঠানো হয়েছে</span>');
-      else out.push('<button type="button" class="pb-oh-act pb-oh-cancel" data-act="cancel" data-kind="' + esc(o.can_cancel) + '" data-id="' + id + '">' + (o.can_cancel === 'instant' ? '✕ Cancel' : '✕ Cancel request') + '</button>');
-    }
-    // সাহায্য বাটন: শুধু যখন সার্ভার অন্তত একটি can_* ফ্ল্যাগ দিয়েছে (ফ্ল্যাগ ছাড়া কোনো বাটনই নয়)
-    if (hasFlags(o)) out.push('<button type="button" class="pb-oh-act pb-oh-help" data-act="help" data-id="' + id + '">সাহায্য</button>');
+    // Speed up / Cancel request / সাহায্য বাটন অর্ডার হিস্ট্রিতে আর দেখানো হয় না (শুধু Refill থাকে)
     return out.length ? out.join(' ') : '<span class="pb-oh-note">—</span>';
   }
-  function hasFlags(o) { return !!(o && (o.can_refill || o.can_cancel || o.can_speedup)); }
+  function hasFlags(o) { return !!(o && o.can_refill); }   // হিস্ট্রিতে এখন শুধু Refill বাটন
   function showMsg(text, ok) {
     const el = $('ohMsg');
     if (!el) return;
@@ -216,6 +207,23 @@
     }
   }
 
+  // ReOrder: নতুন-অর্ডার ফর্মে একই সার্ভিস + লিংক + পরিমাণ বসিয়ে দেয় (নিজে যাচাই করে অর্ডার দিতে হবে)
+  function reorder(id) {
+    const o = all.find((x) => String(x.order_id) === String(id));
+    if (!o || !o.service_code) return;
+    if (window.PB_nav && PB_nav.go) PB_nav.go('new-order');
+    setTimeout(() => {
+      try { if (typeof pickSearchResult === 'function') pickSearchResult(String(o.service_code)); } catch (err) { console.warn('reorder:', err); }
+      let n = 0;
+      (function fill() {
+        const l = $('abLink'), q = $('abQty');
+        if (l && q) {
+          l.value = o.link || ''; q.value = o.quantity || '';
+          ['input', 'change'].forEach((t) => { l.dispatchEvent(new Event(t, { bubbles: true })); q.dispatchEvent(new Event(t, { bubbles: true })); });
+        } else if (n++ < 10) setTimeout(fill, 150);
+      })();
+    }, 200);
+  }
   function shortLink(l) { return String(l || '').replace(/^https?:\/\//i, ''); }
 
   // ---------- list state ----------
@@ -293,7 +301,7 @@
   // Ask the server for provider-side Start count / Remaining of the orders on screen (max 8, active first).
   async function loadLive() {
     if (liveBusy || !token()) return;
-    const rank = { processing: 0, partial: 1, completed: 2 };
+    const rank = { processing: 0, 'in progress': 0, partial: 1, completed: 2 };
     const ids = filtered().slice(0, shown)
       .filter((o) => rank[lc(o.status)] !== undefined)
       .filter((o) => { const lv = liveMap[String(o.order_id)]; return !lv || Date.now() - lv.ts > 25000; })
@@ -312,6 +320,7 @@
       if (d && d.ok && d.items) {
         ids.forEach((id) => { const it = d.items[id]; liveMap[id] = Object.assign({ live: false }, it || {}, { ts: Date.now() }); });
         render(true);
+        if (ids.length >= 8) setTimeout(loadLive, 60);
       }
     } catch (e) {
       ids.forEach((id) => { if (!liveMap[id]) liveMap[id] = { live: false, ts: Date.now() }; });
@@ -351,26 +360,45 @@
 
   // ডেস্কটপ (≥১০২৪ px): টেবিল — ID | সার্ভিস | লিংক | পরিমাণ | স্ট্যাটাস | বাটন; মোবাইল: কার্ড
   const mqTable = window.matchMedia ? window.matchMedia('(min-width: 1024px)') : { matches: false };
+  function chg(v) { const n = Number(v); return isNaN(n) ? String(v == null ? '' : v) : String(parseFloat(n.toFixed(5))); }
+  function liveCell(o, f) {
+    const k = lc(o.status);
+    if (k === 'pending') return '0';
+    const lv = liveMap[String(o.order_id)];
+    if (!lv) return (k === 'processing' || k === 'in progress' || k === 'partial' || k === 'completed') ? '…' : '—';
+    const v = lv.live ? lv[f] : null;
+    return v == null || v === '' ? '—' : num(v);
+  }
+  function actCell(o) {
+    const k = lc(o.status), out = [];
+    if (o.service_code && !/^(pending|processing|in progress)$/.test(k)) out.push('<button type="button" class="pb-oh-act pb-oh-reorder" data-act="reorder" data-id="' + esc(o.order_id) + '">ReOrder</button>');
+    if (o.can_refill) out.push(actionsHtml(o));
+    return out.length ? out.join(' ') : '<span class="pb-oh-note">—</span>';
+  }
   function rowHtml(o) {
     const id = esc(o.order_id), k = lc(o.status);
     const safe = typeof safeHttpUrl === 'function' ? safeHttpUrl(o.link) : '';
     const linkHtml = o.link ? (safe ? '<a href="' + esc(safe) + '" target="_blank" rel="noopener noreferrer">' + esc(shortLink(o.link)) + '</a>' : '<span>' + esc(shortLink(o.link)) + '</span>') : '—';
-    const d = toDate(o.created_at);
+    const fd = fmtDate(o.created_at).split(' ');
     return '<tr class="pb-oh-row s-' + esc(k.replace(/[^a-z0-9]+/g, '-')) + '" data-id="' + id + '">' +
-      '<td class="oh-id"><button type="button" class="pb-oh-idbtn" data-copy="' + esc(did(o)) + '" title="Copy order ID" aria-label="Copy order ID ' + esc(did(o)) + '">#' + esc(did(o)) + '</button></td>' +
-      '<td class="oh-svc"><span class="oh-svcname" title="' + esc(o.service_name || '') + '">' + esc(o.service_name || o.service_code || 'Order') + '</span><span class="oh-sub">' + esc(d ? dayLabel(d) + ' · ' + timeLabel(d) : fmtDate(o.created_at)) + ' · ৳' + esc(money(o.amount)) + '</span>' + liveRowHtml(o) + '</td>' +
+      '<td class="oh-id"><button type="button" class="pb-oh-idbtn" data-copy="' + esc(did(o)) + '" title="Copy order ID" aria-label="Copy order ID ' + esc(did(o)) + '">' + esc(did(o)) + '</button></td>' +
+      '<td class="oh-date">' + esc(fd[0] || '') + (fd[1] ? '<br>' + esc(fd[1]) : '') + '</td>' +
       '<td class="oh-link">' + linkHtml + '</td>' +
-      '<td class="oh-qty">' + esc(o.quantity) + '</td>' +
+      '<td class="oh-num">' + esc(chg(o.amount)) + '</td>' +
+      '<td class="oh-num" data-live="' + id + '">' + liveCell(o, 'start_count') + '</td>' +
+      '<td class="oh-num">' + esc(o.quantity) + '</td>' +
+      '<td class="oh-num">' + liveCell(o, 'remains') + '</td>' +
+      '<td class="oh-svc"><span class="oh-svcname" title="' + esc(o.service_name || '') + '">' + esc(o.service_name || o.service_code || 'Order') + '</span></td>' +
       '<td class="oh-stat"><span class="pb-oh-st ' + statusClass(o.status) + '">' + esc(statusLabel(o.status)) + '</span></td>' +
-      '<td class="oh-act"><div class="pb-oh-actions">' + actionsHtml(o) + '</div></td>' +
+      '<td class="oh-act"><div class="pb-oh-actions">' + actCell(o) + '</div></td>' +
     '</tr>';
   }
   function render(fromLive) {
     const rows = filtered();
     const part = rows.slice(0, shown);
     let html = '', lastKey = null;
-    if (mqTable.matches) {
-      html = '<div class="pb-oh-tablewrap"><table class="pb-oh-table"><thead><tr><th scope="col">ID</th><th scope="col">সার্ভিস</th><th scope="col">লিংক</th><th scope="col">পরিমাণ</th><th scope="col">স্ট্যাটাস</th><th scope="col"><span class="sr-only">অ্যাকশন</span></th></tr></thead><tbody>' + part.map(rowHtml).join('') + '</tbody></table></div>';
+    if (true) {
+      html = '<div class="pb-oh-tablewrap"><table class="pb-oh-table"><thead><tr><th scope="col">ID</th><th scope="col">Date</th><th scope="col">Link</th><th scope="col">Charge (৳)</th><th scope="col">Start count</th><th scope="col">Quantity</th><th scope="col">Remains</th><th scope="col">Service</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead><tbody>' + part.map(rowHtml).join('') + '</tbody></table></div>';
     } else part.forEach((o) => {
       if (sortBy !== 'amt') {
         const d = toDate(o.created_at), key = dayKey(d);
@@ -499,6 +527,7 @@ async function load(force) {
       const c = e.target.closest('button[data-copy]');
       if (c) { copyText(c.dataset.copy, c); return; }
       const b = e.target.closest('button[data-act]');
+      if (b && b.dataset.act === 'reorder') { reorder(b.dataset.id); return; }
       if (b) doAction(b);
     });
     $('ohLoginBtn').addEventListener('click', openWallet);
