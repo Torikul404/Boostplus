@@ -383,6 +383,7 @@ function allIdeas(r,plat){const a=nameIdeas(r,plat),out=[],seen=new Set(),add=x=
   a.forEach(add);
   const V=[x=>x.replace(/ \| /g,' ✦ '),x=>x.replace(/ · /g,' • '),x=>x.replace(/ \| /g,' ✦ ').replace(/ · /g,' • '),x=>x.replace(/ — /g,' ⭐ '),x=>x.replace(/ \| /g,' ❘ ').replace(/ · /g,' ‧ ')];
   V.forEach(f=>a.forEach(x=>add(f(x))));return out}
+let addNoRf=false;
 function addList(list){
   const d=$('#bsheet'),box=$('#bsl'),E=$('#bsE'),PO=PLAT.map(p=>`<option>${p[0]}</option>`).join('');let any=false;
   $('#bsT').textContent=`সাইটে চালু করুন — ${bn(list.length)}টি (নিচে একটার পর একটা)`;box.innerHTML='';E.textContent='';$('#bsAll').value='';
@@ -422,7 +423,7 @@ function addList(list){
   as.onchange=()=>{if(!as.value)return;$('#bsAll').value=as.value;applyAll(as.value);as.value=''};
   items.forEach(x=>loadSiteCats(x.p.value).then(x.fill));
   $('#bsX').onclick=()=>{if(!busy)d.close()};
-  d.onclose=()=>{bulkBar();if(any&&cur)provider(cur)};
+  d.onclose=()=>{const nr=addNoRf;addNoRf=false;bulkBar();if(any&&cur&&!nr)provider(cur)};   /* স্পিড পাতা থেকে খুলে থাকলে প্রভাইডার পাতা জোর করে খোলে না */
   $('#bsOk').onclick=async()=>{if(busy)return;const L=items.filter(x=>x.on&&!x.done);if(!L.length)return;
     const bad=L.filter(x=>!x.cat.trim());if(bad.length){bad.forEach(x=>x.cc.classList.add('bad'));E.textContent='ক্যাটেগরি লাগবে — লাল ঘরগুলো পূরণ করুন';bad[0].cc.scrollIntoView({block:'center'});return}
     {const seen=new Set(items.filter(x=>x.done).map(x=>nk2(x.name))),dup=[];L.forEach(x=>{const k=nk2(x.name);if(seen.has(k))dup.push(x);seen.add(k)});
@@ -1294,7 +1295,7 @@ async function poster(){cur=null;$('#title').textContent='পোস্টার'
 const mnT=s=>!(s>0)?'—':s<60?'১ মিনিটের কম':s<5400?bn(Math.round(s/60))+' মিনিট':s<172800?bn(Math.round(s/360)/10)+' ঘণ্টা':bn(Math.round(s/8640)/10)+' দিন';
 const dT=ms=>ms?new Date(ms).toLocaleString('bn-BD',{timeZone:'Asia/Dhaka',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'—';
 const kTk=r=>'৳'+bn(Math.round((+r.cost_bdt_k||0)*100)/100)+' / ১০০০';
-let BS={label:'',type:'',q:'',refill:false,fx:131},bcn=0,SP={st:'all',prov:''},spTm=null,spTk=null;
+let BS={label:'',type:'',q:'',refill:false,fx:131},bcn=0,SP={st:'all',prov:'',cat:'',tb:0,so:'fast',q:''},spTm=null,spTk=null;
 const bcard=(r,i)=>{const s=r.stats,
   sp=s?`<div class="bm g">⏱ শুরু ~${mnT(s.start_med)} · মোট ~${mnT(s.total_med)} · ড্রপ ${bn(s.bad)}% · টেস্ট ${bn(s.n)}টি${s.open?' ('+bn(s.open)+'টি চলছে)':''}</div>`:'<div class="bm sub">অপরীক্ষিত — 🧪 টেস্ট অর্ডার দিয়ে স্পিড মাপুন</div>',
   stt=r.state==='on'?'<span class="tag">সাইটে চালু</span>':r.state==='conflict'?'<span class="tag">সাইটে অন্য প্রভাইডারে</span>':'';
@@ -1442,6 +1443,17 @@ function spReport(r){const L=[],q=+r.quantity||0,dl=r.delivered!=null?+r.deliver
 function spReportAll(rows){const f=rows.filter(spFin);const L=['📊 স্পিড টেস্ট — সারসংক্ষেপ','────────────────','শেষ হওয়া অর্ডার: '+bn(f.length)+' / মোট '+bn(rows.length),''];
   spStats(rows).filter(s=>s.n).sort((a,b)=>((b.start_n>0)-(a.start_n>0))||((a.start_med||1e12)-(b.start_med||1e12))).forEach(s=>{const p=s.k.split('|');L.push(p[0]+' #'+p[1]+' — শুরু '+(s.start_n?'~'+mnT(s.start_med):'হয়নি')+' · মোট '+(s.ok?'~'+mnT(s.total_med):'—')+' · ড্রপ '+bn(s.bad)+'% · টেস্ট '+bn(s.n)+'টি')});
   L.push('');L.push('রিপোর্ট তৈরি: '+dT(Date.now()));return L.join('\n')}
+/* স্পিড টেস্ট কার্ড থেকে সার্ভিসটা সাইটে যোগ: প্রভাইডারের তালিকা থেকে সারি খুঁজে "সাইটে চালু করুন" শিট খোলে */
+async function spAddSite(r){
+  try{
+    await provEnsure(r.provider);
+    const P=PC[r.provider],row=P&&P.rows&&P.rows.find(y=>String(y.service_id)===String(r.service_id));
+    if(!row){toast('প্রভাইডারের তালিকায় সার্ভিসটা পাওয়া যায়নি — আগে প্রভাইডার সংগ্রহ করুন');return}
+    if(row.state==='on'){toast('এই সার্ভিস আগে থেকেই সাইটে চালু আছে');return}
+    if(!row.provider)row.provider=r.provider;
+    addNoRf=true;addList([row]);
+  }catch(e){addNoRf=false;if(!authFail(e))toast(e.message||'সার্ভিস লোড হয়নি')}
+}
 function spRepDlg(txt,title){let d=$('#repD');if(!d){d=document.createElement('dialog');d.id='repD';d.setAttribute('aria-labelledby','repT');document.body.appendChild(d)}
   d.innerHTML='<h3 id="repT" style="margin:0 0 8px"></h3><pre class="rep" id="repP"></pre><div class="acts"><button type="button" class="sm" id="repX">বন্ধ</button><button type="button" class="sm" id="repS">শেয়ার</button><button type="button" class="sm" id="repD2">⬇ ডাউনলোড</button><button type="button" class="btn" id="repC">কপি</button></div>';
   $('#repT').textContent=title||'📄 রিপোর্ট';$('#repP').textContent=txt;$('#repX').onclick=()=>d.close();
@@ -1452,8 +1464,7 @@ function spRepDlg(txt,title){let d=$('#repD');if(!d){d=document.createElement('d
 /* অর্ডার একটু আগে শেষ হলে: টোস্ট + নোটিফিকেশন + রিপোর্টের বোতাম (প্রতিটা অর্ডারে একবারই) */
 function spNotify(rows,silent){let nt=spLoad(SPK_N);const first=!nt;nt=nt||{};let ch=false;
   rows.filter(r=>!r._local&&spFin(r)).forEach(r=>{const k=spKey(r);if(nt[k])return;nt[k]=1;ch=true;if(silent||first)return;
-    const m=(spCan(r)?'🚫 অর্ডার ক্যান্সেল — #':'✅ অর্ডার শেষ — #')+r.provider_order+' ('+r.provider+') · রিপোর্ট তৈরি হয়েছে';
-    const t=document.createElement('div');t.className='toast';t.setAttribute('role','status');t.append(m+' ');const b=document.createElement('button');b.className='sm';b.textContent='রিপোর্ট';b.onclick=()=>{t.remove();spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order)};t.appendChild(b);document.body.appendChild(t);setTimeout(()=>t.remove(),15000);
+    const m=(spCan(r)?'🚫 অর্ডার ক্যান্সেল — #':'✅ অর্ডার শেষ — #')+r.provider_order+' ('+r.provider+')';   /* অ্যাপের ভেতরের পপআপ বন্ধ; শুধু নোটিফিকেশন (অনুমতি থাকলে) */
     try{if('Notification' in window&&Notification.permission==='granted')navigator.serviceWorker.ready.then(g=>g.showNotification('স্পিড টেস্ট শেষ',{body:m,icon:'icons/admin-192.png',tag:'sp-'+k,data:{h:'spd'}}))}catch(_){}});
   if(ch)spSave(SPK_N,nt)}
 const spc=r=>{const fin=spFin(r),bad=spBad(r),cls=fin?(bad?'b':'g'):'',started=r.started_at>0,done=r.completed_at>0,
@@ -1467,14 +1478,42 @@ const spc=r=>{const fin=spFin(r),bad=spBad(r),cls=fin?(bad?'b':'g'):'',started=r
   return `<div class="card spc ${cls}"><div class="bsh"><span class="tag">🧪 টেস্ট</span><span class="tag">${esc(r._local?'পাঠানো হয়েছে':(r.status||'—'))}</span>${live}</div><b class="bnm">${esc(r.name||r.label||('অর্ডার '+r.provider_order))}</b><div class="sub">${esc(r.provider)} · সার্ভিস ${esc(r.service_id)} · প্রভাইডার অর্ডার #${esc(r.provider_order)}${r.platform?' · '+esc(r.platform):''}</div>
 <div class="tl"><div><span class="sub">অর্ডার</span><b>${dT(r.ordered_at)}</b></div><div><span class="sub">শুরু</span>${startCell}</div><div><span class="sub">শেষ</span>${endCell}</div></div>
 ${pct!=null?`<div class="pbar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div><div class="sub">ডেলিভারি ${bn(r.delivered)} / ${bn(r.quantity)} (${bn(pct)}%) · শুরুর কাউন্ট ${r.start_count!=null?bn(r.start_count):'—'} · বাকি ${bn(r.remains)}${rate?` · গতি ~${bn(rate)}/মিনিট${eta}`:''}</div>`:`<div class="sub">পরিমাণ ${r.quantity?bn(r.quantity):'—'}${r.start_count!=null?' · শুরুর কাউন্ট '+bn(r.start_count):''}${r._local?' · সার্ভারে মেলানো হচ্ছে…':''}</div>`}
-${r.link?`<div class="sub">লিংক: ${lk}</div>`:''}<div class="sub">${r.cost_bdt!=null?'খরচ ≈ ৳'+bn(r.cost_bdt)+' · ':''}শেষ মেলানো ${dT(r.last_checked)}</div>${fin?`<div class="acts"><button type="button" class="sm" data-rep="${esc(spKey(r))}">📄 রিপোর্ট</button><button type=\"button\" class=\"sm\" data-tg=\"${esc(spKey(r))}\">✈ টেলিগ্রাম</button></div>`:''}</div>`};
+${r.link?`<div class="sub">লিংক: ${lk}</div>`:''}<div class="sub">${r.cost_bdt!=null?'খরচ ≈ ৳'+bn(r.cost_bdt)+' · ':''}শেষ মেলানো ${dT(r.last_checked)}</div><div class="acts">${fin?`<button type="button" class="sm" data-rep="${esc(spKey(r))}">📄 রিপোর্ট</button><button type="button" class="sm" data-tg="${esc(spKey(r))}">✈ টেলিগ্রাম</button>`:''}${r.provider&&r.service_id?`<button type="button" class="sm" data-add="${esc(spKey(r))}">➕ সাইটে যোগ</button>`:''}</div></div>`};
+/* ✅ শেষ ট্যাবের ফাইন্ডার: ক্যাটাগরি আলাদা + "কত সময়ের মধ্যে শেষ" + সর্ট + সার্চ */
+const DF_TB=[[0,'সব সময়'],[600,'≤ ১০ মিনিট'],[1800,'≤ ৩০ মিনিট'],[3600,'≤ ১ ঘণ্টা'],[21600,'≤ ৬ ঘণ্টা'],[86400,'≤ ২৪ ঘণ্টা'],[-1,'২৪ ঘণ্টার বেশি']];
+const dfIn=(t,b)=>b===0?true:b===-1?t>86400:(t>0&&t<=b);
+function spCatOf(r,f){const e=f&&f.s&&f.s[r.provider+'|'+r.service_id];if(e&&e.cat)return e.cat;const kd=spKind(r.name||r.label);if(kd&&kd.label)return kd.label;const p=String(r.platform||'').trim(),t=String(r.type||'').trim();return(p||t)?(p+' '+t).trim():'অন্যান্য'}
+const dfShell=()=>`<div class="card sps dff"><div class="bar"><input id="dfq" type="search" placeholder="নাম, আইডি বা প্রভাইডার খুঁজুন" value="${esc(SP.q)}" aria-label="খুঁজুন"></div><div class="sub">কত সময়ের মধ্যে শেষ হয়েছে</div><div class="chips" id="dfT"></div><div class="sub">ক্যাটাগরি</div><div class="chips" id="dfC"></div><div class="acts"><select id="dfS" class="plmore" aria-label="সাজান"><option value="fast"${SP.so==='fast'?' selected':''}>⚡ দ্রুত আগে</option><option value="slow"${SP.so==='slow'?' selected':''}>🐢 ধীর আগে</option><option value="new"${SP.so==='new'?' selected':''}>🕒 নতুন শেষ আগে</option></select><button type="button" class="sm" id="dfCp">📄 তালিকা কপি</button></div></div><div class="card dfb" id="dfB" hidden></div><div id="dfR"></div>`;
+function dfCalc(rows){const f=spFastLearn([]),q=String(SP.q||'').toLowerCase().trim();
+  const base=rows.map(r=>({r,t:spTot(r),c:spCatOf(r,f)})).filter(x=>!q||qOK(q,[x.r.name,x.r.label,x.r.provider,x.r.service_id,x.r.provider_order,x.c].join(' ')));
+  const byT=base.filter(x=>dfIn(x.t,SP.tb)),cats={};byT.forEach(x=>{cats[x.c]=(cats[x.c]||0)+1});
+  const byC=base.filter(x=>!SP.cat||x.c===SP.cat),tbN={};DF_TB.forEach(b=>{tbN[b[0]]=byC.filter(x=>dfIn(x.t,b[0])).length});
+  const list=byT.filter(x=>!SP.cat||x.c===SP.cat),g={};list.forEach(x=>{(g[x.c]||(g[x.c]=[])).push(x)});
+  const so=SP.so,tv=x=>x.t>0?x.t:(so==='slow'?-1:1e12),cmp=so==='new'?(a,b)=>(b.r.completed_at||0)-(a.r.completed_at||0):so==='slow'?(a,b)=>tv(b)-tv(a):(a,b)=>tv(a)-tv(b);
+  const groups=Object.keys(g).map(c=>{const l=g[c].sort(cmp),ts=l.map(x=>x.t).filter(t=>t>0);return{c,l,min:ts.length?Math.min(...ts):1e12,max:ts.length?Math.max(...ts):0,med:medOf(ts),last:Math.max(...l.map(x=>x.r.completed_at||0))}});
+  groups.sort(so==='new'?(a,b)=>b.last-a.last:so==='slow'?(a,b)=>b.max-a.max:(a,b)=>a.min-b.min);
+  return{cats,tbN,list,groups,total:base.length}}
+const DFSEL=new Set(),dfSk=r=>r.provider+'|'+r.service_id,dfOn=r=>!!(CAT&&CAT.rows&&CAT.rows.some(c=>String(c.code)===String(r.service_id)&&c.state==='on'));
+async function spAddMany(rs){
+  const by={};rs.forEach(r=>{if(r.provider&&r.service_id)by[dfSk(r)]=r});const ks=Object.keys(by);if(!ks.length)return;
+  try{const out=[];let skip=0,miss=0;
+    for(const k of ks){const r=by[k];await provEnsure(r.provider);const P=PC[r.provider],row=P&&P.rows&&P.rows.find(y=>String(y.service_id)===String(r.service_id));
+      if(!row){miss++;continue}if(row.state==='on'||dfOn(r)){skip++;continue}if(!row.provider)row.provider=r.provider;out.push(row)}
+    if(!out.length){toast(miss?'প্রভাইডারের তালিকায় সার্ভিস পাওয়া যায়নি — আগে প্রভাইডার সংগ্রহ করুন':'এগুলো আগে থেকেই সাইটে চালু আছে');return}
+    if(skip||miss)toast(bn(out.length)+'টি যোগ হবে'+(skip?' · '+bn(skip)+'টি আগে থেকেই সাইটে':'')+(miss?' · '+bn(miss)+'টি পাওয়া যায়নি':''));
+    addNoRf=true;addList(out);
+  }catch(e){addNoRf=false;if(!authFail(e))toast(e.message||'সার্ভিস লোড হয়নি')}}
+const dfRow=x=>{const r=x.r,t=x.t,on=dfOn(r),sk=dfSk(r),cl=t>0&&t<=1800?'g':t>=21600?'hi':'';return `<div class="spr dfr" data-df="${esc(spKey(r))}" role="button" tabindex="0" aria-label="বিস্তারিত দেখুন"><div><label class="dfl"><input type="checkbox" class="dfck" data-sk="${esc(sk)}" aria-label="নির্বাচন"${DFSEL.has(sk)?' checked':''}${on?' disabled':''}></label><b>${esc((r.name||r.label||('অর্ডার '+r.provider_order)).slice(0,70))}</b>${spBad(r)?' <span class="tag">'+esc(r.status||'Partial')+'</span>':''}<div class="sub">${esc(r.provider)} · সার্ভিস ${esc(r.service_id)} · অর্ডার #${esc(r.provider_order)}</div><div class="sub">${dT(r.ordered_at)} → ${dT(r.completed_at)}</div><div class="ordb">${on?'<span class="sub ok">✔ সাইটে আছে</span>':`<button type="button" class="sm" data-ad="${esc(spKey(r))}">➕ সাইটে যোগ</button>`}</div></div><div class="spv"><b class="${cl}">${t>0?mnT(t):'—'}</b><div class="sub">${r.started_at>0&&r.ordered_at>0?'শুরু '+mnT(r.start_secs>0?r.start_secs:(r.started_at-r.ordered_at)/1000):''}</div></div></div>`};
+function dfText(d){const L=['✅ সম্পন্ন টেস্ট — '+(SP.tb?DF_TB.find(b=>b[0]===SP.tb)[1]:'সব সময়')+(SP.cat?' · '+SP.cat:''),'────────────────'];
+  d.groups.forEach(g=>{L.push('','■ '+g.c+' ('+bn(g.l.length)+'টি) — সবচেয়ে দ্রুত '+mnT(g.min<1e12?g.min:0)+' · মিডিয়ান '+mnT(g.med));g.l.forEach(x=>L.push('• '+mnT(x.t)+' — '+(x.r.name||x.r.label||'')+' | '+x.r.provider+' #'+x.r.service_id+' (অর্ডার #'+x.r.provider_order+')'))});
+  L.push('','তৈরি: '+dT(Date.now()));return L.join('\n')}
 async function spd(){
   cur=null;$('#title').textContent='স্পিড টেস্ট';$('#back').hidden=true;const el=$('#main'),my=rid;
   el.innerHTML=nav('spd')+'<div class="bar"><button type="button" class="btn" id="sprf" style="max-width:240px">↻ এখনই মেলান</button><span class="sub" id="spn" role="status"></span></div><div id="spb"><div class="sk"></div></div>';
   let D=null,rowsAll=[];
   const tick=()=>{if(my!==rid){clearInterval(spTk);return}const n=spNow();document.querySelectorAll('[data-lv]').forEach(x=>{const t0=+x.dataset.t0;if(t0)x.textContent=lvT((n-t0)/1000)+(x.dataset.lv==='wait'?' ধরে অপেক্ষা':' হলো')});const c=$('#spclk');if(c)c.textContent=new Date(n).toLocaleTimeString('bn-BD',{timeZone:'Asia/Dhaka',hour:'numeric',minute:'2-digit',second:'2-digit'})};
   clearInterval(spTk);spTk=setInterval(tick,1000);
-  const draw=()=>{const b=$('#spb');if(!D||!b)return;
+  const draw=()=>{const b=$('#spb');if(!D||!b)return;const hq=document.activeElement&&document.activeElement.id==='dfq',cp=hq?document.activeElement.selectionStart:0;
     const rows=rowsAll,provs=[...new Set(rows.map(r=>r.provider))].sort(),
       cnt={run:rows.filter(r=>!spFin(r)).length,wait:rows.filter(r=>!spFin(r)&&!(r.started_at>0)).length,ok:rows.filter(r=>spFin(r)&&!spCan(r)).length,bad:rows.filter(spCan).length},
       stOk=r=>SP.st==='all'||SP.st==='note'||(SP.st==='run'?!spFin(r):SP.st==='can'?spCan(r):spFin(r)&&!spCan(r)),isAll=SP.st==='all',isNote=SP.st==='note',FN=spFastList(spFastLearn([]),SP.prov),NG=FN.reduce((g,e)=>((g[e.cat]||(g[e.cat]=[])).push(e),g),{}),show=(isAll||isNote)?[]:rows.filter(r=>(!SP.prov||r.provider===SP.prov)&&stOk(r)),
@@ -1486,7 +1525,7 @@ async function spd(){
     +(isAll&&TR.length?`<div class="card sps"><b>📈 শুরুর সময়ের ধারা</b><div class="sub">প্রভাইডারভিত্তিক দৈনিক মিডিয়ান (শেষ ১৪ দিন)</div>${TR.map(t=>{const a=t.pts[0],z=t.pts[t.pts.length-1],up=z>a*1.15,dn=z<a*.85;return `<div class="spr"><div><b>${esc(t.p)}</b><div class="sub">${bn(t.pts.length)} দিনের তথ্য</div></div><div class="spv"><span class="spkw ${up?'hi':dn?'g':''}">${spSpark(t.pts,110,28)}</span><div class="sub">~${mnT(a)} → ~${mnT(z)}${up?' 🔺 ধীর':dn?' 🔻 দ্রুত':''}</div></div></div>`}).join('')}</div>`:'')
     +(isAll&&S.length?`<div class="card sps"><b>শুরুর গতি — দ্রুত আগে</b>${S.map(s=>{const p=s.k.split('|');return `<div class="spr" data-sv="${esc(s.k)}" role="button" tabindex="0" aria-label="বিস্তারিত দেখুন"><div><b>${esc(p[0])}</b> · #${esc(p[1])}${BS.by[s.k]?' <span class="bst">🏆 সেরা</span>':''}<div class="sub">${esc((nm[s.k]||'').slice(0,60))}</div></div><div class="spv"><b class="${s.start_n?'g':''}">${s.start_n?'~'+mnT(s.start_med):'শুরু হয়নি'}</b><div class="sub">মোট ${s.ok?'~'+mnT(s.total_med):'—'} · ড্রপ ${bn(s.bad)}% · টেস্ট ${bn(s.n)}টি</div></div></div>`}).join('')}</div>`:'')
     +(isNote?`<div class="card sps"><b>📝 দ্রুত সম্পন্ন সার্ভিসের নোট</b><div class="sub">${isFinite(spFastTh())?'গড় মোট সময় '+mnT(spFastTh())+' বা কম':'সব সম্পন্ন সার্ভিস'} · ক্যাটাগরি অনুযায়ী, দ্রুত আগে · সম্পন্ন হওয়া অর্ডার থেকে নিজে জমা হয়</div><div class="chips" style="margin:8px 0"><button type="button" class="chip" data-th="all" aria-pressed="${!isFinite(spFastTh())}">সব সম্পন্ন</button>${[600,1800,3600].map(v=>`<button type="button" class="chip" data-th="${v}" aria-pressed="${spFastTh()===v}">≤ ${mnT(v)}</button>`).join('')}</div>${FN.length?Object.keys(NG).map(c=>`<div class="acts" style="justify-content:space-between;align-items:center;margin-top:14px"><b>📁 ${esc(c)} <span class="sub">· ${bn(NG[c].length)}টি</span></b><span><button type="button" class="sm" data-ce="${esc(c)}">✎ এডিট</button> <button type="button" class="sm dng" data-cd="${esc(c)}">🗑 ডিলেট</button></span></div>${NG[c].map(e=>`<div><div class="spr" data-sv="${esc(e.k)}" role="button" tabindex="0" aria-label="বিস্তারিত দেখুন"><div><b>#${esc(e.code)}</b> · ${esc((e.name||'—').slice(0,70))}<div class="sub">প্রভাইডার: ${esc(e.prov)}</div></div><div class="spv"><b class="g">~${mnT(e.avg)}</b><div class="sub">${bn(e.n)}টি অর্ডার · সবচেয়ে দ্রুত ${mnT(e.min)}</div></div></div><div class="acts"><button type="button" class="sm" data-mv="${esc(e.k)}">↦ ক্যাটাগরি বদলান</button></div></div>`).join('')}`).join(''):'<div class="sub">এখনো কোনো দ্রুত সার্ভিস নেই — স্পিড টেস্টের অর্ডার সম্পন্ন হলে এখানে জমা হবে।</div>'}${FN.length?'<div class="acts"><button type="button" class="sm" id="fnCp">📋 নোট কপি / শেয়ার</button><button type="button" class="sm" id="fnDel">🗑 নোট মুছুন</button></div>':''}</div>`:'')
-    +(isNote?'':isAll?'<div class="card empty">অর্ডার দেখতে ⏳ চলমান ('+bn(cnt.run)+'), ✅ শেষ ('+bn(cnt.ok)+') বা 🚫 ক্যান্সেল ('+bn(cnt.bad)+') ট্যাব চাপুন।</div>':show.length?show.map(spc).join(''):'<div class="card empty">'+(rows.length?(SP.st==='run'?'এখন কোনো চলমান অর্ডার নেই।':SP.st==='can'?'কোনো ক্যান্সেল অর্ডার নেই।':'এখনো কোনো শেষ হওয়া অর্ডার নেই।'):'স্টুডিও থেকে দেওয়া কোনো অর্ডার নেই। \'সেরা\' পাতা থেকে টেস্ট অর্ডার দিন।')+'</div>')
+    +(isNote?'':isAll?'<div class="card empty">অর্ডার দেখতে ⏳ চলমান ('+bn(cnt.run)+'), ✅ শেষ ('+bn(cnt.ok)+') বা 🚫 ক্যান্সেল ('+bn(cnt.bad)+') ট্যাব চাপুন।</div>':SP.st==='done'?dfShell():show.length?show.map(spc).join(''):'<div class="card empty">'+(rows.length?(SP.st==='run'?'এখন কোনো চলমান অর্ডার নেই।':SP.st==='can'?'কোনো ক্যান্সেল অর্ডার নেই।':'এখনো কোনো শেষ হওয়া অর্ডার নেই।'):'স্টুডিও থেকে দেওয়া কোনো অর্ডার নেই। \'সেরা\' পাতা থেকে টেস্ট অর্ডার দিন।')+'</div>')
     +'<p class="sub">শুধু স্টুডিও থেকে দেওয়া অর্ডার এখানে আসে। সময় প্রতি সেকেন্ডে চলে; চলমান অর্ডার থাকলে প্রতি ২০ সেকেন্ডে প্রভাইডার থেকে স্ট্যাটাস মেলে (শুরুর সময় ±২০ সেকেন্ড হতে পারে)।</p>';
     b.querySelectorAll('[data-s]').forEach(x=>x.onclick=()=>{SP.st=x.dataset.s;draw()});$('#spp').onchange=e=>{SP.prov=e.target.value;draw()};
     const ra=$('#repAll');if(ra)ra.onclick=()=>spRepDlg(spReportAll(rows),'📊 সব রিপোর্ট');$('#tgSet').onclick=spTgDlg;
@@ -1501,12 +1540,35 @@ async function spd(){
       d.innerHTML='<h3 id="svT" style="margin:0 0 4px"></h3><div class="sub" id="svS"></div><div id="svC"></div><div class="svl"></div><div class="acts"><button type="button" class="btn" id="svX">বন্ধ</button></div>';
       $('#svT').textContent=p[0]+' · #'+p[1];$('#svS').textContent=(nm[k]||'')+' — '+bn(L.length)+'টি অর্ডার'+(st&&st.start_n?' · শুরু ~'+mnT(st.start_med):'');
       const cp=L.filter(r=>r.started_at>0&&r.start_secs>0&&r.ordered_at>0).sort((x,y)=>x.ordered_at-y.ordered_at).map(r=>r.start_secs);$('#svC').innerHTML=cp.length>=2?'<div class="sub" style="margin-top:6px">শুরুর সময় — পুরোনো → নতুন</div><div class="spkw g">'+spSpark(cp,260,40)+'</div><div class="sub">~'+mnT(cp[0])+' → ~'+mnT(cp[cp.length-1])+'</div>':'';d.querySelector('.svl').innerHTML=L.map(spc).join('');
-      d.querySelectorAll('[data-rep]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.rep);if(r)spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order)});d.querySelectorAll('[data-tg]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.tg);if(r)spTgManual(r)});
+      d.querySelectorAll('[data-rep]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.rep);if(r)spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order)});d.querySelectorAll('[data-tg]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.tg);if(r)spTgManual(r)});d.querySelectorAll('[data-add]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.add);if(r)spAddSite(r)});
       $('#svX').onclick=()=>d.close();d.showModal();tick()};
     b.querySelectorAll('[data-sv]').forEach(x=>{x.onclick=()=>svD(x.dataset.sv);x.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();svD(x.dataset.sv)}}});
-    b.querySelectorAll('[data-rep]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.rep);if(r)spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order)});b.querySelectorAll('[data-tg]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.tg);if(r)spTgManual(r)});tick()};
+    b.querySelectorAll('[data-rep]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.rep);if(r)spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order)});b.querySelectorAll('[data-tg]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.tg);if(r)spTgManual(r)});b.querySelectorAll('[data-add]').forEach(x=>x.onclick=()=>{const r=rows.find(y=>spKey(y)===x.dataset.add);if(r)spAddSite(r)});
+    if(SP.st==='done'){
+      const dfOpen=k=>{const r=rows.find(y=>spKey(y)===k);if(!r)return;let d=$('#dfD');if(!d){d=document.createElement('dialog');d.id='dfD';d.className='svd';document.body.appendChild(d)}
+        d.innerHTML='<div class="svl">'+spc(r)+'</div><div class="acts"><button type="button" class="btn" id="dfX">বন্ধ</button></div>';
+        d.querySelectorAll('[data-rep]').forEach(x=>x.onclick=()=>spRepDlg(spReport(r),'📄 অর্ডার #'+r.provider_order));d.querySelectorAll('[data-tg]').forEach(x=>x.onclick=()=>spTgManual(r));d.querySelectorAll('[data-add]').forEach(x=>x.onclick=()=>spAddSite(r));
+        $('#dfX').onclick=()=>d.close();d.showModal();tick()};
+      const dfDraw=()=>{const D2=dfCalc(show),tb=$('#dfT'),cc=$('#dfC'),rr=$('#dfR');if(!tb||!cc||!rr)return;
+        tb.innerHTML=DF_TB.map(x=>`<button type="button" class="chip" data-tb="${x[0]}" aria-pressed="${SP.tb===x[0]}">${x[1]} <small>${bn(D2.tbN[x[0]]||0)}</small></button>`).join('');
+        const ck=Object.keys(D2.cats);if(SP.cat&&!D2.cats[SP.cat])ck.push(SP.cat);ck.sort((a,b2)=>(D2.cats[b2]||0)-(D2.cats[a]||0)||a.localeCompare(b2));
+        cc.innerHTML='<button type="button" class="chip" data-dc="" aria-pressed="'+(!SP.cat)+'">সব ক্যাটাগরি <small>'+bn(Object.keys(D2.cats).reduce((n,k)=>n+D2.cats[k],0))+'</small></button>'+ck.map(c=>`<button type="button" class="chip" data-dc="${esc(c)}" aria-pressed="${SP.cat===c}">${esc(c)} <small>${bn(D2.cats[c]||0)}</small></button>`).join('');
+        rr.innerHTML=D2.list.length?`<div class="sub" style="margin:4px 2px 8px">${bn(D2.list.length)}টি অর্ডার পাওয়া গেছে${SP.tb?' · '+DF_TB.find(x=>x[0]===SP.tb)[1]+' এর মধ্যে':''}</div>`+D2.groups.map(g=>`<div class="card sps dfg"><div class="dfh"><b>${esc(g.c)}</b><span class="sub">${bn(g.l.length)}টি${g.min<1e12?' · সবচেয়ে দ্রুত <b class="g">'+mnT(g.min)+'</b>':''}${g.med>0?' · মিডিয়ান '+mnT(g.med):''}</span><button type="button" class="sm" data-ga="${esc(g.c)}">➕ সব যোগ</button></div>${g.l.map(dfRow).join('')}</div>`).join(''):'<div class="card empty">'+(show.length?'এই ফিল্টারে কোনো অর্ডার নেই — সময় বা ক্যাটাগরি বদলে দেখুন।':'এখনো কোনো শেষ হওয়া অর্ডার নেই।')+'</div>';
+        tb.querySelectorAll('[data-tb]').forEach(x=>x.onclick=()=>{SP.tb=+x.dataset.tb;dfDraw()});cc.querySelectorAll('[data-dc]').forEach(x=>x.onclick=()=>{SP.cat=x.dataset.dc;dfDraw()});
+        const bar=()=>{const bx=$('#dfB');if(!bx)return;const n=[...DFSEL].length;bx.hidden=!n;bx.innerHTML=n?`<b>${bn(n)}টি নির্বাচিত</b> <button type="button" class="btn" id="dfAdd" style="max-width:220px">➕ সাইটে যোগ করুন</button> <button type="button" class="sm" id="dfClr">বাতিল</button>`:'';
+          const a=$('#dfAdd');if(a)a.onclick=()=>spAddMany(D2.list.map(x=>x.r).filter(r=>DFSEL.has(dfSk(r))));const c=$('#dfClr');if(c)c.onclick=()=>{DFSEL.clear();dfDraw()}};bar();
+        rr.querySelectorAll('.dfl,.dfck,[data-ad]').forEach(x=>x.addEventListener('click',e=>e.stopPropagation()));
+        rr.querySelectorAll('.dfck').forEach(x=>x.onchange=()=>{x.checked?DFSEL.add(x.dataset.sk):DFSEL.delete(x.dataset.sk);bar()});
+        rr.querySelectorAll('[data-ad]').forEach(x=>x.onclick=e=>{e.stopPropagation();const r=rows.find(y=>spKey(y)===x.dataset.ad);if(r)spAddMany([r])});
+        rr.querySelectorAll('[data-ga]').forEach(x=>x.onclick=()=>{const g=D2.groups.find(y=>y.c===x.dataset.ga);if(g)spAddMany(g.l.map(y=>y.r))});
+        rr.querySelectorAll('[data-df]').forEach(x=>{x.onclick=()=>dfOpen(x.dataset.df);x.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();dfOpen(x.dataset.df)}}});
+        const cb=$('#dfCp');if(cb)cb.onclick=()=>spRepDlg(dfText(D2),'📄 সম্পন্ন টেস্টের তালিকা')};
+      $('#dfq').oninput=e=>{SP.q=e.target.value;dfDraw()};$('#dfS').onchange=e=>{SP.so=e.target.value;dfDraw()};dfDraw();
+      if(hq){const i=$('#dfq');if(i){i.focus();try{i.setSelectionRange(cp,cp)}catch(_){}}}
+    }
+    tick()};
   const load=async(refresh,quiet)=>{const b=$('#sprf'),n=$('#spn');if(!b)return;if(!quiet){b.disabled=true;n.textContent=refresh?'প্রভাইডার থেকে স্ট্যাটাস মেলানো হচ্ছে…':'লোড হচ্ছে…'}
-    try{const d=await api('svc_spd',{refresh:!!refresh,limit:150});if(my!==rid)return;D=d;if(d.now)SPoff=d.now-Date.now();rowsAll=spRows(d);spNotify(rowsAll,false);spFastLearn(rowsAll);spTgRun(rowsAll);draw();const n2=$('#spn');if(n2)n2.textContent=(refresh?'মেলানো হয়েছে · ':'')+'হালনাগাদ '+dT(spNow())}
+    try{const d=await api('svc_spd',{refresh:!!refresh,limit:300});if(my!==rid)return;D=d;if(d.now)SPoff=d.now-Date.now();rowsAll=spRows(d);spNotify(rowsAll,false);spFastLearn(rowsAll);spTgRun(rowsAll);draw();const n2=$('#spn');if(n2)n2.textContent=(refresh?'মেলানো হয়েছে · ':'')+'হালনাগাদ '+dT(spNow())}
     catch(e){if(!authFail(e)&&!quiet&&$('#spb')){if(!D)$('#spb').innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`;else{const n2=$('#spn');if(n2)n2.textContent='মেলানো যায়নি: '+e.message}}}
     const b2=$('#sprf');if(b2)b2.disabled=false};
   $('#sprf').onclick=()=>load(true);

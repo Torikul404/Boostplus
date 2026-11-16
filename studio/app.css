@@ -42,7 +42,9 @@ label{display:block;font-size:14px;color:var(--mu);margin:0 0 6px}input{width:10
  .grid{grid-template-columns:repeat(4,1fr)}#main{padding:24px}.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 }
 /* ---- সার্ভিস স্টুডিও ---- */
-.bar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.bar input,.bar select{margin:0;flex:1 1 160px;min-width:0}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+/* শুধু সার্চ ঘর আছে এমন বার: স্ক্রোলে হেডারের নিচে আটকে থাকবে */
+.bar:has(>input[type=search]:only-child){position:sticky;top:var(--hd);z-index:15;background:var(--bg);padding:8px 0;margin:-8px 0 4px}.bar input,.bar select{margin:0;flex:1 1 160px;min-width:0}
 select{width:100%;height:48px;padding:0 10px;border:1px solid var(--bd);border-radius:12px;background:var(--bg);color:var(--tx)}
 .sm{min-height:44px;padding:0 16px;border:1px solid var(--lk);border-radius:12px;background:transparent;color:var(--lk);cursor:pointer;font-weight:600}.sm:disabled{opacity:.5}
 .chips{display:flex;gap:8px;overflow:auto;margin:0 0 12px}.chip{min-height:44px;padding:0 16px;border:1px solid var(--bd);border-radius:22px;background:var(--cd);cursor:pointer;white-space:nowrap}.chip[aria-pressed=true]{background:var(--pr);border-color:var(--pr);color:#fff}
@@ -187,3 +189,7 @@ pre.rep{white-space:pre-wrap;overflow-wrap:anywhere;max-height:55vh;overflow:aut
 .card.cat .cl:hover b{color:var(--pr)}
 .card.cat .ca{display:flex;gap:6px;flex:none}
 .card.cat .ca .sm{min-width:44px;min-height:44px;padding:0 10px}
+.dff .chips{margin:4px 0 10px}.dff .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.dff .acts .plmore{margin:0;flex:1;min-width:150px}
+.dfg{padding-top:10px}.dfh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding-bottom:6px}.dfh b{font-size:16px}.dfr{cursor:pointer}.dfr:active{opacity:.7}.dfr .spv b.hi{color:var(--er)}
+.dfl{display:inline-flex;align-items:center;min-width:32px;min-height:32px;margin-right:4px;vertical-align:middle}.dfck{width:20px;height:20px}
+.dfb{position:sticky;top:8px;z-index:5;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.dfb[hidden]{display:none}.dfr .ordb{margin-top:6px}
