@@ -10,8 +10,8 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const bn=n=>(+n||0).toLocaleString('bn-BD');
 const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
-let token=ls.get('pb_studio_token')||'',busy=false,st={q:'',state:'all',cat:'',off:0,sort:''},cur=null,lastList=null,qt=null,SC=null,fabMoved=false;
-const ERR={unauthorized:'টোকেন ঠিক নয়',locked_out:'অনেকবার ভুল হয়েছে — কিছুক্ষণ পরে চেষ্টা করুন',no_config:'এই প্রভাইডারের API সেট করা নেই',bad_json:'প্রভাইডার সঠিক উত্তর দেয়নি',provider_error:'প্রভাইডার ত্রুটি দিয়েছে',not_collected:'আগে "সংগ্রহ করুন" চাপুন',code_conflict:'এই আইডি সাইটে অন্য প্রভাইডারের সার্ভিস হিসেবে আছে',previously_removed:'এই সার্ভিস আগে সাইট থেকে বাদ দেওয়া হয়েছিল',category_required:'ক্যাটেগরি দিন',price_required:'দাম দিন',svc_failed:'সার্ভারে সমস্যা হয়েছে',unknown_action:'সার্ভারে নতুন কোড চালু হয়নি — Apps Script-এ PtServices.gs ও PtOrder.gs বসিয়ে Deploy → Manage deployments → Edit → New version দিন'};
+let token=ls.get('pb_studio_token')||'',busy=false,st={q:'',state:'all',cat:'',off:0,sort:'',tst:''},cur=null,lastList=null,qt=null,SC=null,fabMoved=false;
+const ERR={packages_unavailable:'সাইটের প্যাকেজ তালিকা এখন আনা যায়নি — আগের তালিকা রাখা হয়েছে',unauthorized:'টোকেন ঠিক নয়',locked_out:'অনেকবার ভুল হয়েছে — কিছুক্ষণ পরে চেষ্টা করুন',no_config:'এই প্রভাইডারের API সেট করা নেই',bad_json:'প্রভাইডার সঠিক উত্তর দেয়নি',provider_error:'প্রভাইডার ত্রুটি দিয়েছে',not_collected:'আগে "সংগ্রহ করুন" চাপুন',code_conflict:'এই আইডি সাইটে অন্য প্রভাইডারের সার্ভিস হিসেবে আছে',previously_removed:'এই সার্ভিস আগে সাইট থেকে বাদ দেওয়া হয়েছিল',category_required:'ক্যাটেগরি দিন',price_required:'দাম দিন',svc_failed:'সার্ভারে সমস্যা হয়েছে',unknown_action:'সার্ভারে নতুন কোড চালু হয়নি — Apps Script-এ PtServices.gs ও PtOrder.gs বসিয়ে Deploy → Manage deployments → Edit → New version দিন'};
 const mem={};let rid=0;
 function wipe(){for(const k in mem)delete mem[k];try{Object.keys(localStorage).filter(k=>k.indexOf('pbc_')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}}
 async function apiNet(action,x){
@@ -31,11 +31,12 @@ const CATK='site_v1',QK='queue_v1',EXK='exc_v1';let CAT=null,catSync=null,catTm=
 const idb={open(){return new Promise((res,rej)=>{const r=indexedDB.open('pb_studio',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})},
   async get(k){try{const db=await this.open();return await new Promise(res=>{const q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null)})}catch(e){return null}},
   async set(k,v){try{const db=await this.open();await new Promise(res=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res();t.onerror=()=>res()})}catch(e){}}};
-async function catLoad(){CAT=await idb.get(CATK);Q=(await idb.get(QK))||[];(await idb.get('rc_keys')||[]).forEach(k=>RK.add(k));EXC=(await idb.get(EXK))||{items:[]};qFlush();if(token&&(!CAT||Date.now()-CAT.at>30*60000))catSyncNow().catch(()=>{})}
+async function catLoad(){CAT=await idb.get(CATK);if(CAT&&CAT.rows)CAT.rows.forEach(r=>{if(!r.category)r.category='Uncategorized'});Q=(await idb.get(QK))||[];(await idb.get('rc_keys')||[]).forEach(k=>RK.add(k));EXC=(await idb.get(EXK))||{items:[]};qFlush();if(token&&(!CAT||Date.now()-CAT.at>30*60000))catSyncNow().catch(()=>{})}
 function catSyncNow(prog){if(catSync)return catSync;
   catSync=(async()=>{const rows=[];let off=0,tot=1;
     let one=0;try{const d=await apiNet('svc_site_list',{q:'',platform:'',category:'',state:'all',offset:0,limit:5000,all:1});if(d.rows&&d.rows.length>=d.total&&d.total>0){rows.push.apply(rows,d.rows);one=1;if(prog)prog(d.total,d.total)}}catch(_){}
     while(!one&&off<tot){const d=await apiNet('svc_site_list',{q:'',platform:'',category:'',state:'all',offset:off,limit:100});tot=d.total;if(!d.rows.length)break;rows.push.apply(rows,d.rows);off+=d.rows.length;if(prog)prog(off,tot)}
+    {const old=CAT&&CAT.rows?CAT.rows.length:0;if((old>0&&!rows.length)||(old>=20&&rows.length<old*0.5)){const e=new Error('সাইটের তালিকা অসম্পূর্ণ এসেছে — আগের তালিকা রাখা হয়েছে');e.code='partial';throw e}}
     excDiff(CAT&&CAT.rows,rows);CAT={rows,at:Date.now()};await idb.set(CATK,CAT)})().finally(()=>{catSync=null});return catSync}
 /* ---------- ব্যতিক্রম: আগের ক্যাটালগের সাথে মিলিয়ে নতুন / হারানো / দাম-বদল ---------- */
 function excDiff(o,n){if(!o||!o.length)return;const om={},nm={},now=Date.now(),it=[];o.forEach(r=>{om[r.code]=r});n.forEach(r=>{nm[r.code]=r});
@@ -45,7 +46,7 @@ function excDiff(o,n){if(!o||!o.length)return;const om={},nm={},now=Date.now(),i
   if(!it.length)return;const k={};EXC.items=it.concat(EXC.items).filter(x=>{const id=x.t+x.code;if(k[id])return false;k[id]=1;return true}).slice(0,300);idb.set(EXK,EXC)}
 /* ---------- কোনো লেইট নয়: লেখার কাজ (চালু/বন্ধ, নাম/ক্যাটেগরি বদল, ব্যাচ) আগে ফোনে সাথে সাথে হয়, সার্ভারে যায় পেছনে — অনলাইন/অফলাইন একই ---------- */
 function qAdd(a,x){const lb={};CAT.rows.forEach(r=>{lb[r.platform]=r.platform_label});
-  if(a==='svc_toggle'){const c=String(x.code);if(x.on){let r=CAT.rows.find(y=>y.code===c);if(r)r.state='on';else{const pl=String(x.platform||'').toLowerCase().trim();CAT.rows.unshift({code:c,name:cutS(String(x.name||''),120),category:cutS(String(x.category||''),80),platform:pl,platform_label:lb[pl]||pl,state:'on',src:'custom',ov:0});catSoon()}}else catPatch('svc_site_hide',{codes:[c],on:false})}
+  if(a==='svc_toggle'){const c=String(x.code);if(x.on){let r=CAT.rows.find(y=>y.code===c);if(r)r.state='on';else{const pl=String(x.platform||'').toLowerCase().trim();CAT.rows.unshift({code:c,name:cutS(String(x.name||''),120),category:cutS(String(x.category||''),120),platform:pl,platform_label:lb[pl]||pl,state:'on',src:'custom',ov:0});catSoon()}}else catPatch('svc_site_hide',{codes:[c],on:false})}
   else catPatch(a,x);
   idb.set(CATK,CAT);Q.push({a,x});idb.set(QK,Q);mutTs=Date.now();
   if(navigator.onLine)setTimeout(qFlush,0);else toast('অফলাইন — ফোনে হয়েছে, নেট এলে সার্ভারে যাবে ('+bn(Q.length)+')');
@@ -130,6 +131,8 @@ function provList(c,d,cp){const q=String(d.q||'').toLowerCase().trim(),cat=Strin
   if(cp&&pf)all=all.filter(r=>{const P=pick(NP,r.category)||pick(NP,r.name);return P&&(P[0].toLowerCase()===pf||pf.indexOf(P[0].toLowerCase())>=0)});
   const out=all.filter(r=>(!cat||r.category===cat)&&(fl==='all'||r.state===fl)&&(!q||qOK(q,String(r.name)+' '+r.service_id+' '+r.category)));
   if(d.sort==='asc'||d.sort==='desc')out.sort(rateCmp(d.sort));
+  {const pv=d.provider||cur;if(d.tst)for(let i=out.length-1;i>=0;i--){const t=!!(TST&&TST[pv+'|'+out[i].service_id]);if(d.tst==='yes'?!t:t)out.splice(i,1)}
+  if(d.sort==='fast'){const sc=r=>{const x=TST&&TST[pv+'|'+r.service_id];return x&&x.ok>0&&x.total_med>0?x.total_med:Infinity};out.sort((a,b)=>{const A=sc(a),B=sc(b);return A===B?0:A<B?-1:1})}}
   const off=Math.max(0,+d.offset||0),lim=Math.min(200,+d.limit||100);
   if(!c._pl||c._plN!==c.rows.length){const m={};['Facebook','Instagram','TikTok','Twitter / X','Telegram','WhatsApp','YouTube'].forEach(k=>{m[k]=0});c.rows.forEach(r=>{const P=pick(NP,r.category)||pick(NP,r.name);if(P)m[P[0]]=(m[P[0]]||0)+1});c._pl=Object.keys(m).map(k=>({label:k,n:m[k]})).sort((a,b)=>b.n-a.n);c._plN=c.rows.length}
   const pls=c._pl;
@@ -147,8 +150,8 @@ function catPatch(a,x){const by={};CAT.rows.forEach(r=>{by[r.code]=r});const lb=
   const setPl=(r,pl)=>{pl=String(pl||'').toLowerCase().trim();if(!pl)return;r.platform=pl;if(lb[pl])r.platform_label=lb[pl];else{r.platform_label=pl;catSoon()}};
   const codes=(x.codes||[]).map(String);
   if(a==='svc_site_hide'){const gone={};codes.forEach(c=>{const r=by[c];if(!r)return;if(x.on)r.state='on';else{r.state='off';if(x.del&&r.src==='custom')gone[c]=1}});if(Object.keys(gone).length)CAT.rows=CAT.rows.filter(r=>!gone[r.code])}
-  else if(a==='svc_site_edit'){const r=by[String(x.code)];if(r){r.name=cutS(String(x.name||'').trim(),120);if(x.category)r.category=cutS(String(x.category).trim(),80);setPl(r,x.platform);r.ov=1;catSoon()}}
-  else if(a==='svc_site_bulk'){codes.forEach(c=>{const r=by[c];if(!r)return;let nm=r.name,ct=r.category;if(x.tidy&&r.tidy){nm=r.tidy.name;ct=r.tidy.cat}if(x.category)ct=String(x.category).trim();r.name=cutS(String(nm),120);r.category=cutS(String(ct),80);setPl(r,x.platform);r.ov=1});if(x.tidy)catSoon()}}
+  else if(a==='svc_site_edit'){const r=by[String(x.code)];if(r){r.name=cutS(String(x.name||'').trim(),120);if(x.category)r.category=cutS(String(x.category).trim(),120);setPl(r,x.platform);r.ov=1;catSoon()}}
+  else if(a==='svc_site_bulk'){codes.forEach(c=>{const r=by[c];if(!r)return;let nm=r.name,ct=r.category;if(x.tidy&&r.tidy){nm=r.tidy.name;ct=r.tidy.cat}if(x.category)ct=String(x.category).trim();r.name=cutS(String(nm),120);r.category=cutS(String(ct),120);setPl(r,x.platform);r.ov=1});if(x.tidy)catSoon()}}
 /* ---------- প্ল্যাটফর্ম পাতা: সার্ভার ছাড়া — ফোনে রাখা সব প্রভাইডারের CSV থেকে (সার্ভারের গোনার একই নিয়ম) ---------- */
 const LP_PLAT = [
   ["Instagram", "instagram", /insta(?!nt)|\big\b/i], ["Facebook", "facebook", /facebook|\bfb\b/i], ["TikTok", "tiktok", /tik.?tok/i],
@@ -273,16 +276,16 @@ async function provider(p,more){
   const hq=!more&&document.activeElement&&document.activeElement.id==='q',my=more?provTok:++provTok;
   if(!more){st.off=0;if(selProv!==p){sel.clear();selProv=p}bulkBar();if(!hq)el.innerHTML='<div class="sk"></div>'}
   try{
-    const d=await pageRows('svc_list',{provider:p,q:st.q,state:st.state,category:st.cat,platform:st.plat||'',sort:st.sort||''},st.off,50,st.cat?'':(st.type||''));
+    const d=await pageRows('svc_list',{provider:p,q:st.q,state:st.state,category:st.cat,platform:st.plat||'',sort:st.sort||'',tst:st.tst||''},st.off,50,st.cat?'':(st.type||''));
     if(my!==provTok)return;
     if(!more){lastList=d;
       el.innerHTML=tiles(d.platforms||[],st.plat||'')+`<div class="bar"><input id="q" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি খুঁজুন" value="${esc(st.q)}" aria-label="খুঁজুন"></div><div id="cats">${catUI(catsFor(d.categories,st.plat),st)}</div>
-      <div class="chips" role="group" aria-label="অবস্থা">${[['all','সব'],['on','চালু'],['off','বন্ধ'],['conflict','জট']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${st.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="sa">সব বাছুন</button><button class="chip" id="csv">⤓ CSV</button></div><div class="chips" role="group" aria-label="দাম সাজান"><button class="chip" data-so="asc" aria-pressed="${st.sort==='asc'}">দাম: কম → বেশি</button><button class="chip" data-so="desc" aria-pressed="${st.sort==='desc'}">দাম: বেশি → কম</button></div>
-      <p class="sub" id="cnt"></p><div class="list" id="rows"></div><div id="moreWrap"></div>`;
+      <div class="chips" role="group" aria-label="অবস্থা">${[['all','সব'],['on','চালু'],['off','বন্ধ'],['conflict','জট']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${st.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="sa">সব বাছুন</button><button class="chip" id="csv">⤓ CSV</button></div><div class="chips" role="group" aria-label="দাম সাজান"><button class="chip" data-so="asc" aria-pressed="${st.sort==='asc'}">দাম: কম → বেশি</button><button class="chip" data-so="desc" aria-pressed="${st.sort==='desc'}">দাম: বেশি → কম</button><button class="chip" data-so="fast" aria-pressed="${st.sort==='fast'}">⚡ দ্রুততম আগে</button><span class="cdv" aria-hidden="true"></span>${[['','সব'],['yes','🧪 টেস্টেড'],['no','অপরীক্ষিত']].map(s=>`<button class="chip" data-tt="${s[0]}" aria-pressed="${(st.tst||'')===s[0]}">${s[1]}</button>`).join('')}</div>
+      <p class="sub"><span id="cnt"></span><span id="tcn"></span></p><div class="list" id="rows"></div><div id="moreWrap"></div>`;
       $('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{st.q=e.target.value;provider(p)},350)};
       if(hq){const qi=$('#q');qi.focus();try{qi.setSelectionRange(qi.value.length,qi.value.length)}catch(_){}}
       bindCat($('#cats'),st,()=>provider(p));
-      el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{st.state=b.dataset.s;provider(p)});el.querySelectorAll('[data-so]').forEach(b=>b.onclick=()=>{st.sort=st.sort===b.dataset.so?'':b.dataset.so;provider(p)});
+      el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{st.state=b.dataset.s;provider(p)});el.querySelectorAll('[data-tt]').forEach(b=>b.onclick=()=>{st.tst=b.dataset.tt;provider(p)});el.querySelectorAll('[data-so]').forEach(b=>b.onclick=()=>{st.sort=st.sort===b.dataset.so?'':b.dataset.so;provider(p)});
       $('#csv').onclick=()=>dl(p);bindTiles(el,l=>{st.plat=l;st.cat='';provider(p)});$('#sa').onclick=()=>el.querySelectorAll('.sel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange()}});
     }else lastList.rows=lastList.rows.concat(d.rows);
     $('#cnt').textContent=`মোট ${bn(d.total)}টি${d.fx?'':' · USD→৳ রেট সেট নেই (দাম USD-তে দিন)'}`;
@@ -291,7 +294,7 @@ async function provider(p,more){
     d.rows.forEach(r=>box.appendChild(row(r,d)));
     st.off=d.next;if(st.type&&!st.cat)$('#cnt').textContent=TLBL[st.type]+' ধরন · '+bn(box.children.length)+'টি দেখানো হচ্ছে'+(d.fx?'':' · USD→৳ রেট সেট নেই (দাম USD-তে দিন)');$('#moreWrap').innerHTML=st.off<d.total?'<button class="sm" id="more" style="width:100%;margin-top:8px">আরও দেখান</button>':'';
     const m=$('#more');if(m)m.onclick=()=>provider(p,true);
-    window._fx=d.fx;window._sc=d.site_categories;
+    window._fx=d.fx;window._sc=d.site_categories;tstCnt();if(!more)tstRefresh();
   }catch(e){if(!authFail(e)){el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p><div class="ordb"><button class="btn" id="rt" style="max-width:260px">আবার চেষ্টা করুন</button></div><div class="ordb"><button class="btn" id="rc" style="max-width:260px">⬇ এখনই সংগ্রহ করুন</button></div><div class="ordb"><button class="sm" id="rd">🔧 কারণ খুঁজুন</button></div><div id="dg" role="status"></div></div>`;$('#rt').onclick=()=>provider(p);$('#rc').onclick=()=>provCollect(p);$('#rd').onclick=()=>provDiag(p)}}
 }
 /* বাছাই মনে রাখা: ফিল্টার/'আরও দেখান'-এ কার্ড নতুন করে আঁকা হলেও টিক থাকে (প্রভাইডার+আইডি দিয়ে চেনে) */
@@ -299,11 +302,57 @@ async function provider(p,more){
 const fxNow=()=>+window._fx>0?+window._fx:(+ls.get('pb_fx')>0?+ls.get('pb_fx'):131);
 const rateTk=(u,plain)=>{const x=+u,f=fxNow();if(!(x>=0)||!f)return esc(u)+' $';const t=x*f;return '৳'+bn(+t.toFixed(t<10?3:2))+(plain?'':' <span class="mut">($'+esc(u)+')</span>')};
 const RW=new WeakMap(),selKey=r=>(r.provider||cur||'')+'|'+r.service_id;
+/* v106: আগে টেস্ট-করা সার্ভিস — নামের পাশে ব্যাজ, নিচে বিস্তারিত লাইন (গতি/ব্যর্থতা/কবে), ট্যাপে প্রতিটি টেস্টের তালিকা; রঙ = গতি */
+let TST=null,TSTp=null;try{TST=JSON.parse(ls.get('tst_v1')||'null')}catch(_){TST=null}
+const doneT=s=>!(s>0)?'':s<60?'১ মিনিটের কম সময়ে':s<5400?bn(Math.round(s/60))+' মিনিটে':s<172800?bn(Math.round(s/360)/10)+' ঘণ্টায়':bn(Math.round(s/8640)/10)+' দিনে';
+const agoT=ms=>{if(!(ms>0))return'';const d=(Date.now()-ms)/1000;return d<3600?'কিছুক্ষণ আগে':d<86400?bn(Math.floor(d/3600))+' ঘণ্টা আগে':bn(Math.floor(d/86400))+' দিন আগে'};
+const tstSt=s=>{s=String(s||'').toLowerCase();return s==='completed'?['সম্পন্ন','ok']:s==='partial'?['আংশিক','mid']:/cancel|refund/.test(s)?['ক্যান্সেল','slow']:['চলছে','wait']};
+/* রঙ: সবুজ = ২ ঘণ্টা বা কম, হলুদ = ১২ ঘণ্টা পর্যন্ত, লাল = তার বেশি বা ৩০%+ ব্যর্থ; হলুদ-ধূসর = চলছে */
+function tstLabel(x){if(!x)return null;const old=x.last_at>0&&Date.now()-x.last_at>30*864e5;
+  if(x.ok>0&&x.total_med>0){const c=(x.bad>=30||x.drop_med>=30)?'slow':x.total_med<=7200?'ok':x.total_med<=43200?'mid':'slow';
+    const dp=['টেস্ট '+bn(x.n)+'টি'];if(x.start_med>0)dp.unshift('শুরু ~'+mnT(x.start_med));if(x.per_hr>0)dp.splice(1,0,'~'+bn(x.per_hr)+'/ঘণ্টা');dp.splice(dp.length,0,'ব্যর্থ '+bn(x.bad)+'%');if(x.drop_n>0)dp.push('📉 ড্রপ ~'+bn(x.drop_med)+'% ('+bn(x.drop_n)+'টি যাচাই)');if(x.last_at>0)dp.push('শেষ '+agoT(x.last_at)+(old?' (পুরনো)':''));
+    return{t:'টেস্টেড ✓ · '+doneT(x.total_med)+' সম্পন্ন',d:'📊 '+dp.join(' · ')+' — বিস্তারিত ›',c,old}}
+  if(x.open>0)return{t:'টেস্টেড · চলছে',d:'📊 টেস্ট চলছে'+(x.last_at>0?' · শুরু '+agoT(x.last_at):'')+' — বিস্তারিত ›',c:'wait',old};
+  return{t:'টেস্টেড · সম্পন্ন হয়নি',d:'📊 টেস্ট '+bn(x.n)+'টি, কোনোটাই সম্পন্ন হয়নি'+(x.last_at>0?' · শেষ '+agoT(x.last_at):'')+' — বিস্তারিত ›',c:'slow',old}}
+function tstFill(el){if(!el)return;const l=tstLabel(TST&&TST[el.dataset.tk]),bx=el.closest&&el.closest('.tstbox');if(!l){el.hidden=true;el.textContent='';if(bx&&!bx.querySelector('[data-tk]:not([hidden])'))bx.hidden=true;return}el.hidden=false;if(bx){bx.hidden=false;bx.className='tstbox '+l.c}
+  const two=el.classList.contains('tst2');el.className=(two?'sub tst2 ':'tag tst ')+l.c+(l.old?' old':'');el.textContent=two?l.d:l.t}
+function tstPaint(root){(root||document).querySelectorAll('.tst[data-tk],.tst2[data-tk]').forEach(tstFill);tstCnt()}
+function tstCnt(){const e=$('#tcn');if(!e)return;const pc=cur&&PC[cur];if(!pc||!TST){e.textContent='';return}let n=0;pc.rows.forEach(r=>{if(TST[cur+'|'+r.service_id])n++});e.textContent=' · 🧪 টেস্টেড '+bn(n)+'/'+bn(pc.rows.length)}
+function tstRefresh(){return TSTp||(TSTp=api('svc_tested').then(d=>{const prev=ls.get('tst_v1'),j=JSON.stringify(d.tested||{});TST=d.tested||{};ls.set('tst_v1',j);tstPaint();
+  if(j!==prev&&cur&&(st.tst||st.sort==='fast'))provider(cur)}).catch(e=>{if(authFail(e))return}).finally(()=>{TSTp=null}))}
+/* v107: ড্রপ যাচাই — সম্পন্ন টেস্টের পর ১–৭ দিন পরে লিংকের এখনকার সংখ্যা দিলে ড্রপ % হিসাব হয় */
+const dropC=p=>p>=30?'slow':p>=10?'mid':'ok';
+function tstDrop(t,k,i){const s=String(t.st||'').toLowerCase();if(s!=='completed'&&s!=='partial')return'';
+  const d=t.dr,done=d?`<div class="sub ${dropC(d.pct)}">📉 ড্রপ ${bn(Math.max(0,d.pct))}% · ${bn(d.days)} দিন পরে (এখন ${bn(d.cur)})</div>`:'';
+  const ageH=t.at?(Date.now()-t.at)/36e5:0,hint=d?'':(ageH>0&&ageH<24?'<div class="sub">📉 ২৪ ঘণ্টা পরে ড্রপ যাচাই করা ভালো</div>':'<div class="sub mid">📉 ড্রপ যাচাই বাকি</div>');
+  return done+hint+`<div class="dchk"><button type="button" class="sm" data-dc="${i}">${d?'আবার যাচাই':'📉 ড্রপ যাচাই'}</button><div class="dfm" data-df="${i}" hidden><input type="number" inputmode="numeric" min="0" placeholder="এখন লিংকে কত? (ফলোয়ার/লাইক)" data-dcur="${i}" aria-label="এখনকার সংখ্যা">${!(t.sc>0)?`<input type="number" inputmode="numeric" min="0" placeholder="অর্ডারের আগে কত ছিল?" data-dbase="${i}" aria-label="আগের সংখ্যা">`:''}<button type="button" class="btn" data-dgo="${i}">হিসাব করুন</button><p class="err" data-derr="${i}" role="alert"></p></div></div>`}
+function tstDropBind(d,k){const x=TST&&TST[k];if(!x)return;const prov=k.split('|')[0];
+  d.querySelectorAll('[data-dc]').forEach(b=>b.onclick=()=>{const f=d.querySelector(`[data-df="${b.dataset.dc}"]`);f.hidden=!f.hidden;if(!f.hidden){const i=d.querySelector(`[data-dcur="${b.dataset.dc}"]`);if(i)i.focus()}});
+  d.querySelectorAll('[data-dgo]').forEach(b=>b.onclick=async()=>{const i=+b.dataset.dgo,t=x.tests[i],E=d.querySelector(`[data-derr="${i}"]`),cu=d.querySelector(`[data-dcur="${i}"]`),ba=d.querySelector(`[data-dbase="${i}"]`);
+    E.textContent='';if(!cu.value.trim()){E.textContent='এখনকার সংখ্যা দিন';return}
+    if(ba&&!ba.value.trim()){E.textContent='অর্ডারের আগের সংখ্যা দিন';return}
+    b.disabled=true;b.textContent='হিসাব হচ্ছে…';
+    try{const r=await api('svc_drop',{provider:prov,order:t.po,count:+cu.value,base:ba?+ba.value:undefined});
+      t.dr={pct:r.pct,days:r.days,cur:r.cur,at:Date.now()};toast('ড্রপ '+bn(Math.max(0,r.pct))+'%');tstDlg(k,d.dataset.nm||'');tstRefresh()}
+    catch(e){if(authFail(e)){d.close();return}b.disabled=false;b.textContent='হিসাব করুন';E.textContent=e.message||'ব্যর্থ'}})}
+function tstDlg(k,name){const x=TST&&TST[k];if(!x)return;
+  let d=$('#tstD');if(!d){d=document.createElement('dialog');d.id='tstD';d.setAttribute('aria-labelledby','tstT');document.body.appendChild(d)}
+  const l=tstLabel(x),tests=(x.tests||[]).map((t,i)=>{const s=tstSt(t.st);return`<div class="tstr"><div class="tsth"><b>${dT(t.at)}</b> <span class="tag tst ${s[1]}">${s[0]}</span></div><div class="sub">পরিমাণ ${bn(t.q)} · শুরু ${t.ss>0?mnT(t.ss):'—'} · মোট ${t.ts>0?mnT(t.ts):'—'}${t.dl!=null?' · ডেলিভারি '+bn(t.dl)+'/'+bn(t.q):''}${t.c!=null?' · ৳'+bn(Math.round(t.c*100)/100):''}</div>${tstDrop(t,k,i)}</div>`}).join('');
+  d.innerHTML=`<h3 id="tstT" style="margin:0 0 8px">🧪 টেস্ট ফলাফল</h3><p class="sub" id="tstN"></p>${l?`<p><span class="tag tst ${l.c}">${esc(l.t)}</span></p><p class="sub">${esc(l.d.replace(' — বিস্তারিত ›',''))}</p>`:''}<div class="tstl">${tests||'<p class="sub">বিস্তারিত নেই</p>'}</div>${(x.n>5)?`<p class="sub">সর্বশেষ ${bn(5)}টি দেখানো হলো (মোট ${bn(x.n)}টি)</p>`:''}<div class="acts"><button type="button" class="sm" id="tstX">বন্ধ</button><button type="button" class="btn" id="tstS">⏱ স্পিড পাতা</button></div>`;
+  d.dataset.nm=name||'';$('#tstN').textContent=k.replace('|',' · #')+(name?' · '+name:'');tstDropBind(d,k);$('#tstX').onclick=()=>d.close();$('#tstS').onclick=()=>{d.close();location.hash='spd'};d.showModal()}
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('.tst[data-tk],.tst2[data-tk]');if(t&&TST&&TST[t.dataset.tk]){e.preventDefault();tstDlg(t.dataset.tk,t.dataset.nm||'')}});
 function row(r,d){
   const c=document.createElement('div');c.className='card svc';
   const sg='';
-  c.innerHTML=`<div><h4>${r.state==='conflict'?'':'<input type="checkbox" class="sel" aria-label="নির্বাচন">'}${esc(r.name)}</h4><div class="sub">${d&&d.cmp?'<b>'+esc(r.provider)+'</b> · ':''}ID <b>${esc(r.service_id)}</b> · ${esc(r.category)}</div><div class="sub">রেট <b>${rateTk(r.rate)}</b> · ${bn(r.min)}–${bn(r.max)}${r.refill==='1'?' · Refill':r.refill==='0'?' · No Refill':''}${r.cancel==='1'?' · Cancel':''}${sg}</div>${spdTag(r)}<div class="ordb"><button type="button" class="sm" data-ord>🧪 অর্ডার</button></div>${r.tidy&&r.state!=='on'?`<div class="sub ok">সাইটে: ${esc(nice(r)||r.tidy.name)} · ${esc(r.tidy.cat)}</div>`:''}${r.state==='conflict'?`<div class="sub hi">জট: ${esc(r.conflict_with)}-এর সার্ভিস হিসেবে আছে</div>`:''}</div>
+  const rf=r.refill==='1'?'<span class="pl ok">♻ রিফিল</span>':r.refill==='0'?'<span class="pl">রিফিল নেই</span>':'',cn=r.cancel==='1'?'<span class="pl">ক্যান্সেল ✓</span>':'';
+  c.innerHTML=`<div class="sv"><div class="sv-top">${r.state==='conflict'?'':'<input type="checkbox" class="sel" aria-label="নির্বাচন">'}<h4>${esc(r.name)}</h4></div>
+  <div class="sv-meta">${d&&d.cmp?'<span class="pl pv2">'+esc(r.provider)+'</span>':''}<span class="pl rt">${rateTk(r.rate)}</span><span class="pl">ID <b>${esc(r.service_id)}</b></span><span class="pl">${bn(r.min)}–${bn(r.max)}</span>${rf}${cn}${sg}</div>
+  <div class="sub sv-cat">${esc(r.category)}</div>
+  <div class="tstbox" hidden><button type="button" class="tag tst" data-tk="${esc((r.provider||cur)+'|'+r.service_id)}" data-nm="${esc(r.name)}" hidden></button><div class="sub tst2" role="button" data-tk="${esc((r.provider||cur)+'|'+r.service_id)}" data-nm="${esc(r.name)}" hidden></div></div>${spdTag(r)}
+  ${r.tidy&&r.state!=='on'?`<div class="sub ok">সাইটে: ${esc(nice(r)||r.tidy.name)} · ${esc(r.tidy.cat)}</div>`:''}${r.state==='conflict'?`<div class="sub hi">জট: ${esc(r.conflict_with)}-এর সার্ভিস হিসেবে আছে</div>`:''}
+  <div class="ordb"><button type="button" class="sm" data-ord>🧪 টেস্ট অর্ডার</button></div></div>
   <button class="sw" role="switch" aria-checked="${r.state==='on'}" aria-label="${esc(r.name)} সাইটে চালু/বন্ধ" ${r.state==='conflict'?'disabled':''}></button>`;
+  c.querySelectorAll('.tst,.tst2').forEach(tstFill);
   c.querySelector('.sw').onclick=ev=>toggle(r,ev.currentTarget);c.querySelector('[data-ord]').onclick=()=>ordDlg(Object.assign({},r,{provider:r.provider||cur,_fx:fxNow()}));
   const cb=c.querySelector('.sel');RW.set(r,{cb,sw:c.querySelector('.sw')});
   if(cb){const k=selKey(r);let old=null;sel.forEach(x=>{if(selKey(x)===k)old=x});if(old){sel.delete(old);sel.add(r);cb.checked=true}
@@ -1295,11 +1344,11 @@ async function poster(){cur=null;$('#title').textContent='পোস্টার'
 const mnT=s=>!(s>0)?'—':s<60?'১ মিনিটের কম':s<5400?bn(Math.round(s/60))+' মিনিট':s<172800?bn(Math.round(s/360)/10)+' ঘণ্টা':bn(Math.round(s/8640)/10)+' দিন';
 const dT=ms=>ms?new Date(ms).toLocaleString('bn-BD',{timeZone:'Asia/Dhaka',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'—';
 const kTk=r=>'৳'+bn(Math.round((+r.cost_bdt_k||0)*100)/100)+' / ১০০০';
-let BS={label:'',type:'',q:'',refill:false,fx:131},bcn=0,SP={st:'all',prov:'',cat:'',tb:0,so:'fast',q:''},spTm=null,spTk=null;
+let BS={label:'',type:'',q:'',refill:false,untested:false,fx:131},bcn=0,SP={st:'all',prov:'',cat:'',tb:0,so:'fast',q:''},spTm=null,spTk=null;
 const bcard=(r,i)=>{const s=r.stats,
   sp=s?`<div class="bm g">⏱ শুরু ~${mnT(s.start_med)} · মোট ~${mnT(s.total_med)} · ড্রপ ${bn(s.bad)}% · টেস্ট ${bn(s.n)}টি${s.open?' ('+bn(s.open)+'টি চলছে)':''}</div>`:'<div class="bm sub">অপরীক্ষিত — 🧪 টেস্ট অর্ডার দিয়ে স্পিড মাপুন</div>',
   stt=r.state==='on'?'<span class="tag">সাইটে চালু</span>':r.state==='conflict'?'<span class="tag">সাইটে অন্য প্রভাইডারে</span>':'';
-  return `<div class="card bcd"><div class="bsh"><b>#${bn(i+1)}</b><span class="tag">স্কোর ${bn(r.score)}</span>${r.tested?'<span class="tag">টেস্টেড ✓</span>':''}${+r.refill?'<span class="tag">♻ রিফিল</span>':''}${stt}</div><b class="bnm">${esc(r.name)}</b><div class="sub">${esc(r.provider)} · আইডি ${esc(r.service_id)} · ${bn(r.min)}–${bn(r.max)}</div><div class="bm">${kTk(r)} <span class="sub">(গ্রুপের ${bn(r.price_pct)}% এর চেয়ে সস্তা)</span></div>${sp}<div class="acts"><button type="button" class="sm" data-a="o" data-i="${i}">🧪 অর্ডার দিন</button>${r.state==='on'?'':`<button type="button" class="sm" data-a="a" data-i="${i}">সাইটে চালু করুন</button>`}</div></div>`};
+  return `<div class="card bcd"><div class="bsh"><b>#${bn(i+1)}</b><span class="tag">স্কোর ${bn(r.score)}</span>${r.tested?'<span class="tag">টেস্টেড ✓</span>':r.try_it?'<span class="tag tst mid">🧪 টেস্ট করার মতো</span>':''}${+r.refill?'<span class="tag">♻ রিফিল</span>':''}${stt}</div><b class="bnm">${esc(r.name)}</b><div class="sub">${esc(r.provider)} · আইডি ${esc(r.service_id)} · ${bn(r.min)}–${bn(r.max)}</div><div class="bm">${kTk(r)} <span class="sub">(গ্রুপের ${bn(r.price_pct)}% এর চেয়ে সস্তা)</span></div>${sp}<div class="acts"><button type="button" class="sm" data-a="o" data-i="${i}">🧪 অর্ডার দিন</button>${r.state==='on'?'':`<button type="button" class="sm" data-a="a" data-i="${i}">সাইটে চালু করুন</button>`}</div></div>`};
 async function best(){
   cur=null;$('#title').textContent='সেরা সার্ভিস';$('#back').hidden=true;const el=$('#main'),my=rid;
   el.innerHTML=nav('best')+'<div class="sk"></div>';
@@ -1308,19 +1357,20 @@ async function best(){
   catch(e){if(!authFail(e))el.innerHTML=nav('best')+`<div class="card"><p class="err">${esc(e.message)}</p></div>`;return}
   if(my!==rid)return;
   if(!P.some(p=>p.label===BS.label)){BS.label=(popSort(P)[0]||P[0]||{}).label||'';BS.type=''}
-  el.innerHTML=nav('best')+`<p class="sub">১০ প্রভাইডারের একই ধরনের সার্ভিস দাম + স্পিড-টেস্ট + ড্রপ মিলিয়ে সাজানো। টেস্ট-করা সার্ভিস আগে আসে।</p><select id="bpl" class="plmore" aria-label="প্ল্যাটফর্ম">${P.map(p=>`<option value="${esc(p.label)}"${p.label===BS.label?' selected':''}>${esc(p.label)} (${bn(p.total)}টি)</option>`).join('')}</select><div class="chips" id="bty" style="margin-top:10px"></div><div class="bar"><input id="bq" type="search" placeholder="নাম বা আইডি" aria-label="খুঁজুন" value="${esc(BS.q)}"></div><div class="chips"><button type="button" class="chip" id="brf" aria-pressed="${BS.refill}">♻ শুধু রিফিল</button></div><div id="bl"></div>`;
+  el.innerHTML=nav('best')+`<p class="sub">১০ প্রভাইডারের একই ধরনের সার্ভিস দাম + স্পিড-টেস্ট + ড্রপ মিলিয়ে সাজানো। টেস্ট-করা সার্ভিস আগে আসে।</p><select id="bpl" class="plmore" aria-label="প্ল্যাটফর্ম">${P.map(p=>`<option value="${esc(p.label)}"${p.label===BS.label?' selected':''}>${esc(p.label)} (${bn(p.total)}টি)</option>`).join('')}</select><div class="chips" id="bty" style="margin-top:10px"></div><div class="bar"><input id="bq" type="search" placeholder="নাম বা আইডি" aria-label="খুঁজুন" value="${esc(BS.q)}"></div><div class="chips"><button type="button" class="chip" id="brf" aria-pressed="${BS.refill}">♻ শুধু রিফিল</button><button type="button" class="chip" id="bun" aria-pressed="${BS.untested}">🔎 অপরীক্ষিত (টেস্টের পরামর্শ)</button></div><div id="bl"></div>`;
   let rows=[];
   const load=async()=>{const box=$('#bl'),k=++bcn;if(!box)return;box.innerHTML='<div class="sk"></div>';
-    try{const d=await api('svc_best',{label:BS.label,type:BS.type,q:BS.q,refill:BS.refill,limit:15});if(k!==bcn||!$('#bl'))return;
+    try{const d=await api('svc_best',{label:BS.label,type:BS.type,q:BS.q,refill:BS.refill,untested:BS.untested,limit:BS.untested?30:15});if(k!==bcn||!$('#bl'))return;
       BS.type=d.type;BS.fx=d.fx||131;rows=d.rows||[];
       $('#bty').innerHTML=(d.types||[]).map(t=>`<button type="button" class="chip" data-t="${esc(t[0])}" aria-pressed="${t[0]===d.type}">${esc(t[0])}<small>${bn(t[1])}</small></button>`).join('');
       $('#bty').querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{BS.type=b.dataset.t;load()});
-      box.innerHTML=`<p class="sub">${bn(d.total)}টি সার্ভিস থেকে সেরা ${bn(rows.length)}টি · টেস্ট-করা ${bn(d.tested_n)}টি</p>`+(rows.length?rows.map(bcard).join(''):'<div class="card empty">কিছু পাওয়া যায়নি</div>')}
+      box.innerHTML=`<p class="sub">${bn(d.total)}টি সার্ভিস থেকে ${BS.untested?'অপরীক্ষিত ':'সেরা '}${bn(rows.length)}টি · টেস্ট-করা ${bn(d.tested_n)}টি · অপরীক্ষিত ${bn(d.untested_n||0)}টি${d.try_n?' (এর মধ্যে '+bn(d.try_n)+'টি দাম কম, টেস্ট করার মতো)':''}</p>`+(BS.untested?'<p class="sub">দাম কম অথচ এখনো টেস্ট হয়নি — 🧪 অর্ডার দিয়ে মেপে দেখুন, ভালো হলে এরপর থেকে এটাও সেরার তালিকায় উঠবে।</p>':'')+(rows.length?rows.map(bcard).join(''):'<div class="card empty">'+(BS.untested?'সব সার্ভিসই টেস্ট করা হয়েছে 🎉':'কিছু পাওয়া যায়নি')+'</div>')}
     catch(e){if(k!==bcn)return;if(!authFail(e))box.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`}};
   $('#bl').onclick=e=>{const b=e.target.closest('button[data-a]');if(!b)return;const r=rows[+b.dataset.i];if(!r)return;if(b.dataset.a==='o')ordDlg(r);else addList([r])};
   $('#bpl').onchange=e=>{BS.label=e.target.value;BS.type='';load()};
   let qt2=null;$('#bq').oninput=e=>{clearTimeout(qt2);qt2=setTimeout(()=>{BS.q=e.target.value.trim();load()},350)};
   $('#brf').onclick=e=>{BS.refill=!BS.refill;e.currentTarget.setAttribute('aria-pressed',BS.refill);load()};
+  $('#bun').onclick=e=>{BS.untested=!BS.untested;e.currentTarget.setAttribute('aria-pressed',BS.untested);load()};
   load()}
 /* সরাসরি টেস্ট অর্ডার: দুইবার ট্যাপ (নিশ্চিত করা) + একই req_id তাই নেট কাটলেও ডবল অর্ডার হয় না */
 function ordDlg(r){
@@ -1342,7 +1392,7 @@ function ordDlg(r){
     try{const o=await api('svc_order',{provider:r.provider,service:r.service_id,link,quantity:q,confirm:true,req_id:req});
       done=true;$('#ordC').textContent='';$('#ordT').textContent='✅ অর্ডার গেছে';try{const L=spLoad(SPK_L)||[];L.unshift({src:'studio',provider:r.provider,service_id:r.service_id,provider_order:o.provider_order,name:r.name,quantity:o.quantity,cost_bdt:o.cost_bdt,link,status:'Pending',ordered_at:Date.now(),last_checked:Date.now()});spSave(SPK_L,L.slice(0,30))}catch(_){}
       $('#ordN').textContent='প্রভাইডার অর্ডার #'+o.provider_order+' · পরিমাণ '+bn(o.quantity)+' · খরচ ≈ ৳'+bn(o.cost_bdt);
-      go.textContent='স্পিড দেখুন';go.disabled=false;toast('টেস্ট অর্ডার গেছে ✔')}
+      go.textContent='স্পিড দেখুন';go.disabled=false;toast('টেস্ট অর্ডার গেছে ✔');try{TST=TST||{};const kk=r.provider+'|'+r.service_id;if(!TST[kk])TST[kk]={n:1,ok:0,open:1,bad:0,total_med:0,start_med:0,last_at:Date.now(),per_hr:0,tests:[]};tstPaint();setTimeout(tstRefresh,4000)}catch(_){}}
     catch(e){if(authFail(e)){d.close();return}
       go.disabled=false;armed=false;go.textContent='অর্ডার দিন';
       if(e.code==='net'){E.textContent=e.message+' — অর্ডার গিয়েছে কিনা স্পিড পাতায় দেখুন। আবার চাপলে একই অনুরোধ যাবে, ডবল হবে না।';return}

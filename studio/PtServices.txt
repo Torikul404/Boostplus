@@ -1,0 +1,867 @@
+/* PtServices.gs \u2014 "\u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09b8\u09cd\u099f\u09c1\u09a1\u09bf\u0993" \u09ac\u09cd\u09af\u09be\u0995\u098f\u09a8\u09cd\u09a1 (\u09a8\u09a4\u09c1\u09a8 \u09b8\u09cd\u0995\u09cd\u09b0\u09bf\u09aa\u09cd\u099f-\u09ab\u09be\u0987\u09b2; \u0986\u09b2\u09be\u09a6\u09be PWA-\u09b0 \u099c\u09a8\u09cd\u09af)
+   \u0995\u09be\u099c: \u09e7) \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u09b2\u09be\u0987\u09ad API (action=services) \u09a5\u09c7\u0995\u09c7 \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u098f\u09a8\u09c7 CSV \u09ac\u09be\u09a8\u09be\u09a8\u09cb, Drive-\u098f \u09b0\u09be\u0996\u09be
+         \u09e8) CSV \u09aa\u09a1\u09bc\u09c7 \u09a4\u09be\u09b2\u09bf\u0995\u09be \u09a6\u09c7\u0993\u09af\u09bc\u09be (\u09aa\u09cd\u09b0\u09a4\u09bf \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8\u09c7 \u0985\u09a8/\u0985\u09ab \u0985\u09ac\u09b8\u09cd\u09a5\u09be\u09b8\u09b9)
+         \u09e9) \u0985\u09a8/\u0985\u09ab: Code.gs-\u098f\u09b0 \u0986\u0997\u09c7\u09b0 service_meta \u09ac\u09cd\u09af\u09ac\u09b9\u09be\u09b0 \u0995\u09b0\u09c7 \u09b8\u09be\u0987\u099f\u09c7 \u099a\u09be\u09b2\u09c1/\u09b2\u09c1\u0995\u09be\u09a8\u09cb
+   \u09b8\u09ac \u0985\u09cd\u09af\u09be\u0995\u09b6\u09a8\u09c7 \u0985\u09cd\u09af\u09be\u09a1\u09ae\u09bf\u09a8 \u099f\u09cb\u0995\u09c7\u09a8 \u09b2\u09be\u0997\u09c7\u0964 API key \u0995\u0996\u09a8\u09cb \u09ac\u09cd\u09b0\u09be\u0989\u099c\u09be\u09b0\u09c7 \u09af\u09be\u09af\u09bc \u09a8\u09be\u0964
+   Code.gs-\u098f\u09b0 doPost-\u098f \u098f\u0995\u099f\u09be \u09b2\u09be\u0987\u09a8 \u09af\u09cb\u0997 \u0995\u09b0\u09a4\u09c7 \u09b9\u09ac\u09c7:
+       if (String(data.action || "").indexOf("svc_") === 0) return jsonOut_(ptSvcRoute_(data));
+   \u09a8\u09bf\u09b0\u09cd\u09ad\u09b0 \u0995\u09b0\u09c7 (Code.gs-\u098f \u0986\u0997\u09c7 \u09a5\u09c7\u0995\u09c7\u0987): adminAuthError_, getProviderConfig_, getServiceMeta_, saveServiceMeta_, markServiceRemoved_, logServiceEvent_
+   \u0990\u099a\u09cd\u099b\u09bf\u0995: PtPricing.gs (ptTiersLoad_, ptSellPrice_) + Script Property USD_BDT_RATE \u2192 \u09a6\u09be\u09ae \u09a8\u09bf\u099c\u09c7 \u09a5\u09c7\u0995\u09c7 \u09aa\u09cd\u09b0\u09b8\u09cd\u09a4\u09be\u09ac \u09b9\u09af\u09bc\u0964 */
+
+// \u09b6\u09c1\u09a7\u09c1 \u098f\u0987 \u09e7\u09e6\u099f\u09be \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09b8\u09cd\u099f\u09c1\u09a1\u09bf\u0993\u09a4\u09c7 \u09a6\u09c7\u0996\u09be\u09ac\u09c7/\u099a\u09b2\u09ac\u09c7 (\u098f\u0987 \u09a4\u09be\u09b2\u09bf\u0995\u09be\u09b0 \u0995\u09cd\u09b0\u09ae\u09c7\u0987 \u09a6\u09c7\u0996\u09be\u09ac\u09c7)
+var SVC_ALLOWED_ = ["smmxpanel.com", "getmyfollow.com", "smmsun.com", "smmstarpro.com", "smmgen.com",
+  "socialpanel.pro", "smmrx.com", "bdsmmpanel.com", "amarboost.com", "growfollows.com"];
+function svcAllowed_(p) { return SVC_ALLOWED_.indexOf(String(p)) !== -1; }
+
+// ---------- \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09b8\u09c1\u0987\u099a: \u09ac\u09a8\u09cd\u09a7 \u09a5\u09be\u0995\u09be \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 + \u09b8\u09c1\u0987\u099a\u09c7 \u09af\u09c7\u0997\u09c1\u09b2\u09cb \u09b2\u09c1\u0995\u09be\u09a8\u09cb \u09b9\u09af\u09bc\u09c7\u099b\u09bf\u09b2 \u09a4\u09be\u09b0 \u09a4\u09be\u09b2\u09bf\u0995\u09be (Drive-\u098f svc_prov_off.json) ----------
+function svcPoFile_() { var it = svcFolder_().getFilesByName("svc_prov_off.json"); return it.hasNext() ? it.next() : null; }
+function svcPoLoad_() { try { var f = svcPoFile_(); return f ? JSON.parse(f.getBlob().getDataAsString("UTF-8")) : {}; } catch (e) { return {}; } }
+function svcPoSave_(o) { var t = JSON.stringify(o), f = svcPoFile_(); if (f) f.setContent(t); else svcFolder_().createFile("svc_prov_off.json", t, MimeType.PLAIN_TEXT); }
+function svcProvOff_(p) { return !!svcPoLoad_()[String(p)]; }
+
+var SVC_HEAD_ = ["provider", "service_id", "name", "category", "type", "rate", "min", "max", "refill", "cancel", "dripfeed", "collected_at"];
+
+function ptSvcRoute_(d) {
+  var err = adminAuthError_(d.token); if (err) return { ok: false, error: err };
+  if (d.provider !== undefined && d.provider !== "" && !svcAllowed_(d.provider)) return { ok: false, error: "no_config" };
+  try {
+    switch (String(d.action)) {
+      case "svc_providers": return svcProviders_();
+      case "svc_collect":   return svcCollect_(String(d.provider || ""));
+      case "svc_list":      return svcList_(d);
+      case "svc_csv":       return svcCsvText_(String(d.provider || ""));
+      case "svc_snapshot":  return svcSnapshot_(d);
+      case "svc_gh_push":   return svcGhPushAll();
+      case "svc_fx":        return svcFxAct_(d);
+      case "svc_toggle":    return svcToggle_(d);
+      case "svc_prov_switch": return svcProvSwitch_(d);
+      case "svc_changes":   return svcChanges_();
+      case "svc_auto":      return svcAutoSet_(d);
+      case "svc_compare":   return svcCompare_(d);
+      case "svc_bulk":      return svcBulk_(d);
+      case "svc_tidy_list": return svcTidyList_();
+      case "svc_tidy_apply": return svcTidyApply_(d);
+      case "svc_platforms":  return svcPlatforms_();
+      case "svc_by_platform": return svcByPlatform_(d);
+      case "svc_site_list":  return svcSiteListAct_(d);
+      case "svc_site_edit":  return svcSiteEdit_(d);
+      case "svc_site_hide":  return svcSiteHide_(d);
+      case "svc_site_bulk":  return svcSiteBulk_(d);
+      case "svc_fix_double": return svcFixDouble_(d);
+      case "svc_order":     return svcOrder_(d);
+      case "svc_spd":       return svcSpeed_(d);
+      case "svc_tested":    return svcTested_();
+      case "svc_drop":      return svcDropSave_(d);
+      case "svc_best":      return svcBest_(d);
+      case "svc_diag":      return svcDiag_(d);
+      case "svc_ai":
+      case "svc_ai_gemini": return svcAiGemini_(d);
+    }
+    return { ok: false, error: "unknown_action" };
+  } catch (e) { return { ok: false, error: "svc_failed", message: String(e && e.message || e).substring(0, 200) }; }
+}
+
+// ---------- CSV \u09b8\u09b9\u09be\u09af\u09bc\u0995 ----------
+function svcCsvCell_(v) { var s = String(v == null ? "" : v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function svcCsvLine_(a) { return a.map(svcCsvCell_).join(","); }
+function svcCsvParse_(text) {
+  var rows = [], row = [], cell = "", q = false, i, c;
+  text = String(text).replace(/^\uFEFF/, "");
+  for (i = 0; i < text.length; i++) {
+    c = text.charAt(i);
+    if (q) { if (c === '"') { if (text.charAt(i + 1) === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+    else if (c !== "\r") cell += c;
+  }
+  if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+function svcFlag_(v) { return v === true || v === 1 || v === "1" || v === "true" || v === "yes" ? 1 : 0; }
+
+// ---------- Drive ----------
+function svcFolder_() {
+  var p = PropertiesService.getScriptProperties(), id = p.getProperty("SVC_CSV_FOLDER_ID");
+  if (id) { for (var k = 0; k < 2; k++) { try { return DriveApp.getFolderById(id); } catch (e) { Utilities.sleep(300); } } }
+  // v76: \u09a1\u09cd\u09b0\u09be\u0987\u09ad \u098f\u0995\u09ac\u09be\u09b0 \u09ac\u09cd\u09af\u09b0\u09cd\u09a5 \u09b9\u09b2\u09c7 \u0986\u0997\u09c7 \u09a8\u09a4\u09c1\u09a8 \u09ab\u09cb\u09b2\u09cd\u09a1\u09be\u09b0 \u09ac\u09be\u09a8\u09bf\u09af\u09bc\u09c7 \u09ab\u09c7\u09b2\u09a4, \u09a4\u09be\u0987 \u0986\u0997\u09c7\u09b0 \u09b8\u09ac CSV '\u09b9\u09be\u09b0\u09bf\u09af\u09bc\u09c7' \u09af\u09c7\u09a4\u0964 \u098f\u0996\u09a8 \u0986\u0997\u09c7 \u098f\u0995\u0987 \u09a8\u09be\u09ae\u09c7\u09b0 \u09ab\u09cb\u09b2\u09cd\u09a1\u09be\u09b0 \u0996\u09c1\u0981\u099c\u09bf\u0964
+  var fi = DriveApp.getFoldersByName("boostplus-services"), f = fi.hasNext() ? fi.next() : DriveApp.createFolder("boostplus-services");
+  p.setProperty("SVC_CSV_FOLDER_ID", f.getId()); return f;
+}
+function svcFileName_(provider) { return "svc_" + provider.replace(/[^a-z0-9.-]/gi, "_") + ".csv"; }
+function svcFindFile_(name) {
+  var it = svcFolder_().getFilesByName(name); if (it.hasNext()) return it.next();
+  // v76: \u0986\u0997\u09c7\u09b0 \u09ad\u09c1\u09b2\u09c7 \u09a4\u09c8\u09b0\u09bf \u0985\u09a8\u09cd\u09af 'boostplus-services' \u09ab\u09cb\u09b2\u09cd\u09a1\u09be\u09b0\u09c7 \u09ab\u09be\u0987\u09b2 \u09a5\u09c7\u0995\u09c7 \u0997\u09c7\u09b2\u09c7 \u09b8\u09ac\u099a\u09c7\u09af\u09bc\u09c7 \u09a8\u09a4\u09c1\u09a8\u099f\u09be \u09a8\u09bf\u0987
+  var best = null, fi = DriveApp.getFoldersByName("boostplus-services");
+  while (fi.hasNext()) { var g = fi.next().getFilesByName(name); while (g.hasNext()) { var f = g.next(); if (!best || f.getLastUpdated() > best.getLastUpdated()) best = f; } }
+  return best;
+}
+function svcState_() { try { return JSON.parse(PropertiesService.getScriptProperties().getProperty("SVC_STATE") || "{}"); } catch (e) { return {}; } }
+
+// ---------- \u09e7) \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09a4\u09be\u09b2\u09bf\u0995\u09be (\u09a8\u09be\u09ae \u09b6\u09c1\u09a7\u09c1 \u09b2\u0997\u0987\u09a8\u09c7\u09b0 \u09aa\u09b0) ----------
+function svcProviders_() {
+  var cfg = getProviderConfig_(), st = svcState_(), po = svcPoLoad_(), out = [];
+  SVC_ALLOWED_.filter(function (p) { return cfg[p]; }).forEach(function (p) {
+    var c = cfg[p]; out.push({ provider: p, has_api: !!(c && c.api_key && c.api_url), count: (st[p] && st[p].count) || 0, collected_at: (st[p] && st[p].at) || "", off: !!po[p], hidden_n: po[p] ? (po[p].codes || []).length : 0 });
+  });
+  return { ok: true, providers: out };
+}
+
+// ---------- \u09e8) \u09b2\u09be\u0987\u09ad \u09b8\u0982\u0997\u09cd\u09b0\u09b9 \u2192 CSV ----------
+function svcCollect_(provider) {
+  var cfg = getProviderConfig_()[provider];
+  if (!cfg || !cfg.api_key || !cfg.api_url) return { ok: false, error: "no_config" };
+  var resp = UrlFetchApp.fetch(cfg.api_url, svcFetchOpt_(cfg));
+  var oldRows = svcRead_(provider);
+  var arr; try { arr = JSON.parse(resp.getContentText()); } catch (e) { return { ok: false, error: "bad_json", http: resp.getResponseCode(), message: "\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09b8\u09a0\u09bf\u0995 \u0989\u09a4\u09cd\u09a4\u09b0 \u09a6\u09c7\u09af\u09bc\u09a8\u09bf (HTTP " + resp.getResponseCode() + "): " + String(resp.getContentText()).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().substring(0, 90) }; }
+  if (!Array.isArray(arr)) return { ok: false, error: "provider_error", message: svcCut_(String(arr && arr.error || ""), 120) };
+  if (!arr.length) return { ok: false, error: "provider_error", message: "\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09e6\u099f\u09bf \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09a6\u09bf\u09af\u09bc\u09c7\u099b\u09c7 \u2014 \u0986\u0997\u09c7\u09b0 \u09a4\u09be\u09b2\u09bf\u0995\u09be \u09b0\u09be\u0996\u09be \u09b9\u09b2\u09cb" };
+  var at = Utilities.formatDate(new Date(), "Asia/Dhaka", "yyyy-MM-dd HH:mm");
+  var lines = [svcCsvLine_(SVC_HEAD_)];
+  arr.forEach(function (s) {
+    if (!s || s.service == null) return;
+    lines.push(svcCsvLine_([provider, s.service, String(s.name || "").trim(), String(s.category || "").trim(), s.type || "", s.rate, s.min, s.max,
+      s.refill !== undefined ? svcFlag_(s.refill) : (/refill|\u267b|lifetime|\br\d{2,3}\b/i.test(svcNk_(s.name).replace(/\b(no|non|without)[\s\-]?refill\b/ig, " ")) ? 1 : 0), svcFlag_(s.cancel), svcFlag_(s.dripfeed), at]));
+  });
+  var csv = "\uFEFF" + lines.join("\n"), name = svcFileName_(provider), f = svcFindFile_(name);
+  if (f) f.setContent(csv); else svcFolder_().createFile(name, csv, MimeType.CSV);
+  // \u09ac\u09cd\u09af\u09be\u0995\u0986\u09aa: \u09a4\u09be\u09b0\u09bf\u0996\u09b8\u09b9 \u0995\u09aa\u09bf, \u09b6\u09c7\u09b7 \u09eb\u099f\u09bf \u09b0\u09be\u0996\u09be
+  var bn = name.replace(".csv", "_" + at.substring(0, 10) + ".csv"), old = svcFindFile_(bn); if (old) old.setTrashed(true);
+  svcFolder_().createFile(bn, csv, MimeType.CSV);
+  // v77: Drive-এর 'title contains' মূল ফাইলকেও (svc_X.csv) ধরত, আর নামে সবার শেষে সাজানোয় সেটাই ৬ নম্বরে পড়ে ট্র্যাশে যেত → 'সংগ্রহ করুন' বার্তা।
+  // এখন শুধু তারিখওয়ালা ব্যাকআপ (svc_X_yyyy-mm-dd.csv) গোনা হয়; মূল ফাইল কখনো ছোঁয়া হয় না।
+  var all = [], pre = name.replace(".csv", "_"), it = svcFolder_().searchFiles('title contains "' + pre + '"');
+  while (it.hasNext()) { var bf = it.next(), bnm = bf.getName(); if (bnm !== name && bnm.indexOf(pre) === 0 && /^\d{4}-\d{2}-\d{2}\.csv$/.test(bnm.substring(pre.length))) all.push(bf); }
+  all.sort(function (a, b) { return b.getName() < a.getName() ? -1 : 1; }); all.slice(5).forEach(function (x) { x.setTrashed(true); });
+  var P = PropertiesService.getScriptProperties(), st = svcState_(); st[provider] = { at: at, count: lines.length - 1 };
+  P.setProperty("SVC_STATE", JSON.stringify(st));
+  try { var sx = svcStatsLoad_(); sx[provider] = svcStatCalc_(arr.filter(function (z) { return z && z.service != null; }).map(function (z) { return { name: z.name, category: z.category }; })); svcStatsSave_(sx); } catch (e) {}
+  var df = null;
+  if (oldRows) { try { df = svcDiff_(oldRows, arr); var ch = svcChgLoad_(); ch[provider] = { at: at, c: df.c, items: df.items }; svcChgSave_(ch); } catch (e) {} }
+  var gh = false; try { gh = svcGhPublish_(provider); } catch (e) {}
+  return { ok: true, provider: provider, count: lines.length - 1, collected_at: at, changes: df ? df.c : null, github: gh };
+}
+
+// v77: মূল ফাইল না থাকলে (আগের বাগে ট্র্যাশ হয়ে থাকলে) সবচেয়ে নতুন তারিখওয়ালা ব্যাকআপ থেকে পড়ি
+function svcFindOrBackup_(provider) {
+  var name = svcFileName_(provider), f = svcFindFile_(name); if (f) return f;
+  var pre = name.replace(".csv", "_"), best = null, bestName = "";
+  var it = svcFolder_().searchFiles('title contains "' + pre + '"');
+  while (it.hasNext()) { var x = it.next(), n = x.getName(); if (n.indexOf(pre) === 0 && /^\d{4}-\d{2}-\d{2}\.csv$/.test(n.substring(pre.length)) && n > bestName) { best = x; bestName = n; } }
+  return best;
+}
+function svcRead_(provider) {
+  var f = svcFindOrBackup_(provider); if (!f) return null;
+  var rows = svcCsvParse_(f.getBlob().getDataAsString("UTF-8")), h = rows.shift() || [], out = [];
+  rows.forEach(function (r) { if (r.length < 3) return; var o = {}; h.forEach(function (k, i) { o[k] = r[i]; }); out.push(o); });
+  return out;
+}
+function svcCsvText_(provider) { var f = svcFindOrBackup_(provider); return f ? { ok: true, csv: f.getBlob().getDataAsString("UTF-8"), name: svcFileName_(provider) } : { ok: false, error: "not_collected" }; }
+
+// ---------- \u09a6\u09be\u09ae \u09aa\u09cd\u09b0\u09b8\u09cd\u09a4\u09be\u09ac (\u0990\u099a\u09cd\u099b\u09bf\u0995) ----------
+function svcFx_() { var v = Number(PropertiesService.getScriptProperties().getProperty("USD_BDT_RATE")); return v > 0 ? v : (typeof SVC_USD_BDT_ !== "undefined" && SVC_USD_BDT_ > 0 ? SVC_USD_BDT_ : 131); }
+function svcSuggest_(rateUsd) {   // \u09b8\u09be\u0987\u099f\u09c7 \u09ac\u09bf\u0995\u09cd\u09b0\u09af\u09bc\u09ae\u09c2\u09b2\u09cd\u09af \u2248 \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09b0\u09c7\u099f + \u09b8\u09be\u0987\u099f\u09c7\u09b0 \u09ae\u09be\u09b0\u09cd\u0995\u0986\u09aa \u09a8\u09bf\u09af\u09bc\u09ae (\u09b6\u09c1\u09a7\u09c1 \u09a6\u09c7\u0996\u09be\u09a8\u09cb\u09b0 \u099c\u09a8\u09cd\u09af; \u09b8\u09be\u0987\u099f \u09a8\u09bf\u099c\u09c7\u0987 \u09ae\u09be\u09b0\u09cd\u0995\u0986\u09aa \u09ac\u09b8\u09be\u09af\u09bc)
+  if (!(rateUsd >= 0)) return null;
+  return { bdt: Math.round(svcSellBdt_(rateUsd) * 100) / 100, usd: rateUsd, auto: true };
+}
+
+// ---------- \u09e9) \u09a4\u09be\u09b2\u09bf\u0995\u09be ----------
+function svcList_(d) {
+  var provider = String(d.provider || ""), rows = svcRead_(provider);
+  if (!rows) return { ok: false, error: "not_collected" };
+  var meta = getServiceMeta_(), live = {}, hidden = {}, cats = {}, siteCats = {};
+  meta.custom.forEach(function (c) { if (!c.ov) live[String(c.code)] = c; }); siteCats = svcSiteCatObj_();
+  meta.hidden.forEach(function (c) { hidden[String(c)] = 1; });
+  var tiers = null, fx = svcFx_(); try { tiers = ptTiersLoad_(); } catch (e) {}
+  var pf = String(d.platform || ""), q = String(d.q || "").toLowerCase().trim(), cat = String(d.category || ""), flt = String(d.state || "all");
+  rows.forEach(function (r) { cats[r.category] = (cats[r.category] || 0) + 1; r.state = "off"; });
+  var out = rows.filter(function (r) {
+    var c = live[r.service_id];
+    if (c && (!c.provider || c.provider === provider)) r.state = hidden[r.service_id] ? "off" : "on";
+    else if (c) r.state = "conflict", r.conflict_with = c.provider;
+    if (cat && r.category !== cat) return false;
+    if (pf && svcPlatOf_(r) !== pf) return false;
+    if (flt !== "all" && r.state !== flt) return false;
+    if (q && (r.name + " " + r.service_id + " " + r.category).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+  var off = Math.max(0, Number(d.offset) || 0), lim = Math.min(200, Number(d.limit) || 100), page = out.slice(off, off + lim);
+  var spd = svcSpd_(), cmap = svcCatMap_();
+  page.forEach(function (r) { r.suggest = svcSuggest_(Number(r.rate), tiers, fx); r.spd = spd[r.service_id] || null; r.tidy = svcTidy_(r, cmap); });
+  return { ok: true, total: out.length, rows: page, categories: cats, site_categories: Object.keys(siteCats).sort(), fx: fx, tiers: !!tiers, platforms: svcProvPlats_(provider) };
+}
+
+// ---------- \u09ea) \u0985\u09a8/\u0985\u09ab ----------
+function svcToggle_(d) {
+  if (d.many) return svcToggleMany_(d);
+  var provider = String(d.provider || ""), code = String(d.code || "").trim(), meta = getServiceMeta_();
+  if (!provider || !code) return { ok: false, error: "code_required" };
+  var prev = null; meta.custom.forEach(function (c) { if (String(c.code) === code && !c.ov) prev = c; });
+  if (d.on) {
+    if (svcProvOff_(provider)) return { ok: false, error: "provider_off", message: provider + "-\u098f\u09b0 \u09b8\u09c1\u0987\u099a \u09ac\u09a8\u09cd\u09a7 \u0986\u099b\u09c7 \u2014 \u0986\u0997\u09c7 \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u09b8\u09c1\u0987\u099a \u099a\u09be\u09b2\u09c1 \u0995\u09b0\u09c1\u09a8" };
+    if (prev && prev.provider && prev.provider !== provider) return { ok: false, error: "code_conflict", with: prev.provider,
+      message: "\u098f\u0987 \u0986\u0987\u09a1\u09bf (" + code + ") \u09b8\u09be\u0987\u099f\u09c7 \u0986\u0997\u09c7\u0987 " + prev.provider + "-\u098f\u09b0 \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09b9\u09bf\u09b8\u09c7\u09ac\u09c7 \u0986\u099b\u09c7" };
+    var row = (svcRead_(provider) || []).filter(function (r) { return r.service_id === code; })[0];
+    if (!row) return { ok: false, error: "not_in_csv" };
+    var cat = String(d.category || "").trim(), plat = String(d.platform || "other").toLowerCase().trim(), usd = Number(row.rate);   // \u09b8\u09be\u0987\u099f\u09c7 pricePerK = \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u0996\u09b0\u099a; \u09ae\u09be\u09b0\u09cd\u0995\u0986\u09aa \u09b8\u09be\u0987\u099f \u09a8\u09bf\u099c\u09c7\u0987 \u09ac\u09b8\u09be\u09af\u09bc
+    if (!cat) return { ok: false, error: "category_required" };
+    if (!(usd > 0)) return { ok: false, error: "price_required" };
+    var rm = meta.removed[code]; if (rm && rm.provider && rm.provider !== provider) rm = null;
+    var entry = { code: code, name: svcCut_(String(d.name || row.name).trim(), 120), platform: plat, category: cat, tags: [], pricePerK: "$" + usd, nx: 1,
+      min: Number(row.min) || 10, max: Number(row.max) || 10000, popular: false, provider: provider };
+    if (row.refill === "1") entry.refill = "yes";
+    meta.custom = meta.custom.filter(function (c) { return String(c.code) !== code; }); meta.custom.push(entry);
+    meta.hidden = meta.hidden.filter(function (c) { return String(c) !== code; }); delete meta.removed[code];
+    try { svcCatLearn_(provider, row.category, cat); } catch (e) {}
+    svcSaveMeta_(meta); logServiceEvent_(code, "add", entry, "service_studio");
+    return { ok: true, state: "on", code: code };
+  }
+  if (!prev) return { ok: true, state: "off", code: code };
+  if (meta.hidden.indexOf(code) === -1) meta.hidden.push(code);
+  markServiceRemoved_(meta, code, "hide"); svcSaveMeta_(meta); logServiceEvent_(code, "hide", {}, "service_studio");
+  return { ok: true, state: "off", code: code };
+}
+
+
+// ---------- \u098f\u0995\u09b8\u09be\u09a5\u09c7 \u0985\u09a8\u09c7\u0995 \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u099a\u09be\u09b2\u09c1 (\u09e7 \u0995\u09b2\u09c7: CSV \u09aa\u09cd\u09b0\u09a4\u09bf \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7 \u098f\u0995\u09ac\u09be\u09b0 \u09aa\u09a1\u09bc\u09be, \u09b8\u09be\u0987\u099f\u09c7\u09b0 \u09a1\u09c7\u099f\u09be \u098f\u0995\u09ac\u09be\u09b0 \u09b8\u09c7\u09ad) ----------
+function svcToggleMany_(d) {
+  var items = (d.many || []).slice(0, 60), meta = getServiceMeta_(), idx = {}, res = [], n = 0, po = svcPoLoad_();
+  items.forEach(function (it) {
+    var provider = String(it.provider || ""), code = String(it.code || "").trim();
+    try {
+      if (!provider || !code || !svcAllowed_(provider)) { res.push({ ok: false, error: "code_required" }); return; }
+      if (po[provider]) { res.push({ ok: false, error: "provider_off", message: provider + "-\u098f\u09b0 \u09b8\u09c1\u0987\u099a \u09ac\u09a8\u09cd\u09a7 \u0986\u099b\u09c7" }); return; }
+      var prev = null; meta.custom.forEach(function (c) { if (String(c.code) === code && !c.ov) prev = c; });
+      if (prev && prev.provider && prev.provider !== provider) { res.push({ ok: false, error: "code_conflict", message: "\u098f\u0987 \u0986\u0987\u09a1\u09bf (" + code + ") \u09b8\u09be\u0987\u099f\u09c7 \u0986\u0997\u09c7\u0987 " + prev.provider + "-\u098f\u09b0 \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09b9\u09bf\u09b8\u09c7\u09ac\u09c7 \u0986\u099b\u09c7" }); return; }
+      if (!idx[provider]) { idx[provider] = {}; (svcRead_(provider) || []).forEach(function (r) { idx[provider][r.service_id] = r; }); }
+      var row = idx[provider][code];
+      if (!row) { res.push({ ok: false, error: "not_in_csv" }); return; }
+      var cat = String(it.category || "").trim(), plat = String(it.platform || "other").toLowerCase().trim(), usd = Number(row.rate);
+      if (!cat) { res.push({ ok: false, error: "category_required" }); return; }
+      if (!(usd > 0)) { res.push({ ok: false, error: "price_required" }); return; }
+      var entry = { code: code, name: svcCut_(String(it.name || row.name).trim(), 120), platform: plat, category: cat, tags: [], pricePerK: "$" + usd, nx: 1,
+        min: Number(row.min) || 10, max: Number(row.max) || 10000, popular: false, provider: provider };
+      if (row.refill === "1") entry.refill = "yes";
+      meta.custom = meta.custom.filter(function (c) { return String(c.code) !== code; }); meta.custom.push(entry);
+      meta.hidden = meta.hidden.filter(function (c) { return String(c) !== code; }); delete meta.removed[code];
+      try { svcCatLearn_(provider, row.category, cat); } catch (e) {}
+      res.push({ ok: true, state: "on", code: code }); n++;
+      try { logServiceEvent_(code, "add", entry, "service_studio"); } catch (e) {}
+    } catch (e) { res.push({ ok: false, error: "svc_failed", message: svcCut_(String(e && e.message || e), 120) }); }
+  });
+  if (n) svcSaveMeta_(meta);
+  return { ok: true, results: res, done: n };
+}
+
+
+// ================= \u0997\u09a4\u09bf (\u09b8\u09be\u0987\u099f\u09c7\u09b0 \u0985\u09b0\u09cd\u09a1\u09be\u09b0\u09c7\u09b0 \u09a1\u09c7\u099f\u09be \u09a5\u09c7\u0995\u09c7) =================
+function svcSpd_() {
+  var o = {};
+  try { var s = getSpeedStats_(); Object.keys(s).forEach(function (k) { var v = s[k]; if (v && v.n) o[k] = { m: v.med_sec, n: v.n, f: v.fail || 0 }; }); } catch (e) {}
+  return o;
+}
+
+// ================= \u09aa\u09b0\u09bf\u09ac\u09b0\u09cd\u09a4\u09a8 \u09a7\u09b0\u09be =================
+function svcChgFile_() { var it = svcFolder_().getFilesByName("svc_changes.json"); return it.hasNext() ? it.next() : null; }
+function svcChgLoad_() { var f = svcChgFile_(); if (!f) return {}; try { return JSON.parse(f.getBlob().getDataAsString("UTF-8")); } catch (e) { return {}; } }
+function svcChgSave_(o) { var t = JSON.stringify(o), f = svcChgFile_(); if (f) f.setContent(t); else svcFolder_().createFile("svc_changes.json", t, MimeType.PLAIN_TEXT); }
+
+function svcDiff_(oldRows, arr) {
+  var o = {}, n = {}, items = [], cnt = { up: 0, down: 0, rm: 0, nw: 0 }, per = { up: 0, down: 0, rm: 0, nw: 0 };
+  function add(k, t, it) { cnt[k]++; if (per[k] < 100) { per[k]++; it.t = t; items.push(it); } }
+  (oldRows || []).forEach(function (r) { o[r.service_id] = r; });
+  arr.forEach(function (s) { if (s && s.service != null) n[String(s.service)] = s; });
+  Object.keys(n).forEach(function (id) {
+    var s = n[id], r = o[id], nm = svcCut_(String(s.name || ""), 70);
+    if (!r) return add("nw", "new", { id: id, nm: nm, n: Number(s.rate) });
+    var a = Number(r.rate), b = Number(s.rate);
+    if (a > 0 && b > 0 && Math.abs(a - b) / a > 0.0001) { var k = b > a ? "up" : "down"; add(k, k, { id: id, nm: nm, o: a, n: b }); }
+  });
+  Object.keys(o).forEach(function (id) { if (!n[id]) add("rm", "rm", { id: id, nm: svcCut_(String(o[id].name || ""), 70), o: Number(o[id].rate) }); });
+  return { c: cnt, items: items };
+}
+
+function svcChanges_() {
+  var ch = svcChgLoad_(), meta = getServiceMeta_(), live = {}, hid = {}, out = [], ord = { rm: 0, up: 1, down: 2, "new": 3 };
+  meta.custom.forEach(function (c) { if (!c.ov) live[String(c.code)] = c.provider || ""; });
+  meta.hidden.forEach(function (c) { hid[String(c)] = 1; });
+  SVC_ALLOWED_.forEach(function (p) {
+    var e = ch[p]; if (!e) return;
+    var lr = 0, lu = 0;
+    e.items.forEach(function (i) {
+      i.live = (i.id in live) && (live[i.id] === p || live[i.id] === "") && !hid[i.id] ? 1 : 0;
+      if (i.live && i.t === "rm") lr++; if (i.live && i.t === "up") lu++;
+    });
+    e.items.sort(function (a, b) { return (b.live - a.live) || (ord[a.t] - ord[b.t]); });
+    out.push({ provider: p, at: e.at, c: e.c, live_rm: lr, live_up: lu, items: e.items.slice(0, 60) });
+  });
+  return { ok: true, providers: out, auto: svcAutoInfo_() };
+}
+
+// ---------- \u09b8\u09be\u09aa\u09cd\u09a4\u09be\u09b9\u09bf\u0995 \u0985\u099f\u09cb-\u09b8\u0982\u0997\u09cd\u09b0\u09b9: \u09b0\u09cb\u099c \u09ad\u09cb\u09b0 \u09e9\u099f\u09be\u09af\u09bc \u099a\u09b2\u09c7, \u09ed \u09a6\u09bf\u09a8\u09c7\u09b0 \u09aa\u09c1\u09b0\u09a8\u09cb \u09b8\u09b0\u09cd\u09ac\u09cb\u099a\u09cd\u099a \u09e9\u099f\u09be \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09b8\u0982\u0997\u09cd\u09b0\u09b9 \u0995\u09b0\u09c7 ----------
+function svcTrig_(on) {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === "svcAutoRun") ScriptApp.deleteTrigger(t); });
+  if (on) ScriptApp.newTrigger("svcAutoRun").timeBased().everyDays(1).atHour(3).create();
+}
+function svcAutoInstall() { svcTrig_(true); }   // \u09a6\u09b0\u0995\u09be\u09b0 \u09b9\u09b2\u09c7 \u098f\u09a1\u09bf\u099f\u09b0 \u09a5\u09c7\u0995\u09c7 \u098f\u0995\u09ac\u09be\u09b0 \u099a\u09be\u09b2\u09be\u09a8 (\u0985\u09a8\u09c1\u09ae\u09a4\u09bf\u09b0 \u099c\u09a8\u09cd\u09af)
+function svcAutoInfo_() {
+  var on = false;
+  try { ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === "svcAutoRun") on = true; }); } catch (e) { on = null; }
+  return { on: on, last: PropertiesService.getScriptProperties().getProperty("SVC_AUTO_LAST") || "" };
+}
+function svcAutoSet_(d) {
+  try { svcTrig_(!!d.on); }
+  catch (e) { return { ok: false, error: "trigger_failed", message: "\u0985\u09a8\u09c1\u09ae\u09a4\u09bf \u09b2\u09be\u0997\u09ac\u09c7: Apps Script \u098f\u09a1\u09bf\u099f\u09b0\u09c7 svcAutoInstall \u09ab\u09be\u0982\u09b6\u09a8\u099f\u09be \u098f\u0995\u09ac\u09be\u09b0 Run \u0995\u09b0\u09c1\u09a8" }; }
+  return { ok: true, auto: svcAutoInfo_() };
+}
+function svcAutoRun() {
+  var st = svcState_(), t0 = Date.now(), due = [], done = [];
+  SVC_ALLOWED_.forEach(function (p) {
+    var at = st[p] && st[p].at, age = at ? (t0 - new Date(String(at).replace(" ", "T") + "+06:00").getTime()) / 864e5 : 99;
+    if (!(age < 3)) due.push({ p: p, age: age });
+  });
+  due.sort(function (a, b) { return b.age - a.age; });
+  due.slice(0, 10).forEach(function (x) {
+    if (Date.now() - t0 > 240000) return;
+    try { if (svcCollect_(x.p).ok) done.push(x.p); } catch (e) {}
+  });
+  PropertiesService.getScriptProperties().setProperty("SVC_AUTO_LAST", Utilities.formatDate(new Date(), "Asia/Dhaka", "yyyy-MM-dd HH:mm") + " \u00b7 " + done.length + "/" + due.length);
+  if (!done.length) return;
+  try {
+    var a = 0; svcChanges_().providers.forEach(function (x) { if (done.indexOf(x.provider) >= 0) a += x.live_rm + x.live_up; });
+    if (a && OWNER_EMAIL) MailApp.sendEmail(OWNER_EMAIL, "\u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09b8\u09cd\u099f\u09c1\u09a1\u09bf\u0993: \u099a\u09be\u09b2\u09c1 \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8\u09c7 \u09aa\u09b0\u09bf\u09ac\u09b0\u09cd\u09a4\u09a8", a + "\u099f\u09bf \u099a\u09be\u09b2\u09c1 \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8\u09c7 \u09a6\u09be\u09ae \u09ac\u09c7\u09a1\u09bc\u09c7\u099b\u09c7 \u09ac\u09be \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09a5\u09c7\u0995\u09c7 \u09ac\u09be\u09a6 \u09aa\u09a1\u09bc\u09c7\u099b\u09c7\u0964 \u09b8\u09cd\u099f\u09c1\u09a1\u09bf\u0993 > \u09aa\u09b0\u09bf\u09ac\u09b0\u09cd\u09a4\u09a8 \u09a6\u09c7\u0996\u09c1\u09a8\u0964");
+  } catch (e) {}
+}
+
+// ================= \u09a6\u09be\u09ae \u09a4\u09c1\u09b2\u09a8\u09be (\u09e7\u09e6 \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7 \u098f\u0995\u09b8\u09be\u09a5\u09c7 \u0996\u09cb\u0981\u099c\u09be, \u09b8\u09b8\u09cd\u09a4\u09be \u0986\u0997\u09c7) =================
+function svcCompare_(d) {
+  var q = String(d.q || "").toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (q.join("").length < 2) return { ok: true, rows: [], total: 0 };
+  var cmap = svcCatMap_(), meta = getServiceMeta_(), live = {}, hid = {}, sc = {}, spd = svcSpd_(), fx = svcFx_(), tiers = null, all = [];
+  meta.custom.forEach(function (c) { if (!c.ov) live[String(c.code)] = c; }); sc = svcSiteCatObj_();
+  meta.hidden.forEach(function (c) { hid[String(c)] = 1; });
+  try { tiers = ptTiersLoad_(); } catch (e) {}
+  SVC_ALLOWED_.forEach(function (p) {
+    (svcRead_(p) || []).forEach(function (r) {
+      var h = (r.name + " " + r.category).toLowerCase();
+      for (var i = 0; i < q.length; i++) if (h.indexOf(q[i]) < 0) return;
+      if (d.refill && r.refill !== "1") return;
+      all.push(r);
+    });
+  });
+  all.sort(function (a, b) { return Number(a.rate) - Number(b.rate); });
+  var rows = all.slice(0, 60);
+  rows.forEach(function (r) {
+    var c = live[r.service_id]; r.state = "off";
+    if (c) { if (!c.provider || c.provider === r.provider) r.state = hid[r.service_id] ? "off" : "on"; else { r.state = "conflict"; r.conflict_with = c.provider; } }
+    r.spd = spd[r.service_id] || null; r.suggest = svcSuggest_(Number(r.rate), tiers, fx); r.tidy = svcTidy_(r, cmap);
+  });
+  return { ok: true, total: all.length, rows: rows, fx: fx, site_categories: Object.keys(sc).sort() };
+}
+
+// ================= \u09ac\u09be\u09b2\u09cd\u0995 \u0985\u09a8/\u0985\u09ab (\u098f\u0995\u09ac\u09be\u09b0\u09c7\u0987 \u09b8\u09c7\u09ad) =================
+function svcBulk_(d) {
+  var provider = String(d.provider || ""), codes = (d.codes || []).map(String).slice(0, 100), meta = getServiceMeta_(), by = {}, ok = 0, skip = 0, tiers = null, fx = svcFx_();
+  (svcRead_(provider) || []).forEach(function (r) { by[r.service_id] = r; });
+  try { tiers = ptTiersLoad_(); } catch (e) {}
+  var cat = String(d.category || "").trim(), mk = (d.markup === "" || d.markup == null) ? null : Number(d.markup);
+  var cmap = svcCatMap_(), provOff = svcProvOff_(provider);
+  codes.forEach(function (code) {
+    var prev = null; meta.custom.forEach(function (c) { if (String(c.code) === code && !c.ov) prev = c; });
+    if (prev && prev.provider && prev.provider !== provider) { skip++; return; }
+    if (d.on && provOff) { skip++; return; }
+    if (!d.on) {
+      if (!prev) { skip++; return; }
+      if (meta.hidden.indexOf(code) === -1) meta.hidden.push(code);
+      markServiceRemoved_(meta, code, "hide"); logServiceEvent_(code, "hide", {}, "service_studio"); ok++; return;
+    }
+    var row = by[code]; if (!row) { skip++; return; }
+    var rm = meta.removed[code]; if (rm && rm.provider && rm.provider !== provider) rm = null;
+    var usd = Math.round(Number(row.rate) * 1e6) / 1e6;   // \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u09b0\u09c7\u099f\u0987 \u09ac\u09b8\u09ac\u09c7; \u09ae\u09be\u09b0\u09cd\u0995\u0986\u09aa \u09b8\u09be\u0987\u099f \u09a8\u09bf\u099c\u09c7 \u09a6\u09c7\u09ac\u09c7
+    if (!(usd > 0)) { skip++; return; }
+    var t = svcTidy_(row, cmap);
+    var entry = { code: code, name: svcCut_(t.name, 120), platform: t.plat, category: cat || t.cat, tags: [], pricePerK: "$" + usd, nx: 1,
+      min: Number(row.min) || 10, max: Number(row.max) || 10000, popular: false, provider: provider };
+    if (row.refill === "1") entry.refill = "yes";
+    meta.custom = meta.custom.filter(function (c) { return String(c.code) !== code; }); meta.custom.push(entry);
+    meta.hidden = meta.hidden.filter(function (c) { return String(c) !== code; }); delete meta.removed[code];
+    logServiceEvent_(code, "add", entry, "service_studio"); ok++;
+  });
+  if (ok) svcSaveMeta_(meta);
+  return { ok: true, done: ok, skipped: skip };
+}
+
+
+// ================= \u09a8\u09be\u09ae/\u0995\u09cd\u09af\u09be\u099f\u09c7\u0997\u09b0\u09bf \u09b8\u09be\u099c\u09be\u09a8\u09cb (\u09b8\u09be\u0987\u099f\u09c7\u09b0 \u09a8\u09bf\u099c\u09b8\u09cd\u09ac \u099b\u09be\u0981\u099a) =================
+// \u0995\u09cd\u09af\u09be\u099f\u09c7\u0997\u09b0\u09bf = "\u09aa\u09cd\u09b2\u09cd\u09af\u09be\u099f\u09ab\u09b0\u09cd\u09ae + \u09a7\u09b0\u09a8" (\u09af\u09c7\u09ae\u09a8 Instagram Followers)
+// \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8\u09c7\u09b0 \u09a8\u09be\u09ae = "\u09aa\u09cd\u09b2\u09cd\u09af\u09be\u099f\u09ab\u09b0\u09cd\u09ae \u09a7\u09b0\u09a8 \u2013 \u099f\u09cd\u09af\u09be\u0997 \u00b7 \u099f\u09cd\u09af\u09be\u0997" (\u09af\u09c7\u09ae\u09a8 Instagram Followers \u2013 Real \u00b7 Non-Drop \u00b7 30D Refill)
+// \u09a8\u09a4\u09c1\u09a8 \u09aa\u09cd\u09b2\u09cd\u09af\u09be\u099f\u09ab\u09b0\u09cd\u09ae/\u09a7\u09b0\u09a8 \u09af\u09cb\u0997 \u0995\u09b0\u09a4\u09c7 \u09a8\u09bf\u099a\u09c7\u09b0 \u09a6\u09c1\u0987 \u09a4\u09be\u09b2\u09bf\u0995\u09be\u09af\u09bc \u09b2\u09be\u0987\u09a8 \u09ac\u09be\u09a1\u09bc\u09be\u09a8: [\u09a6\u09c7\u0996\u09be\u09a8\u09cb\u09b0 \u09a8\u09be\u09ae, \u09b8\u09be\u0987\u099f\u09c7\u09b0 platform \u0995\u09c0, regex]
+var SVC_PLAT_ = [
+  ["Instagram", "instagram", /insta(?!nt)|\big\b/i], ["Facebook", "facebook", /facebook|\bfb\b/i], ["TikTok", "tiktok", /tik.?tok/i],
+  ["YouTube", "youtube", /youtube|\byt\b/i], ["Telegram", "telegram", /telegram|\btg\b/i], ["Twitter / X", "twitter", /twitter|\bx\b|tweet/i],
+  ["WhatsApp", "whatsapp", /whatsapp/i], ["Threads", "other", /threads/i], ["Spotify", "other", /spotify/i], ["LinkedIn", "other", /linkedin/i],
+  ["Snapchat", "other", /snap/i], ["Pinterest", "other", /pinterest/i], ["Discord", "other", /discord/i], ["Twitch", "other", /twitch/i],
+  ["Website Traffic", "other", /traffic|website|web ?visit/i]
+];
+var SVC_TYPE_ = [['Story Reactions',/stor(y|ies).{0,14}(react|like|heart|emoji)/i],['Story Comments',/stor(y|ies).{0,14}comment/i],['Story Views',/stor(y|ies)/i],['Live Likes',/live.{0,14}(like|heart)/i],['Live Comments',/live.{0,14}(comment|chat)/i],['Live Views',/live.?stream|\blive\b|\bpk\b/i],['Watch Time',/watch.?(time|hour)|\d+\s*k\s*min/i],['Subscribers',/subscri/i],['Poll Votes',/\bpolls?\b|\bvotes?\b/i],['Bot Starts',/\bbot\b.{0,6}\bstarts?\b|\bstarts?\b.{0,6}\bbot\b/i],['Event Responses',/\bevent\b.{0,12}(join|going|respon|rsvp|interest)|\b(going|rsvp)\b/i],['Friend Requests',/friend.?requests?/i],['Reports',/\breports?\b/i],['Engagement Package',/\bpackage\b|\b(views?|likes?|comments?|shares?|saves?)\s*\+\s*(views?|likes?|comments?|shares?|saves?)\b|(\d+\+?\s*(likes?|retweets?|shares?|comments?|views?)\b.{0,25}){2,}/i],['Emoji Comments',/emoji.{0,12}comment|comment.{0,6}emoji/i],['Downloads',/downloads?\b/i],['Clicks',/\bclicks?\b/i],['Tweet Stats',/statistic|detail.?expand/i],['Stars',/\bstars?\b/i],['Page Reviews',/\breviews?\b|\bratings?\b|recommendations?\b/i],['Comment Reactions',/comment.{0,8}react/i],['Comment Likes',/comment.{0,8}(like|heart)|(like|heart).{0,8}comment/i],['Page Likes & Followers',/page.{0,10}likes?.{0,12}follow/i],['Page Likes',/page.{0,10}likes?\b|likes?.{0,10}\bpage\b/i],['Members',/member|joiner|\bjoins?\b/i],['Comments',/comment/i],['Shares',/share|repost|retweet|\bquotes?\b/i],['Saves',/\bsaves?\b|bookmark/i],['Reactions',/react|emoji|emotion|\blove\b|\bhaha\b|\bwow\b|\bangry\b|\bsad\b/i],['Likes',/\blikes?\b|\bhearts?\b/i],['Profile Visits',/profile.{0,4}visit/i],['Views',/views?\b|impression|\breach\b|\bplays?\b|stream|listen/i],['Followers',/follow(?!ing)|\bfans?\b/i],['Traffic',/traffic|\bvisit/i]];
+var SVC_TYPE_FB_ = [['Followers',/profile.?\/?.?page|page.?\/?.?profile|professional mode/i]];
+// \u09a7\u09b0\u09a8: \u09a8\u09be\u09ae\u09c7 \u09af\u09c7\u099f\u09be \u0986\u0997\u09c7 \u0986\u09b8\u09c7 \u09b8\u09c7\u099f\u09be (\u09b8\u09ae\u09be\u09a8 \u09b9\u09b2\u09c7 \u09a4\u09be\u09b2\u09bf\u0995\u09be\u09b0 \u0995\u09cd\u09b0\u09ae)
+function svcPickE_(list, text) { var best = null, bi = 1e9; for (var i = 0; i < list.length; i++) { var m = list[i][1].exec(text); if (m && m.index < bi) { best = list[i]; bi = m.index; } } return best; }
+function svcPick_(list, text) {
+  for (var i = 0; i < list.length; i++) { var re = list[i][list[i].length - 1]; if (re.test(text)) return list[i]; }
+  return null;
+}
+function svcClean_(t, keep) {
+  var s = String(t || "").replace(/[\u{1F000}-\u{1FFFF}\u{2190}-\u{2BFF}\uFE0F\u200D\u20E3]/gu, " ");
+  s = s.replace(/[\[\(\{]([^\]\)\}]*)[\]\)\}]/g, function (m, i) {
+    return keep && /\d/.test(i) && /min|hour|hr|day|%|\d\s?[kKmMdDhH]\b/i.test(i) && !/refill|drop/i.test(i) ? " (" + i.trim() + ") " : " ";
+  });
+  return s.replace(/[|\u2022~*_=#>]+/g, " ").replace(/\s+/g, " ").replace(/^[\s\-\u2013\u2014:.]+|[\s\-\u2013\u2014:.]+$/g, "");
+}
+var SVC_CW_ = {usa:'USA','united states':'USA',american:'USA',america:'USA',uk:'UK','united kingdom':'UK',british:'UK',england:'UK',canada:'Canada',canadian:'Canada',australia:'Australia',australian:'Australia',india:'India',indian:'India',bangladesh:'BD',bangladeshi:'BD',bd:'BD',pakistan:'Pakistan',pakistani:'Pakistan',nepal:'Nepal',srilanka:'Sri Lanka','sri lanka':'Sri Lanka',turkey:'Turkey',turkish:'Turkey',brazil:'Brazil',brazilian:'Brazil',mexico:'Mexico',mexican:'Mexico',argentina:'Argentina',colombia:'Colombia',spain:'Spain',spanish:'Spain',france:'France',french:'France',germany:'Germany',german:'Germany',italy:'Italy',italian:'Italy',netherlands:'Netherlands',dutch:'Netherlands',poland:'Poland',polish:'Poland',russia:'Russia',russian:'Russia',ukraine:'Ukraine',egypt:'Egypt',egyptian:'Egypt',uae:'UAE',bae:'UAE',emirates:'UAE',saudi:'Saudi',israel:'Israel',israeli:'Israel',iran:'Iran',iranian:'Iran',iraq:'Iraq',indonesia:'Indonesia',indonesian:'Indonesia',malaysia:'Malaysia',thailand:'Thailand',thai:'Thailand',vietnam:'Vietnam',vietnamese:'Vietnam',philippines:'Philippines',filipino:'Philippines',japan:'Japan',japanese:'Japan',korea:'Korea',korean:'Korea',china:'China',chinese:'China',nigeria:'Nigeria',nigerian:'Nigeria','south africa':'South Africa',europe:'Europe',european:'Europe',asia:'Asia',asian:'Asia',arab:'Arab',arabic:'Arab',africa:'Africa',african:'Africa'};
+var SVC_ISO_ = {US:'USA',GB:'UK',CA:'Canada',AU:'Australia',IN:'India',BD:'BD',PK:'Pakistan',NP:'Nepal',LK:'Sri Lanka',TR:'Turkey',BR:'Brazil',MX:'Mexico',AR:'Argentina',CO:'Colombia',ES:'Spain',FR:'France',DE:'Germany',IT:'Italy',NL:'Netherlands',PL:'Poland',RU:'Russia',UA:'Ukraine',EG:'Egypt',AE:'UAE',SA:'Saudi',IL:'Israel',IR:'Iran',IQ:'Iraq',ID:'Indonesia',MY:'Malaysia',TH:'Thailand',VN:'Vietnam',PH:'Philippines',JP:'Japan',KR:'Korea',CN:'China',NG:'Nigeria',ZA:'South Africa'};
+(function () { var X = [['Sweden','SE'],['Norway','NO'],['Denmark','DK'],['Finland','FI'],['Ireland','IE'],['Portugal','PT'],['Greece','GR'],['Romania','RO'],['Czech','CZ'],['Hungary','HU'],['Switzerland','CH'],['Austria','AT'],['Belgium','BE'],['Kazakhstan','KZ'],['Uzbekistan','UZ'],['Azerbaijan','AZ'],['Morocco','MA'],['Algeria','DZ'],['Tunisia','TN'],['Kuwait','KW'],['Qatar','QA'],['Jordan','JO'],['Lebanon','LB'],['Oman','OM'],['Kenya','KE'],['Ghana','GH'],['Singapore','SG'],['Taiwan','TW'],['Peru','PE'],['Chile','CL'],['Venezuela','VE'],['Afghanistan','AF'],['Myanmar','MM'],['Cambodia','KH'],['New Zealand','NZ'],['Hong Kong','HK'],['Serbia','RS'],['Bulgaria','BG']]; X.forEach(function (p) { SVC_CW_[p[0].toLowerCase()] = p[0]; SVC_ISO_[p[1]] = p[0]; }); })();
+var SVC_CWRE_ = new RegExp("\\b(" + Object.keys(SVC_CW_).sort(function (a, b) { return b.length - a.length; }).join("|") + ")\\b", "gi");
+// \u09a6\u09c7\u09b6: \u09b6\u09ac\u09cd\u09a6 + \u09aa\u09a4\u09be\u0995\u09be-\u0987\u09ae\u09c1\u099c\u09bf; \u09e7\u099f\u09be \u2192 \u09a8\u09be\u09ae, \u09e8\u2013\u09e9\u099f\u09be \u2192 'USA/Canada', \u09ac\u09c7\u09b6\u09bf/world wide \u2192 Worldwide
+function svcCtry_(t) {
+  var f = [];
+  function add(x) { if (x && f.indexOf(x) < 0) f.push(x); }
+  (String(t).match(/[\u{1F1E6}-\u{1F1FF}]{2}/gu) || []).forEach(function (e) { var cp = Array.from(e).map(function (ch) { return String.fromCharCode(ch.codePointAt(0) - 0x1F1E6 + 65); }).join(""); add(SVC_ISO_[cp]); });
+  (String(t).match(SVC_CWRE_) || []).forEach(function (w) { add(SVC_CW_[w.toLowerCase()]); });
+  var wide = /\bworld.?wide\b|\bglobal\b|all countries|\bmix(ed)? countr/i.test(t);
+  if (f.length > 1 && f.indexOf("Arab") >= 0) f.splice(f.indexOf("Arab"), 1);
+  if (!f.length) return wide ? ["Worldwide"] : [];
+  if (f.length === 1) return f;
+  if (f.length > 3 || wide) return ["Worldwide"];
+  return [f.join("/")];
+}
+var SVC_RF_NEG_ = /\b(no|non|without)[\s\-]?refill\b/i, SVC_RF_POS_ = /refill|\u267b|lifetime|\blt\b|\br\d{2,3}\b/i;
+// \u09b0\u09bf\u09ab\u09bf\u09b2 \u0985\u09ac\u09b8\u09cd\u09a5\u09be: \u0986\u0997\u09c7 \u09a8\u09be\u09ae, \u09a4\u09be\u09b0\u09aa\u09b0 \u0995\u09cd\u09af\u09be\u099f\u09c7\u0997\u09b0\u09bf, \u09b6\u09c7\u09b7\u09c7 \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u09ab\u09cd\u09b2\u09cd\u09af\u09be\u0997 (true/false/null)
+function svcRf_(n, c, flag) {
+  var a = [svcNk_(n), svcNk_(c)];
+  for (var i = 0; i < a.length; i++) { if (SVC_RF_NEG_.test(a[i])) return "no"; if (SVC_RF_POS_.test(a[i].replace(/\b(no|non|without)[\s\-]?refill\b/ig, " "))) return "yes"; }
+  return flag === true ? "yes" : flag === false ? "no" : null;
+}
+function svcNk_(s) { s = String(s == null ? "" : s); try { return s.normalize("NFKC"); } catch (e) { return s; } }
+function svcTags_(t, refillFlag, rf) {
+  t = svcNk_(t);
+  var o = [], m;
+  var hq = /\bhq\b|high.?quality/i.test(t), rl = /\breal\b|organic/i.test(t);
+  if (hq && rl) o.push("Real HQ"); else if (/premium/i.test(t)) o.push("Premium"); else if (hq) o.push("HQ"); else if (rl) o.push("Real");
+  else if (/low.?quality|\blq\b|lowq|\bbots?\b(?!\s*(start|chat|user))/i.test(t)) o.push("Budget"); else if (/\bmix(ed)?\b/i.test(t)) o.push("Mixed");
+  svcCtry_(t).forEach(function (x) { o.push(x); });
+  if (/non.?drop|no.?drop|\bnd\b|\b0\s*%\s*drop|zero.?drop|drop\W{0,4}0\s*%(?![\d-])/i.test(t)) o.push("Non-Drop");
+  else if (/low.?drop|less.?drop/i.test(t)) o.push("Low Drop");
+  else if ((m = t.match(/(\d{1,2})\s*%\s*drop/i) || t.match(/drop\W{0,4}[\u00b1~<\u2264]?\s*(?:\d{1,2}\s*-\s*)?(\d{1,2})\s*%/i))) o.push(m[1] + "% Drop");
+  var tr = t.replace(/\b(no|non|without)[\s\-]?refill\b/ig, " ");
+  if (rf === undefined) rf = svcRf_(t, "", refillFlag ? true : null);
+  if (rf === "yes") {
+    m = tr.match(/(\d{2,3})\s*(?:d|days?)\b|\br(\d{2,3})\b/i);
+    o.push((m ? (m[1] || m[2]) + "D " : (/lifetime|\blt\b/i.test(tr) ? "Lifetime " : "")) + "Refill");
+  } else if (rf === "no") o.push("No Refill");
+  m = t.match(/(\d+)\s*(minutes?|mins?|hours?|hrs?)\b/i);
+  if (m) o.push(m[1] + (/^m/i.test(m[2]) ? " Min" : " Hr"));
+  if (/instant|super.?fast|\bfast\b/i.test(t)) o.push("Fast");
+  return o.slice(0, 5);
+}
+// r = CSV \u09b8\u09be\u09b0\u09bf ({provider, name, category, refill}); map = \u09b6\u09c7\u0996\u09be \u0995\u09cd\u09af\u09be\u099f\u09c7\u0997\u09b0\u09bf-\u09a4\u09be\u09b2\u09bf\u0995\u09be\u0964 \u09ab\u09c7\u09b0\u09a4: {name, cat, plat}
+var SVC_RX_ = [["Like", /\blikes?\b|\ud83d\udc4d/i], ["Love", /\blove\b|\u2764|\ud83d\ude0d|\u2665/i], ["Care", /\bcare\b|\ud83e\udd70|\ud83e\udd17/i], ["Haha", /\bha-?ha\b|\ud83d\ude06|\ud83d\ude02/i], ["Wow", /\bwow\b|\ud83d\ude2e|\ud83d\ude32/i], ["Sad", /\bsad\b|\ud83d\ude22|\ud83d\ude2d/i], ["Angry", /\bangry\b|\banger\b|\ud83d\ude21|\ud83d\ude20/i]];
+function svcRx_(n, c) {
+  function f(s) { return SVC_RX_.filter(function (x) { return x[1].test(s); }).map(function (x) { return x[0]; }); }
+  var a = f(n); if (a.length === 1) return a[0]; if (a.length > 1) return null;
+  a = f(c); return a.length === 1 ? a[0] : null;
+}
+function svcTidy_(r, map) {
+  var c0 = svcNk_(r.category), n0 = svcNk_(r.name), all = c0 + " " + n0;
+  var P = svcPick_(SVC_PLAT_, c0) || svcPick_(SVC_PLAT_, n0), T = svcPickE_(SVC_TYPE_, n0) || svcPickE_(SVC_TYPE_, c0) || svcPickE_(SVC_TYPE_FB_, n0) || svcPickE_(SVC_TYPE_FB_, c0);
+  if (T && T[0] === "Traffic") { var wp = SVC_PLAT_.filter(function (x) { return x[0] === "Website Traffic"; })[0]; if (wp) P = wp; }
+  if (T && (T[0] === "Reactions" || T[0] === "Comment Reactions")) { var rk = svcRx_(n0, c0); if (rk) T = [rk + " " + T[0]]; }
+  else if (T && T[0] === "Comments") { if (/custom|costum/i.test(n0)) T = ["Custom Comments"]; else if (/random|emoji/i.test(n0)) T = ["Random Comments"]; }
+  var mapped = map && map[(r.provider || "") + "|" + c0], base = (P && T) ? (T[0] === "Traffic" ? "Website Traffic" : P[0] + " " + T[0]) : "";
+  var cat = mapped || base || svcClean_(c0) || "Other", name;
+  if (base) { var fl = (r.refill === undefined || r.refill === null || r.refill === "") ? null : /^(1|true|yes|y)$/i.test(String(r.refill));
+    var tg = svcTags_(all, fl === true, svcRf_(n0, c0, fl)); name = base + (tg.length ? " \u2013 " + tg.join(" \u00b7 ") : ""); }
+  else name = svcClean_(n0, true) || n0;
+  return { name: name, cat: cat, plat: P ? P[1] : "other" };
+}
+
+// ---------- \u09b6\u09c7\u0996\u09be \u0995\u09cd\u09af\u09be\u099f\u09c7\u0997\u09b0\u09bf: \u0986\u09aa\u09a8\u09bf \u09af\u09c7 \u09a8\u09be\u09ae \u09a6\u09bf\u09af\u09bc\u09c7 \u099a\u09be\u09b2\u09c1 \u0995\u09b0\u09c7\u09a8, \u09aa\u09b0\u09c7\u09b0\u09ac\u09be\u09b0 \u09b8\u09c7\u099f\u09be\u0987 \u09aa\u09cd\u09b0\u09b8\u09cd\u09a4\u09be\u09ac \u09b9\u09af\u09bc ----------
+function svcCatFile_() { var it = svcFolder_().getFilesByName("svc_catmap.json"); return it.hasNext() ? it.next() : null; }
+function svcCatMap_() { try { var f = svcCatFile_(); return f ? JSON.parse(f.getBlob().getDataAsString("UTF-8")) : {}; } catch (e) { return {}; } }
+function svcCatLearn_(provider, raw, cat) {
+  if (!provider || !raw || !cat) return;
+  var m = svcCatMap_(), k = provider + "|" + raw; if (m[k] === cat) return; m[k] = cat;
+  var t = JSON.stringify(m), f = svcCatFile_(); if (f) f.setContent(t); else svcFolder_().createFile("svc_catmap.json", t, MimeType.PLAIN_TEXT);
+}
+
+// ---------- \u09b8\u09be\u0987\u099f\u09c7 \u099a\u09be\u09b2\u09c1 \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8\u09c7\u09b0 \u09a8\u09be\u09ae \u09b8\u09be\u099c\u09be\u09a8\u09cb\u09b0 \u09a4\u09be\u09b2\u09bf\u0995\u09be \u0993 \u09aa\u09cd\u09b0\u09af\u09bc\u09cb\u0997 ----------
+function svcTidyList_() {
+  var meta = getServiceMeta_(), map = svcCatMap_(), cache = {}, hid = {}, out = [];
+  meta.hidden.forEach(function (c) { hid[String(c)] = 1; });
+  meta.custom.forEach(function (c) {
+    if (out.length >= 300 || hid[String(c.code)] || c.ov) return;
+    var p = c.provider || "", raw = null;
+    if (p && svcAllowed_(p)) {
+      if (!cache[p]) { cache[p] = {}; (svcRead_(p) || []).forEach(function (r) { cache[p][r.service_id] = r; }); }
+      raw = cache[p][String(c.code)];
+    }
+    var t = svcTidy_(raw || { provider: p, name: c.name, category: c.category, refill: c.refill === "yes" ? "1" : "" }, map);
+    if (t.name !== c.name || t.cat !== c.category) out.push({ code: String(c.code), provider: p, cn: c.name, cc: c.category, nn: t.name, nc: t.cat });
+  });
+  return { ok: true, rows: out };
+}
+function svcTidyApply_(d) {
+  var meta = getServiceMeta_(), by = {}, n = 0;
+  meta.custom.forEach(function (c) { by[String(c.code)] = c; });
+  (d.items || []).slice(0, 300).forEach(function (it) {
+    var c = by[String(it.code)]; if (!c) return;
+    c.name = svcCut_(String(it.name || c.name), 120); c.nx = 1; c.category = svcCut_(String(it.cat || c.category), 120); n++;
+  });
+  if (n) svcSaveMeta_(meta);
+  return { ok: true, done: n };
+}
+
+
+// ================= \u09aa\u09cd\u09b2\u09cd\u09af\u09be\u099f\u09ab\u09b0\u09cd\u09ae \u099a\u09c7\u09a8\u09be (\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u0995\u09cd\u09af\u09be\u099f\u09c7\u0997\u09b0\u09bf \u09a5\u09c7\u0995\u09c7) =================
+var SVC_STOP_ = /^(cheap|cheapest|best|premium|new|special|bulk|hq|vip|server|services?|offer|promo|speed|fast|instant|real|non|usa|global|top|mix|other|others|smm|panel|packages?|all|any|old|updated|hot|sale|quality|high|low|slow|stable|exclusive|limited|test|custom|auto|manual|\d+)$/i;
+function svcPlatOf_(r) {
+  var c = svcNk_(r.category), n = svcNk_(r.name), P = svcPick_(SVC_PLAT_, c) || svcPick_(SVC_PLAT_, n);
+  if (P) return P[0];
+  var seg = svcClean_(c).split(/\s[-\u2013\u2014|:\/>\u00bb]+\s|[|:\u00bb]/)[0].trim(), w = seg.split(/\s+/);
+  if (seg.length >= 2 && seg.length <= 24 && w.length <= 2 && !SVC_STOP_.test(w[0]) && !svcPick_(SVC_TYPE_, seg)) return seg.replace(/\b\w/g, function (x) { return x.toUpperCase(); });
+  return "Other";
+}
+function svcSiteLabel_(slug) {
+  slug = String(slug || "").toLowerCase();
+  if (!slug || slug === "other") return "Other";
+  for (var i = 0; i < SVC_PLAT_.length; i++) if (SVC_PLAT_[i][1] === slug) return SVC_PLAT_[i][0];
+  return slug.charAt(0).toUpperCase() + slug.slice(1);
+}
+function svcStatFile_() { var it = svcFolder_().getFilesByName("svc_stats.json"); return it.hasNext() ? it.next() : null; }
+function svcStatsLoad_() { try { var f = svcStatFile_(); return f ? JSON.parse(f.getBlob().getDataAsString("UTF-8")) : {}; } catch (e) { return {}; } }
+function svcStatsSave_(o) { var t = JSON.stringify(o), f = svcStatFile_(); if (f) f.setContent(t); else svcFolder_().createFile("svc_stats.json", t, MimeType.PLAIN_TEXT); }
+function svcStatCalc_(rows) { var o = {}; rows.forEach(function (r) { var l = svcPlatOf_(r); o[l] = (o[l] || 0) + 1; }); return o; }
+function svcStats_() {
+  var st = svcStatsLoad_(), dirty = false;
+  SVC_ALLOWED_.forEach(function (p) { if (!st[p]) { var rows = svcRead_(p); if (rows) { st[p] = svcStatCalc_(rows); dirty = true; } } });
+  if (dirty) svcStatsSave_(st);
+  return st;
+}
+
+// ---------- \u09aa\u09cd\u09b2\u09cd\u09af\u09be\u099f\u09ab\u09b0\u09cd\u09ae \u09b9\u09be\u09ac: \u09b2\u09cb\u0997\u09cb + \u0995\u09a4\u0997\u09c1\u09b2\u09cb \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 (\u09e7\u09e6 \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0) + \u09b8\u09be\u0987\u099f\u09c7 \u0995\u09a4\u0997\u09c1\u09b2\u09cb \u099a\u09be\u09b2\u09c1 ----------
+function svcPlatforms_() {
+  var st = svcStats_(), tot = {}, site = {}, keys = {};
+  SVC_ALLOWED_.forEach(function (p) { Object.keys(st[p] || {}).forEach(function (l) { tot[l] = (tot[l] || 0) + st[p][l]; }); });
+  svcSiteAll_().forEach(function (r) { if (r.state === "on") site[r.platform_label] = (site[r.platform_label] || 0) + 1; });
+  Object.keys(tot).concat(Object.keys(site)).forEach(function (k) { keys[k] = 1; });
+  var out = Object.keys(keys).map(function (k) { return { label: k, total: tot[k] || 0, site: site[k] || 0 }; })
+    .sort(function (a, b) { return (b.total + b.site * 3) - (a.total + a.site * 3); });
+  return { ok: true, platforms: out };
+}
+// ---------- \u098f\u0995\u099f\u09be \u09aa\u09cd\u09b2\u09cd\u09af\u09be\u099f\u09ab\u09b0\u09cd\u09ae\u09c7\u09b0 \u09b8\u09ac \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 (\u09b8\u09ac \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7), \u09b8\u09b8\u09cd\u09a4\u09be \u0986\u0997\u09c7 ----------
+function svcByPlatform_(d) {
+  var label = String(d.label || ""), q = String(d.q || "").toLowerCase().trim().split(/\s+/).filter(Boolean), type = String(d.type || ""), fl = String(d.state || "all");
+  var cmap = svcCatMap_(), meta = getServiceMeta_(), live = {}, hid = {}, sc = {}, spd = svcSpd_(), fx = svcFx_(), types = {}, all = [];
+  meta.custom.forEach(function (c) { if (!c.ov) live[String(c.code)] = c; }); sc = svcSiteCatObj_();
+  meta.hidden.forEach(function (c) { hid[String(c)] = 1; });
+  SVC_ALLOWED_.forEach(function (p) {
+    (svcRead_(p) || []).forEach(function (r) {
+      if (svcPlatOf_(r) !== label) return;
+      var h = (r.name + " " + r.service_id + " " + r.category).toLowerCase();
+      for (var i = 0; i < q.length; i++) if (h.indexOf(q[i]) < 0) return;
+      var T = svcPick_(SVC_TYPE_, r.category) || svcPick_(SVC_TYPE_, r.name), tl = T ? T[0] : "Other";
+      types[tl] = (types[tl] || 0) + 1;
+      if (type && tl !== type) return;
+      var c = live[r.service_id]; r.state = "off";
+      if (c) { if (!c.provider || c.provider === r.provider) r.state = hid[r.service_id] ? "off" : "on"; else { r.state = "conflict"; r.conflict_with = c.provider; } }
+      if (fl !== "all" && r.state !== fl) return;
+      all.push(r);
+    });
+  });
+  all.sort(function (a, b) { return Number(a.rate) - Number(b.rate); });
+  var off = Math.max(0, Number(d.offset) || 0), lim = Math.min(80, Number(d.limit) || 40), rows = all.slice(off, off + lim);
+  rows.forEach(function (r) { r.spd = spd[r.service_id] || null; r.suggest = svcSuggest_(Number(r.rate)); r.tidy = svcTidy_(r, cmap); });
+  var tl2 = Object.keys(types).map(function (k) { return [k, types[k]]; }).sort(function (a, b) { return b[1] - a[1]; });
+  return { ok: true, total: all.length, rows: rows, types: tl2, fx: fx, site_categories: Object.keys(sc).sort() };
+}
+
+// ================= \u09b8\u09be\u0987\u099f\u09c7\u09b0 \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09ae\u09cd\u09af\u09be\u09a8\u09c7\u099c\u09ae\u09c7\u09a8\u09cd\u099f (\u09a8\u09be\u09ae \u09ac\u09a6\u09b2 / \u09b2\u09c1\u0995\u09be\u09a8\u09cb / \u09ab\u09c7\u09b0\u09be\u09a8\u09cb) =================
+// \u09b8\u09be\u0987\u099f\u09c7\u09b0 \u09a4\u09be\u09b2\u09bf\u0995\u09be = packages-full.json (\u09aa\u09c1\u09b0\u09a8\u09cb) + \u09b8\u09cd\u099f\u09c1\u09a1\u09bf\u0993/\u09ac\u099f\u09c7 \u09af\u09cb\u0997 \u0995\u09b0\u09be (custom)\u0964 \u098f\u0995\u0987 \u0995\u09cb\u09a1\u09c7\u09b0 custom \u098f\u09a8\u09cd\u099f\u09cd\u09b0\u09bf \u09aa\u09c1\u09b0\u09a8\u09cb\u099f\u09be\u09b0 \u0993\u09aa\u09b0 \u09ac\u09b8\u09c7 (\u09b8\u09be\u0987\u099f \u098f\u09ad\u09be\u09ac\u09c7\u0987 \u09ae\u09c7\u09b6\u09be\u09af\u09bc),
+// \u09a4\u09be\u0987 \u09aa\u09c1\u09b0\u09a8\u09cb \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8\u09c7\u09b0 \u09a8\u09be\u09ae \u09ac\u09a6\u09b2\u09be\u09a4\u09c7 {code, name, ov:1} \u098f\u09a8\u09cd\u099f\u09cd\u09b0\u09bf \u09ac\u09b8\u09be\u09a8\u09cb \u09b9\u09af\u09bc\u0964
+var SVC_PK_FAIL_ = false;          // এই রানে প্যাকেজ তালিকা আনা যায়নি (ফ্রেশও না, পুরনো কপিও না)
+var SVC_NOCAT_ = "Uncategorized";  // ক্যাটাগরি খালি সার্ভিস যেন ক্যাটাগরি-ভিউ থেকে হারিয়ে না যায়
+function svcPkRead_(C, pre) {
+  var n = Number(C.get(pre + "n")) || 0; if (n <= 0) return null;
+  var keys = []; for (var i = 0; i < n; i++) keys.push(pre + i);
+  var got = C.getAll(keys), parts = [];
+  for (var k = 0; k < n; k++) { if (got[keys[k]] == null) return null; parts.push(got[keys[k]]); }
+  try { var v = JSON.parse(parts.join("")); return (v && v.length) ? v : null; } catch (e) { return null; }
+}
+function svcPkWrite_(C, pre, arr, ttl) {
+  try {
+    var s = JSON.stringify(arr), SZ = 20000, put = {}, c = 0;
+    for (; c * SZ < s.length; c++) put[pre + c] = s.substr(c * SZ, SZ);
+    put[pre + "n"] = String(c); C.putAll(put, ttl);
+  } catch (e) {}
+}
+// ফ্রেশ কপি (৫ মিনিট) → নতুন ফেচ → ব্যর্থ হলে শেষ ভালো কপি (৬ ঘণ্টা) → না থাকলে SVC_PK_FAIL_ = true। কখনো চুপচাপ খালি তালিকা দেয় না।
+function svcSitePkgs_() {
+  var C = CacheService.getScriptCache(); SVC_PK_FAIL_ = false;
+  var fresh = svcPkRead_(C, "svc_pk_"); if (fresh) return fresh;
+  var out = [];
+  try { var r = UrlFetchApp.fetch(PACKAGES_JSON_URL, { muteHttpExceptions: true, followRedirects: true }); if (r.getResponseCode() < 300) out = parsePkgs_(r.getContentText()) || []; } catch (e) {}
+  if (out.length) { svcPkWrite_(C, "svc_pk_", out, 300); svcPkWrite_(C, "svc_ps_", out, 21600); return out; }
+  var stale = svcPkRead_(C, "svc_ps_"); if (stale) return stale;
+  SVC_PK_FAIL_ = true; return [];
+}
+function svcSiteCatObj_() {   // সাইটের সব ক্যাটাগরি — স্ট্যাটিক প্যাকেজ + স্টুডিওতে বানানো, দুটোই
+  var o = {}; try { svcSiteAll_().forEach(function (r) { if (r.category && r.category !== SVC_NOCAT_) o[r.category] = 1; }); } catch (e) {}
+  return o;
+}
+function svcSiteAll_() {
+  var meta = getServiceMeta_(), hid = {}, cust = {}, seen = {}, out = [];
+  meta.hidden.forEach(function (c) { hid[String(c)] = 1; });
+  meta.custom.forEach(function (c) { if (c && c.code != null) cust[String(c.code)] = c; });
+  function mk(m, src, ov) {
+    var cost = Number(String(m.pricePerK == null ? "" : m.pricePerK).replace(/[^0-9.]/g, "")) || 0, code = String(m.code);
+    return { code: code, name: String(m.name || ""), category: String(m.category || "").trim() || SVC_NOCAT_, platform: String(m.platform || ""), platform_label: svcSiteLabel_(m.platform),
+      cost: cost, sell: Math.round(svcSellBdt_(cost) * 100) / 100, min: Number(m.min) || 0, max: Number(m.max) || 0, src: src, ov: ov ? 1 : 0, state: hid[code] ? "off" : "on" };
+  }
+  svcSitePkgs_().forEach(function (p) {
+    if (!p || p.code == null) return;
+    var code = String(p.code), c = cust[code]; if (seen[code]) return; seen[code] = 1;
+    out.push(mk(c ? Object.assign({}, p, c) : p, "static", !!c));
+  });
+  // ov = শুধু নাম/ক্যাটাগরি বদলের রেকর্ড (দাম নেই) — মূল প্যাকেজ না থাকলে ওটা সার্ভিস নয়, ভূতুড়ে সারি হবে
+  meta.custom.forEach(function (c) { if (c && c.code != null && !c.ov && !seen[String(c.code)]) { seen[String(c.code)] = 1; out.push(mk(c, "custom", false)); } });
+  return out;
+}
+function svcSiteListAct_(d) {
+  var q = String(d.q || "").toLowerCase().trim(), pl = String(d.platform || ""), cat = String(d.category || ""), st = String(d.state || "all"), plc = {}, cats = {};
+  var all0 = svcSiteAll_(); if (SVC_PK_FAIL_) return { ok: false, error: "packages_unavailable" };
+  var base = all0.filter(function (r) {
+    return (st === "all" || r.state === st) && (!q || (r.name + " " + r.code + " " + r.category).toLowerCase().indexOf(q) >= 0);
+  });
+  base.forEach(function (r) { plc[r.platform_label] = (plc[r.platform_label] || 0) + 1; });
+  var f = base.filter(function (r) { return !pl || r.platform_label === pl; });
+  f.forEach(function (r) { if (r.category) cats[r.category] = 1; });
+  if (cat) f = f.filter(function (r) { return r.category === cat; });
+  var off = Math.max(0, Number(d.offset) || 0), lim = d.all ? 5000 : Math.min(100, Number(d.limit) || 40), cmap = svcCatMap_(), rows = f.slice(off, off + lim);
+  rows.forEach(function (r) { r.tidy = svcTidy_({ provider: "", name: r.name, category: r.category, refill: r.refill }, cmap); });
+  return { ok: true, total: f.length, rows: rows, categories: Object.keys(cats).sort(),
+    platforms: Object.keys(plc).map(function (k) { return { label: k, n: plc[k] }; }).sort(function (a, b) { return b.n - a.n; }) };
+}
+function svcSiteEdit_(d) {
+  var code = String(d.code || "").trim(), meta = getServiceMeta_(), prev = null;
+  if (!code) return { ok: false, error: "code_required" };
+  meta.custom.forEach(function (c) { if (String(c.code) === code) prev = c; });
+  var name = svcCut_(String(d.name || "").trim(), 120), cat = svcCut_(String(d.category || "").trim(), 120), plat = String(d.platform || "").toLowerCase().trim();
+  if (!name) return { ok: false, error: "name_required" };
+  if (prev) { prev.name = name; prev.nx = 1; if (cat) prev.category = cat; if (plat) prev.platform = plat; }
+  else { var o = { code: code, name: name, ov: 1, nx: 1 }; if (cat) o.category = cat; if (plat) o.platform = plat; meta.custom.push(o); }
+  svcSaveMeta_(meta); logServiceEvent_(code, "edit", { name: name, category: cat, platform: plat }, "service_studio");
+  return { ok: true };
+}
+function svcSiteHide_(d) {
+  var meta = getServiceMeta_(), by = {}, n = 0, po = svcPoLoad_(), pv = {}, blocked = 0;
+  svcSiteAll_().forEach(function (r) { by[r.code] = r; });
+  meta.custom.forEach(function (c) { if (c && c.code != null && c.provider && !c.ov) pv[String(c.code)] = String(c.provider); });
+  (d.codes || []).map(String).slice(0, 200).forEach(function (code) {
+    var r = by[code]; if (!r) return;
+    if (d.on && pv[code] && po[pv[code]]) { blocked++; return; }
+    if (d.on) {
+      meta.hidden = meta.hidden.filter(function (c) { return String(c) !== code; }); delete meta.removed[code];
+      logServiceEvent_(code, "add", { name: r.name, platform: r.platform, category: r.category }, "service_studio");
+    } else {
+      if (meta.hidden.indexOf(code) === -1) meta.hidden.push(code);
+      meta.removed[code] = { name: svcCut_(r.name, 120), platform: r.platform, category: r.category, provider: "", at: new Date().toISOString(), via: "studio" };
+      if (d.del && r.src === "custom") { meta.custom = meta.custom.filter(function (c) { return String(c.code) !== code; }); meta.hidden = meta.hidden.filter(function (c) { return String(c) !== code; }); }
+      logServiceEvent_(code, "remove", meta.removed[code], "service_studio");
+    }
+    n++;
+  });
+  if (n) svcSaveMeta_(meta);
+  return { ok: true, done: n, blocked: blocked };
+}
+
+// ---------- \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09b8\u09c1\u0987\u099a ----------
+// \u09ac\u09a8\u09cd\u09a7: \u0993\u0987 \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u09af\u09a4 \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09b8\u09be\u0987\u099f\u09c7 \u099a\u09be\u09b2\u09c1 \u0986\u099b\u09c7 \u09b8\u09ac \u09b2\u09c1\u0995\u09be\u09a8\u09cb \u09b9\u09af\u09bc; \u0995\u09cb\u09a8\u0997\u09c1\u09b2\u09cb \u098f\u0987 \u09b8\u09c1\u0987\u099a\u09c7 \u09b2\u09c1\u0995\u09be\u09a8\u09cb \u09b9\u09b2\u09cb \u09a4\u09be \u09ae\u09a8\u09c7 \u09b0\u09be\u0996\u09be \u09b9\u09af\u09bc\u0964
+// \u099a\u09be\u09b2\u09c1: \u09b6\u09c1\u09a7\u09c1 \u09b8\u09c7\u0997\u09c1\u09b2\u09cb\u0987 \u09ab\u09c7\u09b0\u09a4 \u0986\u09b8\u09c7 \u2014 \u0986\u09aa\u09a8\u09bf \u09a8\u09bf\u099c\u09c7 \u0986\u0997\u09c7 \u09a5\u09c7\u0995\u09c7 \u09af\u09c7\u0997\u09c1\u09b2\u09cb \u09b2\u09c1\u0995\u09bf\u09af\u09bc\u09c7 \u09b0\u09c7\u0996\u09c7\u099b\u09bf\u09b2\u09c7\u09a8 \u09b8\u09c7\u0997\u09c1\u09b2\u09cb \u09b2\u09c1\u0995\u09be\u09a8\u09cb\u0987 \u09a5\u09be\u0995\u09c7\u0964
+function svcProvSwitch_(d) {
+  var provider = String(d.provider || "");
+  if (!provider || !svcAllowed_(provider)) return { ok: false, error: "no_config" };
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var po = svcPoLoad_(), meta = getServiceMeta_(), n = 0, now = new Date().toISOString();
+    if (d.on) {
+      var rec = po[provider];
+      if (!rec) return { ok: true, state: "on", done: 0 };
+      (rec.codes || []).map(String).forEach(function (code) {
+        var had = meta.hidden.some(function (c) { return String(c) === code; });
+        if (!had) return;
+        meta.hidden = meta.hidden.filter(function (c) { return String(c) !== code; }); delete meta.removed[code];
+        try { logServiceEvent_(code, "add", {}, "service_studio"); } catch (e) {}
+        n++;
+      });
+      delete po[provider];
+      svcSaveMeta_(meta); svcPoSave_(po);
+      return { ok: true, state: "on", done: n };
+    }
+    var hid = {}; meta.hidden.forEach(function (c) { hid[String(c)] = 1; });
+    var codes = (po[provider] && po[provider].codes) || [];   // \u0986\u0997\u09c7 \u09a5\u09c7\u0995\u09c7 \u09ac\u09a8\u09cd\u09a7 \u09a5\u09be\u0995\u09b2\u09c7 \u0986\u0997\u09c7\u09b0 \u09a4\u09be\u09b2\u09bf\u0995\u09be \u09b9\u09be\u09b0\u09be\u09ac\u09c7 \u09a8\u09be
+    var have = {}; codes.forEach(function (c) { have[String(c)] = 1; });
+    meta.custom.forEach(function (c) {
+      if (!c || c.code == null || c.ov || String(c.provider || "") !== provider) return;
+      var code = String(c.code);
+      if (hid[code]) return;
+      meta.hidden.push(code);
+      meta.removed[code] = { name: svcCut_(String(c.name || ""), 120), platform: c.platform, category: c.category, provider: provider, at: now, via: "provider_switch" };
+      try { logServiceEvent_(code, "hide", {}, "service_studio"); } catch (e) {}
+      if (!have[code]) { codes.push(code); have[code] = 1; }
+      n++;
+    });
+    po[provider] = { at: now, codes: codes };
+    svcSaveMeta_(meta); svcPoSave_(po);
+    return { ok: true, state: "off", done: n };
+  } finally { lock.releaseLock(); }
+}
+function svcSiteBulk_(d) {
+  var meta = getServiceMeta_(), by = {}, cust = {}, n = 0, cmap = svcCatMap_(), cat = String(d.category || "").trim(), plat = String(d.platform || "").toLowerCase().trim();
+  svcSiteAll_().forEach(function (r) { by[r.code] = r; });
+  meta.custom.forEach(function (c) { cust[String(c.code)] = c; });
+  (d.codes || []).map(String).slice(0, 200).forEach(function (code) {
+    var r = by[code]; if (!r) return;
+    var name = r.name, ct = r.category;
+    if (d.tidy) { var t = svcTidy_({ provider: "", name: r.name, category: r.category, refill: r.refill }, cmap); name = t.name; ct = t.cat; }
+    if (cat) ct = cat;
+    var c = cust[code]; if (!c) { c = { code: code, ov: 1 }; meta.custom.push(c); cust[code] = c; }
+    c.name = svcCut_(name, 120); c.nx = 1; c.category = svcCut_(ct, 120); if (plat) c.platform = plat;
+    n++;
+  });
+  if (n) svcSaveMeta_(meta);
+  return { ok: true, done: n };
+}
+
+// ---------- \u098f\u0995\u099f\u09be \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u09aa\u09cd\u09b2\u09cd\u09af\u09be\u099f\u09ab\u09b0\u09cd\u09ae-\u09a4\u09be\u09b2\u09bf\u0995\u09be (\u09b2\u09cb\u0997\u09cb-\u099f\u09be\u0987\u09b2\u09c7\u09b0 \u099c\u09a8\u09cd\u09af) ----------
+function svcProvPlats_(provider) {
+  var st = svcStatsLoad_(), c = st[provider];
+  if (!c) { var rows = svcRead_(provider); if (rows) { c = st[provider] = svcStatCalc_(rows); try { svcStatsSave_(st); } catch (e) {} } }
+  return Object.keys(c || {}).map(function (k) { return { label: k, n: c[k] }; }).sort(function (a, b) { return b.n - a.n; });
+}
+
+// ---------- \u09b8\u09ac \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u09a1\u09be\u0989\u09a8\u09b2\u09cb\u09a1-\u0995\u09b0\u09be \u09ab\u09be\u0987\u09b2 \u098f\u0995\u09ac\u09be\u09b0\u09c7 (\u09b8\u09cd\u099f\u09c1\u09a1\u09bf\u0993 \u09e7\u099f\u09be \u0995\u09b2\u09c7 \u09b8\u09ac \u09a8\u09c7\u09af\u09bc) ----------
+// known = { \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0: \u0986\u0997\u09c7\u09b0 collected_at }; \u09ac\u09a6\u09b2\u09be\u09af\u09bc\u09a8\u09bf \u098f\u09ae\u09a8\u099f\u09be\u09b0 CSV \u0986\u09b0 \u09aa\u09be\u09a0\u09be\u09a8\u09cb \u09b9\u09af\u09bc \u09a8\u09be\u0964
+function svcSnapshot_(d) {
+  var cfg = getProviderConfig_(), st = svcState_(), known = d.known || {}, out = [];
+  SVC_ALLOWED_.filter(function (p) { return cfg[p] && st[p] && st[p].at; }).forEach(function (p) {
+    if (known[p] === st[p].at) { out.push({ provider: p, same: true }); return; }
+    var r = svcCsvText_(p); if (r.ok) out.push({ provider: p, at: st[p].at, name: r.name, csv: r.csv });
+  });
+  return { ok: true, providers: out, at: Utilities.formatDate(new Date(), "Asia/Dhaka", "yyyy-MM-dd HH:mm") };
+}
+
+// ---------- GitHub-\u098f \u09b8\u09cd\u099f\u09cd\u09af\u09be\u099f\u09bf\u0995 \u09ab\u09be\u0987\u09b2 (\u09aa\u09a1\u09bc\u09be \u09a6\u09cd\u09b0\u09c1\u09a4, Apps Script-\u098f \u0995\u09b2 \u09b2\u09be\u0997\u09c7 \u09a8\u09be) ----------
+// Script Properties: GH_TOKEN (fine-grained token, \u09b6\u09c1\u09a7\u09c1 \u0993\u0987 repo-\u09b0 Contents: Read and write), GH_REPO ("\u09ae\u09be\u09b2\u09bf\u0995/repo"),
+// \u0990\u099a\u09cd\u099b\u09bf\u0995 GH_BRANCH (\u09a1\u09bf\u09ab\u09b2\u09cd\u099f main), GH_DIR (\u09a1\u09bf\u09ab\u09b2\u09cd\u099f studio/data \u2014 \u09b8\u09cd\u099f\u09c1\u09a1\u09bf\u0993 /studio/ \u09b9\u09b2\u09c7 \u098f\u099f\u09be\u0987 \u09a0\u09bf\u0995)
+function svcGhCfg_() {
+  var P = PropertiesService.getScriptProperties(), t = P.getProperty("GH_TOKEN"), r = P.getProperty("GH_REPO");
+  if (!t || !r) return null;
+  return { t: t, r: r, b: P.getProperty("GH_BRANCH") || "main", d: (P.getProperty("GH_DIR") || "studio/data").replace(/^\/+|\/+$/g, "") };
+}
+function svcGhPut_(c, name, text, msg) {
+  var url = "https://api.github.com/repos/" + c.r + "/contents/" + c.d + "/" + name,
+      h = { Authorization: "Bearer " + c.t, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+  var g = UrlFetchApp.fetch(url + "?ref=" + encodeURIComponent(c.b), { headers: h, muteHttpExceptions: true });
+  var body = { message: msg, content: Utilities.base64Encode(Utilities.newBlob(text).getBytes()), branch: c.b };
+  if (g.getResponseCode() === 200) body.sha = JSON.parse(g.getContentText()).sha;
+  var r = UrlFetchApp.fetch(url, { method: "put", contentType: "application/json", headers: h, payload: JSON.stringify(body), muteHttpExceptions: true });
+  return r.getResponseCode() < 300;
+}
+function svcGhIndex_() {
+  var st = svcState_(), ix = { v: 1, at: Utilities.formatDate(new Date(), "Asia/Dhaka", "yyyy-MM-dd HH:mm"), providers: {} };
+  SVC_ALLOWED_.forEach(function (p) { if (st[p] && st[p].at) ix.providers[p] = { at: st[p].at, count: st[p].count, file: svcFileName_(p) }; });
+  return JSON.stringify(ix);
+}
+function svcGhPublish_(provider) {
+  var c = svcGhCfg_(); if (!c) return false;
+  var f = svcFindFile_(svcFileName_(provider)); if (!f) return false;
+  var ok = svcGhPut_(c, svcFileName_(provider), f.getBlob().getDataAsString("UTF-8"), "\u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09a1\u09c7\u099f\u09be: " + provider);
+  return ok && svcGhPut_(c, "index.json", svcGhIndex_(), "\u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09a1\u09c7\u099f\u09be: \u09a4\u09be\u09b2\u09bf\u0995\u09be");
+}
+// \u09aa\u09cd\u09b0\u09a5\u09ae\u09ac\u09be\u09b0 (\u09ac\u09be \u09b9\u09be\u09a4\u09c7) \u09b8\u09ac \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u09ac\u09b0\u09cd\u09a4\u09ae\u09be\u09a8 \u09ab\u09be\u0987\u09b2 GitHub-\u098f \u09aa\u09be\u09a0\u09be\u09a8 \u2014 \u098f\u09a1\u09bf\u099f\u09b0\u09c7 \u098f\u0987 \u09ab\u09be\u0982\u09b6\u09a8 Run \u0995\u09b0\u09c1\u09a8
+function svcGhPushAll() {
+  var c = svcGhCfg_(); if (!c) return { ok: false, error: "gh_not_configured" };
+  var st = svcState_(), n = 0, t0 = Date.now();
+  SVC_ALLOWED_.forEach(function (p) {
+    if (!(st[p] && st[p].at) || Date.now() - t0 > 270000) return;
+    var f = svcFindFile_(svcFileName_(p)); if (!f) return;
+    if (svcGhPut_(c, svcFileName_(p), f.getBlob().getDataAsString("UTF-8"), "\u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09a1\u09c7\u099f\u09be: " + p)) n++;
+  });
+  svcGhPut_(c, "index.json", svcGhIndex_(), "\u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09a1\u09c7\u099f\u09be: \u09a4\u09be\u09b2\u09bf\u0995\u09be");
+  return { ok: true, pushed: n };
+}
+
+// ---------- BDT \u21c4 USDT \u09b0\u09c7\u099f (\u09e7 USDT = \u09e7 USD \u09a7\u09b0\u09be; \u09a1\u09bf\u09ab\u09b2\u09cd\u099f \u09e7\u09e9\u09e7) ----------
+function svcFxAct_(d) {
+  var P = PropertiesService.getScriptProperties();
+  if (d.rate !== undefined) { var v = Number(d.rate); if (!(v > 0 && v < 10000)) return { ok: false, error: "bad_rate" }; P.setProperty("USD_BDT_RATE", String(v)); }
+  return { ok: true, rate: svcFx_() };
+}
+
+
+// ---------- \u09a1\u09be\u09ac\u09b2 \u09ae\u09be\u09b0\u09cd\u0995\u0986\u09aa \u09a0\u09bf\u0995 \u0995\u09b0\u09be ----------
+// \u09b8\u09be\u0987\u099f\u09c7 pricePerK \u09b8\u09ac\u09b8\u09ae\u09af\u09bc \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u0986\u09b8\u09b2 \u09b0\u09c7\u099f (USD) \u09b9\u09ac\u09c7; \u09ae\u09be\u09b0\u09cd\u0995\u0986\u09aa \u09b8\u09be\u0987\u099f \u098f\u0995\u09ac\u09be\u09b0\u0987 \u09ac\u09b8\u09be\u09af\u09bc\u0964
+// \u09af\u09c7 \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8\u09c7 \u09b8\u0982\u09b0\u0995\u09cd\u09b7\u09bf\u09a4 \u09a6\u09be\u09ae \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u09ac\u09b0\u09cd\u09a4\u09ae\u09be\u09a8 \u09b0\u09c7\u099f\u09c7\u09b0 \u099a\u09c7\u09af\u09bc\u09c7 \u09ac\u09c7\u09b6\u09bf (\u0986\u0997\u09c7 \u09ae\u09be\u09b0\u09cd\u0995\u0986\u09aa-\u09b8\u09b9 \u09a6\u09be\u09ae \u09ac\u09b8\u09c7 \u0997\u09bf\u09af\u09bc\u09c7\u099b\u09bf\u09b2), \u09b8\u09c7\u099f\u09be \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u09b0\u09c7\u099f\u09c7 \u09ab\u09c7\u09b0\u09be\u09a8\u09cb \u09b9\u09af\u09bc\u0964
+// d.apply \u09a8\u09be \u09a5\u09be\u0995\u09b2\u09c7 \u09b6\u09c1\u09a7\u09c1 \u09a4\u09be\u09b2\u09bf\u0995\u09be \u09a6\u09c7\u0996\u09be\u09af\u09bc (\u0995\u09bf\u099b\u09c1 \u09ac\u09a6\u09b2\u09be\u09af\u09bc \u09a8\u09be)\u0964
+function svcFixDouble_(d) {
+  var meta = getServiceMeta_(), apply = !!d.apply, cache = {}, items = [], noProv = 0, checked = 0;
+  meta.custom.forEach(function (c) {
+    if (!c || c.ov) return;
+    var p = String(c.provider || ""); if (!p) { noProv++; return; }
+    if (!(p in cache)) { var rows = svcRead_(p), m = null; if (rows) { m = {}; rows.forEach(function (r) { m[r.service_id] = r; }); } cache[p] = m; }
+    var m2 = cache[p]; if (!m2) return;
+    var r = m2[String(c.code)]; if (!r) return;
+    checked++;
+    var rate = Number(r.rate), cur = Number(String(c.pricePerK == null ? "" : c.pricePerK).replace(/[^0-9.]/g, "")) || 0;
+    if (!(rate > 0) || !(cur > rate * 1.01)) return;
+    items.push({ code: String(c.code), name: svcCut_(String(c.name || ""), 60), provider: p, stored: cur, rate: rate });
+    if (apply) c.pricePerK = "$" + (Math.round(rate * 1e6) / 1e6);
+  });
+  if (apply && items.length) {
+    svcSaveMeta_(meta);
+    items.forEach(function (it) { try { logServiceEvent_(it.code, "edit", { fix: "double_markup", from: it.stored, to: it.rate }, "service_studio"); } catch (e) {} });
+  }
+  return { ok: true, apply: apply, count: items.length, checked: checked, no_provider: noProv, items: items.slice(0, 30) };
+}
+
+
+// ---------- AI \u09b8\u09b9\u0995\u09be\u09b0\u09c0 (Gemini) \u09aa\u09cd\u09b0\u0995\u09cd\u09b8\u09bf: \u09b8\u09cd\u099f\u09c1\u09a1\u09bf\u0993 \u09ac\u099f \u09b8\u09b0\u09be\u09b8\u09b0\u09bf Google-\u098f \u09a8\u09be \u09aa\u09be\u09b0\u09b2\u09c7 \u098f\u0996\u09be\u09a8 \u09a6\u09bf\u09af\u09bc\u09c7 \u09af\u09be\u09af\u09bc ----------
+// \u0985\u09cd\u09af\u09be\u09aa \u09aa\u09be\u09a0\u09be\u09af\u09bc action "svc_ai" + {model, body, key?}\u0964 key \u0986\u09b8\u09c7 \u0985\u09cd\u09af\u09be\u09aa \u09a5\u09c7\u0995\u09c7 (d.key) \u0985\u09a5\u09ac\u09be Script Property GEMINI_API_KEY \u09a5\u09c7\u0995\u09c7\u0964
+// doPost \u09b6\u09c1\u09a7\u09c1 svc_ \u09a6\u09bf\u09af\u09bc\u09c7 \u09b6\u09c1\u09b0\u09c1 \u0985\u09cd\u09af\u09be\u0995\u09b6\u09a8 \u098f\u0996\u09be\u09a8\u09c7 \u09aa\u09be\u09a0\u09be\u09af\u09bc\u0964
+function svcAiGemini_(d) {
+  var key = String(d.key || PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY") || "").trim();
+  if (!key) return { ok: false, error: "no_key", message: "Gemini API key \u09a8\u09c7\u0987 \u2014 \u09ac\u099f\u09c7\u09b0 \u2699 \u09a5\u09c7\u0995\u09c7 key \u09a6\u09bf\u09a8" };
+  var model = String(d.model || "").replace(/[^A-Za-z0-9._-]/g, "");
+  if (!model) return { ok: false, error: "bad_model", message: "\u09ae\u09a1\u09c7\u09b2\u09c7\u09b0 \u09a8\u09be\u09ae \u09a8\u09c7\u0987" };
+  var body = d.body;
+  if (!body || typeof body !== "object") return { ok: false, error: "bad_body", message: "\u0985\u09a8\u09c1\u09b0\u09cb\u09a7 \u09a0\u09bf\u0995 \u09a8\u09af\u09bc" };
+  var url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent";
+  var resp = UrlFetchApp.fetch(url, { method: "post", contentType: "application/json", headers: { "x-goog-api-key": key }, payload: JSON.stringify(body), muteHttpExceptions: true });
+  var data = null;
+  try { data = JSON.parse(resp.getContentText()); } catch (e) { data = null; }
+  var code = resp.getResponseCode();
+  return { ok: true, status: code, data: data || { error: { message: "HTTP " + code } } };
+}
+
+/** ইমোজি (surrogate pair) মাঝখানে না ভেঙে n অক্ষরে কাটে — আগে নাম/ক্যাটেগরি কাটলে "??" ভাঙা চিহ্ন হতো। */
+function svcCut_(s, n) {
+  s = String(s == null ? "" : s); if (s.length <= n) return s;
+  var t = s.substring(0, n), c = t.charCodeAt(n - 1);
+  if (c >= 0xD800 && c <= 0xDBFF) t = t.substring(0, n - 1);
+  return t;
+}
+/** স্টুডিও থেকে মেটা সেভের পর সার্ভারের কোড→প্রভাইডার/দামের ক্যাশ মুছে দেয়, যাতে নতুন/বন্ধ সার্ভিস সাথে সাথে কাজ করে। */
+function svcSaveMeta_(meta) {
+  saveServiceMeta_(meta);
+  try { clearServiceIndexCaches_(); } catch (e) {}
+}

@@ -1,0 +1,318 @@
+// =====================================================================
+// v75 \u2014 \u09b8\u09b0\u09be\u09b8\u09b0\u09bf \u099f\u09c7\u09b8\u09cd\u099f \u0985\u09b0\u09cd\u09a1\u09be\u09b0 \u00b7 \u09b8\u09cd\u09aa\u09bf\u09a1 \u09ac\u09bf\u09b8\u09cd\u09a4\u09be\u09b0\u09bf\u09a4 \u00b7 \u09b8\u09c7\u09b0\u09be \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09ac\u09be\u099b\u09be\u0987
+// Apps Script-\u098f \u09a8\u09a4\u09c1\u09a8 \u09ab\u09be\u0987\u09b2 (PtOrder.gs) \u09b9\u09bf\u09b8\u09c7\u09ac\u09c7 \u09ac\u09b8\u09be\u09a8; PtServices.gs-\u098f \u09e9\u099f\u09be case \u09af\u09cb\u0997 \u0995\u09b0\u09be \u0986\u099b\u09c7\u0964
+// \u09a8\u09bf\u09b0\u09cd\u09ad\u09b0 \u0995\u09b0\u09c7 Code.gs-\u098f\u09b0: ST_SHEET, ST_HEADERS, setupSpeedTest, runSpeedTestSweep, stMedian_, stToMs_, sheet_, getProviderConfig_, notifyTelegram_
+// \u0986\u09b0 PtServices.gs-\u098f\u09b0: svcRead_, svcPlatOf_, svcPick_, SVC_TYPE_, svcFx_, svcSuggest_, svcAllowed_
+// =====================================================================
+var SVC_ORD_SHEET_ = "StudioOrders";
+var SVC_ORD_HEAD_ = ["ordered_at", "provider", "service_id", "provider_order_id", "service_name", "platform", "type", "link", "quantity", "rate_usd", "cost_bdt", "note"];
+var SVC_ORD_MAX_BDT_ = 300;      // \u098f\u0995 \u0985\u09b0\u09cd\u09a1\u09be\u09b0\u09c7 \u09b8\u09b0\u09cd\u09ac\u09cb\u099a\u09cd\u099a \u0986\u09a8\u09c1\u09ae\u09be\u09a8\u09bf\u0995 \u0996\u09b0\u099a (\u09f3)\u0964 Script Property SVC_ORDER_MAX_BDT \u09a6\u09bf\u09af\u09bc\u09c7 \u09ac\u09a6\u09b2\u09be\u09a8\u09cb \u09af\u09be\u09af\u09bc
+var SVC_ORD_DAY_MAX_BDT_ = 1000; // \u098f\u0995\u09a6\u09bf\u09a8\u09c7 \u09b8\u09cd\u099f\u09c1\u09a1\u09bf\u0993 \u09a5\u09c7\u0995\u09c7 \u09b8\u09b0\u09cd\u09ac\u09cb\u099a\u09cd\u099a \u09ae\u09cb\u099f \u0996\u09b0\u099a (\u09f3)\u0964 Script Property SVC_ORDER_DAY_MAX_BDT
+
+function svcSafeCell_(v) { var s = String(v == null ? "" : v).replace(/[\r\n]+/g, " "); return /^[=+\-@]/.test(s) ? "'" + s : s; }
+function svcNum_(v) { var n = Number(v); return isFinite(n) ? n : 0; }
+function svcR2_(v) { return Math.round(v * 100) / 100; }
+
+function svcOrdSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), sh = ss.getSheetByName(SVC_ORD_SHEET_);
+  if (!sh) { sh = ss.insertSheet(SVC_ORD_SHEET_); sh.getRange(1, 1, 1, SVC_ORD_HEAD_.length).setValues([SVC_ORD_HEAD_]).setFontWeight("bold"); sh.setFrozenRows(1); }
+  return sh;
+}
+function svcStSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), sh = ss.getSheetByName(ST_SHEET);
+  if (!sh) { setupSpeedTest(); sh = ss.getSheetByName(ST_SHEET); }
+  return sh;
+}
+function svcStAdd_(provider, sid, poid, label, qty) {
+  var sh = svcStSheet_(), last = sh.getLastRow(), target = 0;
+  if (last >= 2) {
+    var v = sh.getRange(2, 1, last - 1, 3).getValues();
+    for (var i = 0; i < v.length; i++) { if (String(v[i][0]).trim() === provider && !String(v[i][2]).trim()) { target = i + 2; break; } }
+  }
+  if (!target) target = Math.max(last, 1) + 1;
+  sh.getRange(target, 1, 1, 6).setValues([[provider, sid, poid, label, new Date(), qty]]);
+}
+
+// v77: live lookup of one service from the provider API (no file needed). Returns {row, fetched, why}
+function svcLiveRow_(provider, sid) {
+  var cfg = getProviderConfig_()[provider];
+  if (!cfg || !cfg.api_key || !cfg.api_url) return { row: null, fetched: false, why: "no API config" };
+  var resp, arr = null;
+  try { resp = UrlFetchApp.fetch(cfg.api_url, svcFetchOpt_(cfg)); } catch (e) { return { row: null, fetched: false, why: "provider unreachable: " + String(e && e.message || e).substring(0, 80) }; }
+  try { arr = JSON.parse(resp.getContentText()); } catch (e2) { return { row: null, fetched: false, why: "provider bad reply (HTTP " + resp.getResponseCode() + ")" }; }
+  if (!Array.isArray(arr)) return { row: null, fetched: false, why: "provider: " + String(arr && arr.error || "not a list").substring(0, 80) };
+  for (var i = 0; i < arr.length; i++) {
+    var s = arr[i]; if (s && String(s.service) === sid) {
+      return { fetched: true, row: { provider: provider, service_id: String(s.service), name: String(s.name || ""), category: String(s.category || ""), type: s.type || "", rate: s.rate, min: s.min, max: s.max } };
+    }
+  }
+  return { row: null, fetched: true };
+}
+
+
+// ---------- \u09e7) \u09b8\u09b0\u09be\u09b8\u09b0\u09bf \u099f\u09c7\u09b8\u09cd\u099f \u0985\u09b0\u09cd\u09a1\u09be\u09b0 ----------
+// d: provider, service, link, quantity, confirm:true, req_id (\u09a1\u09ac\u09b2-\u0985\u09b0\u09cd\u09a1\u09be\u09b0 \u09a0\u09c7\u0995\u09be\u09a4\u09c7)
+function svcOrder_(d) {
+  var P = PropertiesService.getScriptProperties();
+  var provider = String(d.provider || ""), sid = String(d.service || "").trim(), link = String(d.link || "").trim();
+  var qty = Math.floor(svcNum_(d.quantity)), rq = String(d.req_id || "").replace(/[^A-Za-z0-9_-]/g, "").substring(0, 40);
+  if (!provider || !svcAllowed_(provider)) return { ok: false, error: "no_config" };
+  if (d.confirm !== true) return { ok: false, error: "need_confirm", message: "\u0985\u09b0\u09cd\u09a1\u09be\u09b0\u09c7\u09b0 \u0986\u0997\u09c7 \u09a8\u09bf\u09b6\u09cd\u099a\u09bf\u09a4 \u0995\u09b0\u09a4\u09c7 \u09b9\u09ac\u09c7" };
+  if (!sid) return { ok: false, error: "bad_service", message: "\u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u0986\u0987\u09a1\u09bf \u09a8\u09c7\u0987" };
+  if (!(link.length >= 3 && link.length <= 500) || /\s/.test(link) || /[\u0000-\u001F]/.test(link)) return { ok: false, error: "bad_link", message: "\u09b2\u09bf\u0982\u0995/\u0987\u0989\u099c\u09be\u09b0\u09a8\u09c7\u09ae \u09a0\u09bf\u0995 \u09a8\u09af\u09bc (\u09ab\u09be\u0981\u0995\u09be \u09ac\u09be \u0985\u0995\u09cd\u09b7\u09b0 \u09ad\u09c1\u09b2)" };
+
+  var C = CacheService.getScriptCache();
+  if (rq) {
+    var prev = C.get("svco_" + rq);
+    if (prev) { try { var pj = JSON.parse(prev); pj.duplicate = true; return pj; } catch (e) {} return { ok: false, error: "duplicate", message: "\u098f\u0987 \u0985\u09b0\u09cd\u09a1\u09be\u09b0 \u0986\u0997\u09c7\u0987 \u09aa\u09be\u09a0\u09be\u09a8\u09cb \u09b9\u09af\u09bc\u09c7\u099b\u09c7" }; }
+  }
+  // v77: Drive CSV missing/stale -> fall back to the provider live API (and repair the CSV), instead of failing with not_collected
+  var rows = null; try { rows = svcRead_(provider); } catch (eR) { rows = null; }
+  var row = null; if (rows) { for (var i = 0; i < rows.length; i++) { if (String(rows[i].service_id) === sid) { row = rows[i]; break; } } }
+  if (!row) {
+    var lv = svcLiveRow_(provider, sid);
+    if (lv.row) { row = lv.row; try { svcCollect_(provider); } catch (eC) {} }
+    else if (!rows && !lv.fetched) return { ok: false, error: "not_collected", message: lv.why || "" };
+  }
+  if (!row) return { ok: false, error: "service_not_found", message: "\u098f\u0987 \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u0986\u0987\u09a1\u09bf \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u09a4\u09be\u09b2\u09bf\u0995\u09be\u09af\u09bc \u09a8\u09c7\u0987 \u2014 \u0986\u09ac\u09be\u09b0 \u09b8\u0982\u0997\u09cd\u09b0\u09b9 \u0995\u09b0\u09c1\u09a8" };
+  var mn = svcNum_(row.min), mx = svcNum_(row.max), rate = svcNum_(row.rate);
+  if (qty < 1 || (mn && qty < mn) || (mx && qty > mx)) return { ok: false, error: "bad_qty", message: "\u09aa\u09b0\u09bf\u09ae\u09be\u09a3 " + mn + " \u09a5\u09c7\u0995\u09c7 " + mx + " \u098f\u09b0 \u09ae\u09a7\u09cd\u09af\u09c7 \u09a6\u09bf\u09a8" };
+  var cost = svcR2_(rate * svcFx_() * qty / 1000);
+  var cap = svcNum_(P.getProperty("SVC_ORDER_MAX_BDT")) || SVC_ORD_MAX_BDT_;
+  if (cost > cap) return { ok: false, error: "cost_too_high", message: "\u0986\u09a8\u09c1\u09ae\u09be\u09a8\u09bf\u0995 \u0996\u09b0\u099a \u09f3" + cost + " \u2014 \u09b8\u09c0\u09ae\u09be \u09f3" + cap + "\u0964 \u09aa\u09b0\u09bf\u09ae\u09be\u09a3 \u0995\u09ae\u09be\u09a8" };
+
+  var osh = svcOrdSheet_(), ol = osh.getLastRow(), today = Utilities.formatDate(new Date(), "Asia/Dhaka", "yyyy-MM-dd"), spent = 0;
+  if (ol >= 2) {
+    osh.getRange(Math.max(2, ol - 199), 1, Math.min(200, ol - 1), 11).getValues().forEach(function (r) {
+      var t = r[0] instanceof Date ? Utilities.formatDate(r[0], "Asia/Dhaka", "yyyy-MM-dd") : ""; if (t === today) spent += svcNum_(r[10]);
+    });
+  }
+  var dayCap = svcNum_(P.getProperty("SVC_ORDER_DAY_MAX_BDT")) || SVC_ORD_DAY_MAX_BDT_;
+  if (spent + cost > dayCap) return { ok: false, error: "day_limit", message: "\u0986\u099c\u0995\u09c7\u09b0 \u09b8\u09cd\u099f\u09c1\u09a1\u09bf\u0993-\u0985\u09b0\u09cd\u09a1\u09be\u09b0 \u09b8\u09c0\u09ae\u09be \u09f3" + dayCap + " (\u0986\u099c \u0996\u09b0\u099a \u09f3" + svcR2_(spent) + ")" };
+
+  var cfg = getProviderConfig_()[provider];
+  if (!cfg || !cfg.api_key || !cfg.api_url) return { ok: false, error: "no_config" };
+  if (rq) C.put("svco_" + rq, JSON.stringify({ ok: false, error: "in_flight", message: "\u0985\u09b0\u09cd\u09a1\u09be\u09b0 \u09aa\u09cd\u09b0\u0995\u09cd\u09b0\u09bf\u09af\u09bc\u09be\u09a7\u09c0\u09a8 \u2014 \u09b8\u09cd\u09aa\u09bf\u09a1 \u09aa\u09be\u09a4\u09be \u0993 \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09aa\u09cd\u09af\u09be\u09a8\u09c7\u09b2 \u09a6\u09c7\u0996\u09c7 \u09a8\u09bf\u09a8" }), 900);
+  var resp, j = null;
+  try {
+    resp = UrlFetchApp.fetch(cfg.api_url, { method: "post", muteHttpExceptions: true, followRedirects: true, payload: { key: cfg.api_key, action: "add", service: sid, link: link, quantity: qty } });
+  } catch (ex) {
+    // \u09ab\u09b2 \u0985\u099c\u09be\u09a8\u09be: \u0985\u09b0\u09cd\u09a1\u09be\u09b0 \u0997\u09bf\u09af\u09bc\u09c7 \u09a5\u09be\u0995\u09a4\u09c7 \u09aa\u09be\u09b0\u09c7 \u2014 \u09a4\u09be\u0987 \u0986\u09ac\u09be\u09b0 \u099a\u09c7\u09b7\u09cd\u099f\u09be \u0986\u099f\u0995\u09c7 \u09b0\u09be\u0996\u09bf
+    return { ok: false, error: "unknown_result", message: "\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09a5\u09c7\u0995\u09c7 \u0989\u09a4\u09cd\u09a4\u09b0 \u0986\u09b8\u09c7\u09a8\u09bf \u2014 \u0985\u09b0\u09cd\u09a1\u09be\u09b0 \u0997\u09bf\u09af\u09bc\u09c7\u099b\u09c7 \u0995\u09bf\u09a8\u09be \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09aa\u09cd\u09af\u09be\u09a8\u09c7\u09b2\u09c7 \u09a6\u09c7\u0996\u09c1\u09a8, \u09a4\u09be\u09b0\u09aa\u09b0 \u0986\u09ac\u09be\u09b0 \u099a\u09c7\u09b7\u09cd\u099f\u09be \u0995\u09b0\u09c1\u09a8" };
+  }
+  try { j = JSON.parse(resp.getContentText()); } catch (e2) { j = null; }
+  if (!j || j.order == null || j.order === "") {
+    if (rq) C.remove("svco_" + rq);
+    return { ok: false, error: "provider_error", message: j && j.error ? String(j.error).substring(0, 160) : "\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09b8\u09a0\u09bf\u0995 \u0989\u09a4\u09cd\u09a4\u09b0 \u09a6\u09c7\u09af\u09bc\u09a8\u09bf (HTTP " + resp.getResponseCode() + ")" };
+  }
+  var poid = String(j.order), T = svcPick_(SVC_TYPE_, row.category) || svcPick_(SVC_TYPE_, row.name), plat = svcPlatOf_(row);
+  try { osh.appendRow([new Date(), provider, sid, poid, svcSafeCell_(row.name).substring(0, 160), plat, T ? T[0] : "Other", svcSafeCell_(link), qty, rate, cost, "studio"]); } catch (e3) {}
+  try { svcStAdd_(provider, sid, poid, "studio-" + poid, qty); } catch (e4) {}
+  try { notifyTelegram_("\ud83e\uddea \u09b8\u09cd\u099f\u09c1\u09a1\u09bf\u0993 \u099f\u09c7\u09b8\u09cd\u099f \u0985\u09b0\u09cd\u09a1\u09be\u09b0\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8: " + String(row.name || "\u2014") + " (\u0995\u09cb\u09a1 #" + sid + ")\n\u09b2\u09bf\u0982\u0995: " + link + "\n\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0: " + provider + "\n\u09aa\u09b0\u09bf\u09ae\u09be\u09a3: " + qty + "\n\u0996\u09b0\u099a \u2248 \u09f3" + cost + "\n\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u0985\u09b0\u09cd\u09a1\u09be\u09b0: " + poid); } catch (e5) {}
+  var out = { ok: true, provider: provider, service: sid, provider_order: poid, quantity: qty, cost_bdt: cost, name: String(row.name || "") };
+  if (rq) C.put("svco_" + rq, JSON.stringify(out), 900);
+  return out;
+}
+
+// ---------- \u09e8) \u09b8\u09cd\u09aa\u09bf\u09a1 \u099f\u09c7\u09b8\u09cd\u099f: \u09aa\u09cd\u09b0\u09a4\u09bf\u099f\u09be \u0985\u09b0\u09cd\u09a1\u09be\u09b0 \u0995\u0996\u09a8 \u09b9\u09b2\u09cb / \u0995\u0996\u09a8 \u09b6\u09c1\u09b0\u09c1 / \u0995\u09a4 \u09ae\u09bf\u09a8\u09bf\u099f\u09c7 ----------
+function svcStStats_() {
+  var sh = svcStSheet_(), g = {}, last = sh.getLastRow(); if (last < 2) return g;
+  sh.getRange(2, 1, last - 1, ST_HEADERS.length).getValues().forEach(function (r) {
+    var p = String(r[0] || "").trim(), s = String(r[1] || "").trim(), o = String(r[2] || "").trim(); if (!p || !s || !o) return;
+    var k = p + "|" + s, x = g[k] || (g[k] = { n: 0, ok: 0, part: 0, cancel: 0, open: 0, start: [], total: [] });
+    x.n++; var st = String(r[8] || "").toLowerCase();
+    if (st === "completed" && svcNum_(r[12]) > 0) { x.ok++; x.total.push(svcNum_(r[12])); }
+    else if (st === "partial") x.part++;
+    else if (st === "canceled" || st === "cancelled" || st === "refunded") x.cancel++;
+    else x.open++;
+    if (svcNum_(r[11]) > 0) x.start.push(svcNum_(r[11]));
+  });
+  Object.keys(g).forEach(function (k) {
+    var x = g[k]; x.start_med = stMedian_(x.start); x.total_med = stMedian_(x.total); x.fin = x.ok + x.part + x.cancel;
+    x.bad = x.fin ? Math.round((x.part + x.cancel) / x.fin * 100) : 0; x.start_n = x.start.length; delete x.start; delete x.total;
+  });
+  return g;
+}
+
+// d: refresh (\u098f\u0996\u09a8\u0987 \u09b8\u09cd\u099f\u09cd\u09af\u09be\u099f\u09be\u09b8 \u09ae\u09c7\u09b2\u09be\u09a8), provider, service, limit
+function svcSpeed_(d) {
+  var refreshed = false;
+  if (d.refresh) { try { runSpeedTestSweep(); refreshed = true; } catch (e) {} }
+  var sh = svcStSheet_(), det = {}, site = {}, rows = [];
+  var osh = svcOrdSheet_(), ol = osh.getLastRow();
+  if (ol >= 2) osh.getRange(2, 1, ol - 1, SVC_ORD_HEAD_.length).getValues().forEach(function (r) { det[r[1] + "|" + r[3]] = { name: r[4], platform: r[5], type: r[6], link: r[7], qty: r[8], rate: r[9], cost: r[10] }; });
+  try {
+    var ish = sheet_(), il = ish.getLastRow();
+    if (il >= 2) ish.getRange(2, 1, il - 1, 19).getValues().forEach(function (r) { site[String(r[0])] = { name: r[2], platform: r[3], link: r[4], qty: r[5] }; });
+  } catch (e) {}
+  var fp = String(d.provider || ""), fs = String(d.service || ""), last = sh.getLastRow(), now = Date.now();
+  if (last >= 2) {
+    sh.getRange(2, 1, last - 1, ST_HEADERS.length).getValues().forEach(function (r) {
+      var p = String(r[0] || "").trim(), o = String(r[2] || "").trim(); if (!p || !o) return;
+      var s = String(r[1] || "").trim(); if ((fp && p !== fp) || (fs && s !== fs)) return;
+      var lab = String(r[3] || ""), x = det[p + "|" + o] || site[lab] || {}, isSt = lab.indexOf("studio-") === 0;
+      var qty = svcNum_(r[5]) || svcNum_(x.qty), rem = r[7] === "" ? null : svcNum_(r[7]);
+      var oat = stToMs_(r[4]), sat = stToMs_(r[9]), cat = stToMs_(r[10]), ss = svcNum_(r[11]);
+      rows.push({
+        provider: p, service_id: s, provider_order: o, label: lab, src: isSt ? "studio" : "site",
+        name: String(x.name || ""), platform: String(x.platform || ""), type: String(x.type || ""), link: String(x.link || ""),
+        quantity: qty, cost_bdt: x.cost !== undefined ? svcNum_(x.cost) : null,
+        start_count: r[6] === "" ? null : svcNum_(r[6]), remains: rem, delivered: (rem !== null && qty) ? Math.max(0, qty - rem) : null,
+        status: String(r[8] || ""), ordered_at: oat, started_at: sat, completed_at: cat,
+        start_secs: ss, total_secs: svcNum_(r[12]), last_checked: stToMs_(r[13]),
+        waiting_secs: (!sat && oat) ? Math.max(0, Math.round((now - oat) / 1000)) : 0
+      });
+    });
+  }
+  rows.sort(function (a, b) { return b.ordered_at - a.ordered_at; });
+  var lim = d.all ? 5000 : Math.min(300, Math.max(10, svcNum_(d.limit) || 120));
+  return { ok: true, rows: rows.slice(0, lim), total: rows.length, stats: svcStStats_(), now: now, refreshed: refreshed };
+}
+
+// ---------- \u09e9) \u09b8\u09c7\u09b0\u09be \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09ac\u09be\u099b\u09be\u0987 ----------
+// \u09b8\u09cd\u0995\u09cb\u09b0 = \u09a6\u09be\u09ae (\u09e9\u09eb%) + \u0997\u09a4\u09bf/\u09b6\u09c1\u09b0\u09c1\u09b0 \u09b8\u09ae\u09af\u09bc (\u09e9\u09eb%) + \u09a1\u09cd\u09b0\u09aa/\u09ac\u09cd\u09af\u09b0\u09cd\u09a5 \u0995\u09ae (\u09e8\u09e6%) + \u09b0\u09bf\u09ab\u09bf\u09b2 (\u09e7\u09e6%)\u0964 \u099f\u09c7\u09b8\u09cd\u099f-\u09a8\u09be-\u0995\u09b0\u09be \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u09b8\u09b0\u09cd\u09ac\u09cb\u099a\u09cd\u099a ~\u09eb\u09eb \u09aa\u09be\u09af\u09bc, \u09a4\u09be\u0987 \u099f\u09c7\u09b8\u09cd\u099f \u0995\u09b0\u09be \u09ad\u09be\u09b2\u09cb\u0997\u09c1\u09b2\u09cb \u0986\u0997\u09c7 \u09a5\u09be\u0995\u09c7\u0964
+// d: label (\u09aa\u09cd\u09b2\u09cd\u09af\u09be\u099f\u09ab\u09b0\u09cd\u09ae, \u09ac\u09be\u09a7\u09cd\u09af\u09a4\u09be\u09ae\u09c2\u09b2\u0995), type (\u09a8\u09be \u09a6\u09bf\u09b2\u09c7 \u09b8\u09ac\u099a\u09c7\u09af\u09bc\u09c7 \u09ac\u09c7\u09b6\u09bf \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8\u09c7\u09b0 \u09a7\u09b0\u09a8), refill:true, q, limit
+function svcBest_(d) {
+  var label = String(d.label || ""); if (!label) return { ok: false, error: "label_required", message: "\u09aa\u09cd\u09b2\u09cd\u09af\u09be\u099f\u09ab\u09b0\u09cd\u09ae \u09ac\u09be\u099b\u09c1\u09a8" };
+  var type = String(d.type || ""), refillOnly = d.refill === true, lim = Math.min(30, Math.max(3, svcNum_(d.limit) || 12));
+  var q = String(d.q || "").toLowerCase().trim().split(/\s+/).filter(Boolean);
+  var meta = getServiceMeta_(), live = {}, hid = {}, spd = svcStStats_(), fx = svcFx_(), types = {}, all = [];
+  meta.custom.forEach(function (c) { if (!c.ov) live[String(c.code)] = c; });
+  meta.hidden.forEach(function (c) { hid[String(c)] = 1; });
+  SVC_ALLOWED_.forEach(function (p) {
+    (svcRead_(p) || []).forEach(function (r) {
+      if (svcPlatOf_(r) !== label) return;
+      var T = svcPick_(SVC_TYPE_, r.category) || svcPick_(SVC_TYPE_, r.name), tl = T ? T[0] : "Other";
+      types[tl] = (types[tl] || 0) + 1;
+      r._t = tl; all.push(r);
+    });
+  });
+  var tlist = Object.keys(types).map(function (k) { return [k, types[k]]; }).sort(function (a, b) { return b[1] - a[1]; });
+  if (!type && tlist.length) type = tlist[0][0];
+  var g = all.filter(function (r) {
+    if (r._t !== type || !(svcNum_(r.rate) > 0)) return false;
+    if (refillOnly && !svcNum_(r.refill)) return false;
+    var h = (r.name + " " + r.service_id + " " + r.category).toLowerCase();
+    for (var i = 0; i < q.length; i++) if (h.indexOf(q[i]) < 0) return false;
+    return true;
+  });
+  var n = g.length;
+  g.sort(function (a, b) { return svcNum_(a.rate) - svcNum_(b.rate); });
+  g.forEach(function (r, i) { r._ps = n > 1 ? 1 - i / (n - 1) : 1; r._st = spd[r.provider + "|" + r.service_id] || null; });
+  var tested = g.filter(function (r) { return r._st && r._st.start_n > 0; }).sort(function (a, b) { return a._st.start_med - b._st.start_med; });
+  tested.forEach(function (r, i) { r._ss = tested.length > 1 ? 1 - i / (tested.length - 1) : 1; });
+  g.forEach(function (r) {
+    var rf = svcNum_(r.refill) ? 1 : 0, s = r._st, why = [];
+    if (s && r._ss !== undefined) {
+      r._score = 0.35 * r._ps + 0.35 * r._ss + 0.20 * (1 - Math.min(100, s.bad) / 100) + 0.10 * rf; r._tested = true;
+    } else { r._score = 0.55 * (0.85 * r._ps + 0.15 * rf); r._tested = false; }
+    r.score = Math.round(r._score * 100); r.tested = r._tested; r.price_pct = Math.round(r._ps * 100);
+    r.stats = s ? { n: s.n, ok: s.ok, open: s.open, start_med: s.start_med, total_med: s.total_med, bad: s.bad, fin: s.fin } : null;
+    var live0 = live[r.service_id]; r.state = "off";
+    if (live0) { if (!live0.provider || live0.provider === r.provider) r.state = hid[r.service_id] ? "off" : "on"; else { r.state = "conflict"; r.conflict_with = live0.provider; } }
+    r.suggest = svcSuggest_(svcNum_(r.rate)); r.cost_bdt_k = svcR2_(svcNum_(r.rate) * fx);
+    delete r._ps; delete r._ss; delete r._st; delete r._score; delete r._tested; delete r._t;
+  });
+  g.sort(function (a, b) { return (b.score - a.score) || (svcNum_(a.rate) - svcNum_(b.rate)); });
+  // v80: untested but cheap (price in the cheaper 30% of the group) = worth a test order
+  g.forEach(function (r) { r.try_it = !r.tested && r.price_pct >= 70; });
+  var un = g.filter(function (r) { return !r.tested; });
+  if (d.untested === true) g = un;
+  return { ok: true, label: label, type: type, types: tlist, total: n, shown_n: g.length, tested_n: tested.length, untested_n: un.length, try_n: un.filter(function (r) { return r.try_it; }).length, fx: fx, rows: g.slice(0, lim) };
+}
+
+// ---------- v76: \u09b8\u0982\u0997\u09cd\u09b0\u09b9\u09c7\u09b0 \u0985\u09a8\u09c1\u09b0\u09cb\u09a7\u09c7\u09b0 \u0985\u09aa\u09b6\u09a8 (collect \u0993 diag \u098f\u0995\u0987) ----------
+function svcFetchOpt_(cfg) {
+  return { method: "post", payload: { key: cfg.api_key, action: "services" }, muteHttpExceptions: true, followRedirects: true,
+    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "application/json" } };
+}
+
+// ---------- v76: \u09a1\u09be\u09af\u09bc\u09be\u0997\u09a8\u09b8\u09cd\u099f\u09bf\u0995 \u2014 '\u09b8\u0982\u0997\u09cd\u09b0\u09b9 \u0995\u09b0\u09c1\u09a8' \u099a\u09be\u09aa\u09be\u09b0 \u09aa\u09b0\u09c7\u0993 not_collected \u0995\u09c7\u09a8, \u09a7\u09be\u09aa\u09c7 \u09a7\u09be\u09aa\u09c7 \u09a6\u09c7\u0996\u09be\u09af\u09bc ----------
+// d: provider, probe:true \u09b9\u09b2\u09c7 \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7 \u09b8\u09a4\u09cd\u09af\u09bf \u09b8\u0982\u09af\u09cb\u0997 \u0995\u09b0\u09c7 \u09aa\u09b0\u09c0\u0995\u09cd\u09b7\u09be \u0995\u09b0\u09c7 (\u09ab\u09be\u0987\u09b2 \u09b2\u09c7\u0996\u09c7 \u09a8\u09be)
+function svcDiag_(d) {
+  var provider = String(d.provider || ""), steps = [], verdict = "", P = PropertiesService.getScriptProperties();
+  function add(k, v, bad) { steps.push({ k: k, v: String(v), bad: !!bad }); }
+  var cfg = getProviderConfig_()[provider];
+  if (!(cfg && cfg.api_key && cfg.api_url)) { add("API \u09b8\u09c7\u099f\u09bf\u0982", "\u09a8\u09c7\u0987", true); return { ok: true, provider: provider, steps: steps, verdict: "\u098f\u0987 \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 API \u09b8\u09c7\u099f \u0995\u09b0\u09be \u09a8\u09c7\u0987 (PROVIDER_CONFIG)" }; }
+  add("API \u09b8\u09c7\u099f\u09bf\u0982", "\u0986\u099b\u09c7 (" + String(cfg.api_url).replace(/^https?:\/\//, "").split("/")[0] + ")");
+  var fid = P.getProperty("SVC_CSV_FOLDER_ID") || "", fld = null;
+  try { fld = fid ? DriveApp.getFolderById(fid) : null; } catch (e) {}
+  add("CSV \u09ab\u09cb\u09b2\u09cd\u09a1\u09be\u09b0", fld ? "\u09a0\u09bf\u0995 \u0986\u099b\u09c7 (" + fld.getName() + ")" : (fid ? "\u0986\u0997\u09c7\u09b0 \u09ab\u09cb\u09b2\u09cd\u09a1\u09be\u09b0 \u0996\u09cb\u09b2\u09be \u09af\u09be\u099a\u09cd\u099b\u09c7 \u09a8\u09be" : "\u09b8\u09c7\u099f \u09a8\u09c7\u0987"), !fld);
+  var nf = 0, fi = DriveApp.getFoldersByName("boostplus-services"); while (fi.hasNext()) { fi.next(); nf++; }
+  add("'boostplus-services' \u09ab\u09cb\u09b2\u09cd\u09a1\u09be\u09b0", nf + "\u099f\u09bf" + (nf > 1 ? " \u2014 \u098f\u0995\u09be\u09a7\u09bf\u0995, \u09ab\u09be\u0987\u09b2 \u099b\u09a1\u09bc\u09bf\u09af\u09bc\u09c7 \u09a5\u09be\u0995\u09a4\u09c7 \u09aa\u09be\u09b0\u09c7 (\u09a8\u09a4\u09c1\u09a8 \u0995\u09cb\u09a1 \u09a8\u09bf\u099c\u09c7 \u0996\u09c1\u0981\u099c\u09c7 \u09a8\u09c7\u09af\u09bc)" : ""), nf > 1);
+  var name = svcFileName_(provider), f = null;
+  try { f = svcFindFile_(name); } catch (e2) {}
+  add("CSV \u09ab\u09be\u0987\u09b2", f ? name + " \u00b7 " + Math.round(f.getSize() / 1024) + " KB \u00b7 " + Utilities.formatDate(f.getLastUpdated(), "Asia/Dhaka", "dd MMM HH:mm") : name + " \u2014 \u09aa\u09be\u0993\u09af\u09bc\u09be \u09af\u09be\u09af\u09bc\u09a8\u09bf", !f);
+  var st = svcState_()[provider]; add("\u09b6\u09c7\u09b7 \u09b8\u0982\u0997\u09cd\u09b0\u09b9 (\u09b0\u09c7\u0995\u09b0\u09cd\u09a1)", st ? st.at + " \u00b7 " + st.count + "\u099f\u09bf" : "\u09b0\u09c7\u0995\u09b0\u09cd\u09a1 \u09a8\u09c7\u0987", !st);
+  if (d.probe) {
+    var t0 = Date.now(), resp = null, body = "", arr = null;
+    try { resp = UrlFetchApp.fetch(cfg.api_url, svcFetchOpt_(cfg)); body = resp.getContentText(); }
+    catch (ex) { add("\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7 \u09b8\u0982\u09af\u09cb\u0997", "\u09ac\u09cd\u09af\u09b0\u09cd\u09a5: " + String(ex && ex.message || ex).substring(0, 140), true); return { ok: true, provider: provider, steps: steps, verdict: "\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7 \u09b8\u0982\u09af\u09cb\u0997 \u09b9\u099a\u09cd\u099b\u09c7 \u09a8\u09be \u09ac\u09be \u0996\u09c1\u09ac \u09a7\u09c0\u09b0 \u2014 API URL \u09a6\u09c7\u0996\u09c1\u09a8 \u09ac\u09be \u09aa\u09b0\u09c7 \u0986\u09ac\u09be\u09b0 \u099a\u09c7\u09b7\u09cd\u099f\u09be \u0995\u09b0\u09c1\u09a8" }; }
+    var ms = Date.now() - t0, code = resp.getResponseCode();
+    try { arr = JSON.parse(body); } catch (e3) {}
+    if (Array.isArray(arr)) {
+      add("\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u0989\u09a4\u09cd\u09a4\u09b0", "HTTP " + code + " \u00b7 " + arr.length + "\u099f\u09bf \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8 \u00b7 " + Math.round(body.length / 1024) + " KB \u00b7 " + ms + " ms", !arr.length);
+      verdict = !arr.length ? "\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u0996\u09be\u09b2\u09bf \u09a4\u09be\u09b2\u09bf\u0995\u09be \u09a6\u09bf\u099a\u09cd\u099b\u09c7" : (f ? "\u09b8\u09ac \u09a0\u09bf\u0995 \u0986\u099b\u09c7 \u2014 \u0986\u09ac\u09be\u09b0 \u0996\u09c1\u09b2\u09c1\u09a8" : "\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09a0\u09bf\u0995 \u0986\u099b\u09c7, \u09b6\u09c1\u09a7\u09c1 \u09ab\u09be\u0987\u09b2 \u09a8\u09c7\u0987 \u2014 '\u098f\u0996\u09a8\u0987 \u09b8\u0982\u0997\u09cd\u09b0\u09b9 \u0995\u09b0\u09c1\u09a8' \u099a\u09be\u09aa\u09c1\u09a8");
+    } else {
+      var pv = String(body).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().substring(0, 110);
+      add("\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u09c7\u09b0 \u0989\u09a4\u09cd\u09a4\u09b0", "HTTP " + code + " \u00b7 JSON \u09a4\u09be\u09b2\u09bf\u0995\u09be \u09a8\u09af\u09bc: " + pv, true);
+      verdict = (code === 403 || code === 503 || /cloudflare|just a moment|captcha/i.test(body)) ? "\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 (\u09ac\u09be Cloudflare) Google \u09b8\u09be\u09b0\u09cd\u09ad\u09be\u09b0\u0995\u09c7 \u0986\u099f\u0995\u09be\u099a\u09cd\u099b\u09c7 \u2014 \u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0\u0995\u09c7 \u0985\u09a5\u09ac\u09be API URL \u09a6\u09c7\u0996\u09c1\u09a8" : (arr && arr.error ? "\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09ac\u09b2\u099b\u09c7: " + String(arr.error).substring(0, 80) : "\u09aa\u09cd\u09b0\u09ad\u09be\u0987\u09a1\u09be\u09b0 \u09b8\u09be\u09b0\u09cd\u09ad\u09bf\u09b8-\u09a4\u09be\u09b2\u09bf\u0995\u09be \u09a6\u09bf\u099a\u09cd\u099b\u09c7 \u09a8\u09be (API URL/\u0995\u09c0 \u09a6\u09c7\u0996\u09c1\u09a8)");
+    }
+  } else if (!f) verdict = "\u09ab\u09be\u0987\u09b2 \u09a8\u09c7\u0987 \u2014 \u09b8\u0982\u0997\u09cd\u09b0\u09b9 \u099a\u09be\u09b2\u09be\u09a8";
+  return { ok: true, provider: provider, steps: steps, verdict: verdict };
+}
+
+
+// ---------- v81: drop check (manual count) -> Drive file svc_drops.json: { "provider|order": [ {at, cur, base, exp, pct, days} ] } ----------
+function svcDropFile_() { var it = svcFolder_().getFilesByName("svc_drops.json"); return it.hasNext() ? it.next() : null; }
+function svcDropLoad_() { try { var f = svcDropFile_(); return f ? JSON.parse(f.getBlob().getDataAsString("UTF-8")) : {}; } catch (e) { return {}; } }
+function svcDropSave2_(o) { var t = JSON.stringify(o), f = svcDropFile_(); if (f) f.setContent(t); else svcFolder_().createFile("svc_drops.json", t, MimeType.PLAIN_TEXT); }
+
+// d: provider, order (provider order id), count (current followers/likes now), base (optional: count before the order, if the provider gave no start_count)
+function svcDropSave_(d) {
+  var provider = String(d.provider || ""), po = String(d.order || "").replace(/[^A-Za-z0-9_-]/g, "").substring(0, 40), cur = Number(d.count);
+  if (!provider || !po) return { ok: false, error: "bad_request", message: "অর্ডার আইডি নেই" };
+  if (!(isFinite(cur) && cur >= 0)) return { ok: false, error: "bad_count", message: "এখনকার সংখ্যা দিন (০ বা বেশি)" };
+  var sp = svcSpeed_({ all: true, provider: provider }), row = null;
+  for (var i = 0; i < sp.rows.length; i++) { if (String(sp.rows[i].provider_order) === po) { row = sp.rows[i]; break; } }
+  if (!row) return { ok: false, error: "order_not_found", message: "এই অর্ডার স্পিড-টেস্টের তালিকায় নেই" };
+  var stt = String(row.status || "").toLowerCase();
+  if (stt !== "completed" && stt !== "partial") return { ok: false, error: "not_done", message: "অর্ডার এখনো সম্পন্ন হয়নি — সম্পন্ন হওয়ার পর যাচাই করুন" };
+  // provider start_count of 0/empty is often "not reported", so ask for the before-count in that case
+  var hasD = !(d.base === undefined || d.base === null || d.base === ""), base = row.start_count > 0 ? Number(row.start_count) : (hasD ? Number(d.base) : NaN);
+  if (!(isFinite(base) && base >= 0)) return { ok: false, error: "need_base", message: "প্রভাইডার শুরুর সংখ্যা দেয়নি — অর্ডারের আগে কত ছিল তা দিন" };
+  var got = (row.delivered !== null && row.delivered !== undefined) ? row.delivered : row.quantity;
+  if (stt === "completed") got = row.quantity || got;
+  if (!(got > 0)) return { ok: false, error: "no_qty", message: "ডেলিভারির পরিমাণ জানা যায়নি" };
+  var exp = base + got, pct = Math.round((exp - cur) / got * 1000) / 10;
+  var t0 = row.completed_at || row.ordered_at || Date.now(), days = Math.max(0, Math.round((Date.now() - t0) / 864e5 * 10) / 10);
+  var lock = LockService.getScriptLock(); lock.waitLock(15000);
+  try {
+    var all = svcDropLoad_(), k = provider + "|" + po, arr = all[k] || [];
+    arr.push({ at: Date.now(), cur: cur, base: base, exp: exp, pct: pct, days: days }); all[k] = arr.slice(-6);
+    svcDropSave2_(all);
+  } finally { lock.releaseLock(); }
+  return { ok: true, pct: pct, days: days, expected: exp, cur: cur };
+}
+
+// v81: every tested service: { "provider|service_id": {n, ok, open, bad, total_med, start_med, last_at, per_hr, drop_med, drop_n, tests:[newest 5]} }
+function svcTested_() {
+  var sp = svcSpeed_({ all: true }), g = svcStStats_(), dm = svcDropLoad_(), by = {}, out = {};
+  (sp.rows || []).forEach(function (r) {   // rows are newest first
+    var k = r.provider + "|" + r.service_id, b = by[k] || (by[k] = { t: [], hr: [], dp: [] });
+    var da = dm[r.provider + "|" + r.provider_order], dl = da && da.length ? da[da.length - 1] : null;
+    if (dl) b.dp.push(Math.max(0, dl.pct));
+    if (b.t.length < 5) b.t.push({ at: r.ordered_at, q: r.quantity, st: r.status, ss: r.start_secs, ts: r.total_secs, dl: r.delivered, c: r.cost_bdt, src: r.src,
+      po: r.provider_order, sc: r.start_count, dr: dl ? { pct: dl.pct, days: dl.days, cur: dl.cur, at: dl.at } : null });
+    var stt = String(r.status || "").toLowerCase();
+    if (stt === "completed" && r.total_secs > 0 && r.quantity > 0) b.hr.push(r.quantity / (r.total_secs / 3600));
+  });
+  Object.keys(g).forEach(function (k) {
+    var x = g[k]; if (!x || !(x.n > 0)) return;
+    var b = by[k] || { t: [], hr: [], dp: [] };
+    out[k] = { n: x.n, ok: x.ok, open: x.open, bad: x.bad, total_med: x.total_med || 0, start_med: x.start_med || 0,
+      last_at: b.t.length ? b.t[0].at : 0, per_hr: b.hr.length ? Math.round(stMedian_(b.hr)) : 0,
+      drop_n: b.dp.length, drop_med: b.dp.length ? Math.round(stMedian_(b.dp) * 10) / 10 : 0, tests: b.t };
+  });
+  return { ok: true, tested: out };
+}

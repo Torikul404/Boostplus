@@ -193,3 +193,42 @@ pre.rep{white-space:pre-wrap;overflow-wrap:anywhere;max-height:55vh;overflow:aut
 .dfg{padding-top:10px}.dfh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding-bottom:6px}.dfh b{font-size:16px}.dfr{cursor:pointer}.dfr:active{opacity:.7}.dfr .spv b.hi{color:var(--er)}
 .dfl{display:inline-flex;align-items:center;min-width:32px;min-height:32px;margin-right:4px;vertical-align:middle}.dfck{width:20px;height:20px}
 .dfb{position:sticky;top:8px;z-index:5;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.dfb[hidden]{display:none}.dfr .ordb{margin-top:6px}
+
+.tag.tst{display:inline-block;margin-left:6px;vertical-align:middle;font-weight:600;font-family:inherit;background:transparent;cursor:pointer;color:var(--mu)}
+.tag.tst.ok,.tst2.ok{color:var(--ok)}.tag.tst.ok{border-color:var(--ok)}
+.tag.tst.mid,.tst2.mid,.tag.tst.wait,.tst2.wait{color:var(--wa)}.tag.tst.mid,.tag.tst.wait{border-color:var(--wa)}
+.tag.tst.slow,.tst2.slow{color:var(--er)}.tag.tst.slow{border-color:var(--er)}
+.tag.tst.old,.tst2.old{opacity:.6}.tst2{cursor:pointer;margin-top:2px}.tag.tst[hidden],.tst2[hidden]{display:none}
+.tl .tr{padding:8px 0;border-top:1px solid var(--bd)}.tl .tr:first-child{border-top:0}
+.dchk{margin-top:6px}.dfm{display:flex;flex-direction:column;gap:6px;margin-top:6px}.dfm[hidden]{display:none}.sub.slow{color:var(--er)}.sub.mid{color:var(--wa)}
+
+/* ===== v109: UI পরিমার্জন — সার্ভিস কার্ড, ফিল্টার, প্ল্যাটফর্ম স্ট্রিপ, ডায়ালগ ===== */
+.chips{scrollbar-width:none;margin:0 0 8px;padding-bottom:2px}.chips::-webkit-scrollbar{display:none}
+.chip{min-height:38px;padding:0 14px;font-size:14px}.cdv{flex:none;width:1px;margin:6px 2px;background:var(--bd)}
+.ptiles{display:flex;gap:8px;overflow-x:auto;margin:8px 0;scrollbar-width:none;padding:2px 0}.ptiles::-webkit-scrollbar{display:none}
+.ptile{flex:0 0 62px;min-height:52px;border-radius:14px}.ptile .lg{width:26px;height:26px}.ptile i{right:5px;bottom:2px;font-size:10px}
+.list{gap:10px}
+.svc{grid-template-columns:1fr auto;align-items:start;gap:12px;padding:14px;border-radius:16px;transition:border-color .15s}
+.svc:has(.sw[aria-checked=true]){border-color:color-mix(in srgb,var(--ok) 55%,var(--bd))}
+.sv{min-width:0;display:flex;flex-direction:column;gap:8px}
+.sv-top{display:flex;gap:10px;align-items:flex-start}.sv-top .sel{margin:1px 0 0;flex:none}.sv-top h4{font-size:15px;line-height:1.4;font-weight:600}
+.sv-meta{display:flex;flex-wrap:wrap;gap:6px}
+.pl{font-size:12.5px;padding:3px 10px;border-radius:999px;background:color-mix(in srgb,var(--tx) 7%,transparent);color:var(--mu);white-space:nowrap}
+.pl b{color:var(--tx)}.pl.rt{background:color-mix(in srgb,var(--pr) 20%,transparent);color:var(--tx);font-weight:700;font-size:14px}.pl.rt .mut{font-weight:400;font-size:12px}
+.pl.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}.pl.pv2{color:var(--lk)}
+.sv-cat{opacity:.8}
+.tstbox{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:12px;border-left:4px solid var(--bd);background:color-mix(in srgb,var(--tx) 5%,transparent)}
+.tstbox.ok{border-left-color:var(--ok)}.tstbox.mid,.tstbox.wait{border-left-color:var(--wa)}.tstbox.slow{border-left-color:var(--er)}
+.tstbox .tag.tst{margin:0;align-self:flex-start}.tstbox .tst2{margin:0;line-height:1.5}
+.sv .ordb{margin:0}.sv .ordb .sm{min-height:38px;font-size:14px;padding:0 14px}
+.svc .sw{width:56px;height:36px;border-radius:18px;margin-top:2px}.svc .sw:after{top:3px;left:3px;width:28px;height:28px}.svc .sw[aria-checked=true]:after{left:23px}
+@media(min-width:1024px){.svc{grid-template-columns:1fr auto}.list{display:grid;grid-template-columns:repeat(2,1fr)}}
+dialog{border-radius:20px;padding:20px;box-shadow:0 20px 60px #0007}dialog h3{font-size:18px}
+dialog .acts{margin-top:14px}dialog input{margin-bottom:10px}
+.card{border-radius:16px}.btn{border-radius:14px}
+.toast{box-shadow:0 8px 24px #0005}
+.tstbox .tst2,.tstbox .tst2.ok,.tstbox .tst2.mid,.tstbox .tst2.wait,.tstbox .tst2.slow{color:var(--mu)}.tstbox .tst2{font-size:12.5px}
+.tstl{display:flex;flex-direction:column;margin:10px 0 4px;max-height:48vh;overflow:auto}.tstr{padding:10px 0;border-top:1px solid var(--bd);display:flex;flex-direction:column;gap:4px}.tstr:first-child{border-top:0}
+.tsth{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.tsth .tag.tst{margin:0;cursor:default}
+.dchk .sm{min-height:38px;padding:0 14px;white-space:nowrap;width:auto;flex:none}.dchk{margin-top:4px}.dfm input{margin:0}
+#tstD .acts .sm,#tstD .acts .btn{white-space:nowrap}
