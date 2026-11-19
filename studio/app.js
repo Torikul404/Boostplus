@@ -11,13 +11,13 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const bn=n=>(+n||0).toLocaleString('bn-BD');
 const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
 let token=ls.get('pb_studio_token')||'',busy=false,st={q:'',state:'all',cat:'',off:0,sort:'',tst:''},cur=null,lastList=null,qt=null,SC=null,fabMoved=false;
-const ERR={packages_unavailable:'সাইটের প্যাকেজ তালিকা এখন আনা যায়নি — আগের তালিকা রাখা হয়েছে',unauthorized:'টোকেন ঠিক নয়',locked_out:'অনেকবার ভুল হয়েছে — কিছুক্ষণ পরে চেষ্টা করুন',no_config:'এই প্রভাইডারের API সেট করা নেই',bad_json:'প্রভাইডার সঠিক উত্তর দেয়নি',provider_error:'প্রভাইডার ত্রুটি দিয়েছে',not_collected:'আগে "সংগ্রহ করুন" চাপুন',code_conflict:'এই আইডি সাইটে অন্য প্রভাইডারের সার্ভিস হিসেবে আছে',previously_removed:'এই সার্ভিস আগে সাইট থেকে বাদ দেওয়া হয়েছিল',category_required:'ক্যাটেগরি দিন',price_required:'দাম দিন',svc_failed:'সার্ভারে সমস্যা হয়েছে',unknown_action:'সার্ভারে নতুন কোড চালু হয়নি — Apps Script-এ PtServices.gs ও PtOrder.gs বসিয়ে Deploy → Manage deployments → Edit → New version দিন'};
+const ERR={packages_unavailable:'সাইটের প্যাকেজ তালিকা এখন আনা যায়নি — আগের তালিকা রাখা হয়েছে',unauthorized:'টোকেন ঠিক নয়',locked_out:'অনেকবার ভুল হয়েছে — কিছুক্ষণ পরে চেষ্টা করুন',no_config:'এই প্রভাইডারের API সেট করা নেই',bad_json:'প্রভাইডার সঠিক উত্তর দেয়নি',provider_error:'প্রভাইডার ত্রুটি দিয়েছে',not_collected:'আগে "সংগ্রহ করুন" চাপুন',code_conflict:'এই আইডি সাইটে অন্য প্রভাইডারের সার্ভিস হিসেবে আছে',previously_removed:'এই সার্ভিস আগে সাইট থেকে বাদ দেওয়া হয়েছিল',category_required:'ক্যাটেগরি দিন',not_in_csv:'এই সার্ভিস প্রভাইডারের সংগ্রহ-করা তালিকায় নেই — আগে প্রভাইডার পাতায় "সংগ্রহ করুন" চাপুন',provider_off:'এই প্রভাইডারের সুইচ বন্ধ আছে — আগে প্রভাইডারের সুইচ চালু করুন',code_required:'সার্ভিস আইডি বা প্রভাইডার পাওয়া যায়নি',name_required:'নাম দিন',price_required:'দাম দিন',svc_failed:'সার্ভারে সমস্যা হয়েছে',unknown_action:'সার্ভারে নতুন কোড চালু হয়নি — Apps Script-এ PtServices.gs ও PtOrder.gs বসিয়ে Deploy → Manage deployments → Edit → New version দিন'};
 const mem={};let rid=0;
 function wipe(){for(const k in mem)delete mem[k];try{Object.keys(localStorage).filter(k=>k.indexOf('pbc_')===0).forEach(k=>localStorage.removeItem(k))}catch(e){}}
 async function apiNet(action,x){
   let r,txt,d;if(!navigator.onLine){const e=new Error('ইন্টারনেট নেই');e.code='net';throw e}
-  if(/^svc_(toggle|bulk|collect|site_edit|site_bulk|tidy_apply|auto)$/.test(action))wipe();
-  const TO=/^svc_(csv|by_platform|platforms|snapshot)$/.test(action)?90000:/^svc_(providers|compare|changes|cat_suggest|list|site_list)$/.test(action)?20000:60000,ac=new AbortController(),tm=setTimeout(()=>ac.abort(),TO);
+  if(/^svc_(toggle|bulk|collect|site_edit|site_bulk|tidy_apply|auto|rate_sync|guard_release|guard_check|bk_restore)$/.test(action))wipe();
+  const TO=/^svc_(csv|by_platform|platforms|snapshot|retest_run|bal_check|bk_make|bk_restore)$/.test(action)?90000:/^svc_(providers|compare|changes|list|site_list)$/.test(action)?20000:60000,ac=new AbortController(),tm=setTimeout(()=>ac.abort(),TO);
   try{r=await fetch(API,{method:'POST',mode:'cors',signal:ac.signal,headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({action,token},x||{}))});txt=await r.text();clearTimeout(tm)}
   catch(ex){clearTimeout(tm);const e=new Error(ex&&ex.name==='AbortError'?'সার্ভার সাড়া দিচ্ছে না ('+bn(TO/1000)+' সেকেন্ড) — আবার চেষ্টা করুন':'নেটওয়ার্ক/CORS ত্রুটি: '+(ex&&ex.message||ex));e.code='net';throw e}
   try{d=JSON.parse(txt)}
@@ -74,7 +74,7 @@ async function snapSync(force){if(snapBusy||!navigator.onLine)return;
   snapBusy=0}
 addEventListener('online',()=>snapSync(true));setTimeout(snapSync,1200);setInterval(snapSync,600000);
 /* পড়ার কাজ (তুলনা/প্ল্যাটফর্ম/পরিবর্তন/প্রভাইডার তালিকা): ৫ মিনিটের মধ্যে ও বদল না হলে ফোনের কপি তাৎক্ষণিক; অফলাইনে/সার্ভার না পেলে শেষ কপি */
-let mutTs=0,RCm={},RK=new Set();const RD=/^svc_(providers|by_platform|compare|changes|cat_suggest)$/;
+let mutTs=0,RCm={},RK=new Set();const RD=/^svc_(providers|by_platform|compare|changes)$/;
 async function readCached(a,x){const k='rc_'+a+JSON.stringify(x||{});let c=RCm[k]||(RCm[k]=await idb.get(k));
   if(c&&(!navigator.onLine||(c.at>mutTs&&Date.now()-c.at<300000)))return c.d;
   try{const d=await apiNet(a,x);c={d,at:Date.now()};RCm[k]=c;idb.set(k,c);if(!RK.has(k)){RK.add(k);idb.set('rc_keys',Array.from(RK))}return d}
@@ -286,7 +286,7 @@ async function provider(p,more){
       if(hq){const qi=$('#q');qi.focus();try{qi.setSelectionRange(qi.value.length,qi.value.length)}catch(_){}}
       bindCat($('#cats'),st,()=>provider(p));
       el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{st.state=b.dataset.s;provider(p)});el.querySelectorAll('[data-tt]').forEach(b=>b.onclick=()=>{st.tst=b.dataset.tt;provider(p)});el.querySelectorAll('[data-so]').forEach(b=>b.onclick=()=>{st.sort=st.sort===b.dataset.so?'':b.dataset.so;provider(p)});
-      $('#csv').onclick=()=>dl(p);bindTiles(el,l=>{st.plat=l;st.cat='';provider(p)});$('#sa').onclick=()=>el.querySelectorAll('.sel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange()}});
+      $('#csv').onclick=()=>dl(p);bindTiles(el,l=>{st.plat=l;st.cat='';provider(p)});$('#sa').onclick=()=>el.querySelectorAll('.sel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange({target:x})}});
     }else lastList.rows=lastList.rows.concat(d.rows);
     $('#cnt').textContent=`মোট ${bn(d.total)}টি${d.fx?'':' · USD→৳ রেট সেট নেই (দাম USD-তে দিন)'}`;
     const box=$('#rows');if(!more)box.innerHTML='';
@@ -374,6 +374,40 @@ const cmKey=c=>stripEmo(c).toLowerCase().replace(/[^a-z0-9\u0980-\u09ff]+/g,' ')
 const cmAll=()=>{try{return JSON.parse(ls.get('pb_catmap')||'{}')}catch(e){return{}}};
 const cmGet=c=>{const k=cmKey(c);return k?cmAll()[k]||'':''};
 const cmSet=(c,my)=>{const k=cmKey(c);if(!k||!my)return;const m=cmAll();m[k]=my;ls.set('pb_catmap',JSON.stringify(m))};
+/* ---------- S4: \"চেক করে এড\" — সাইটে তোলার আগে সাইট-রেডি যাচাই (নাম, ক্যাটেগরি, প্ল্যাটফর্ম, দাম>0, min/max, আইডি কনফ্লিক্ট) ---------- */
+const BN_RE=/[\u0980-\u09FF]/,LINK_RE=/https?:\/\/|www\.|\.(?:com|net|org|io|xyz|co|info|shop|top|site|online)\b|@\w/i,PKEYS=PLAT.map(p=>p[0]);
+function readyCheck(r,v,others){
+  const E=[],W=[],name=String(v.name==null?'':v.name).trim(),cat=String(v.cat==null?'':v.cat).trim(),plat=String(v.plat==null?'':v.plat).trim().toLowerCase();
+  const rate=Number(r.rate),mn=Number(r.min),mx=Number(r.max),code=String(r.service_id==null?'':r.service_id),k=x=>String(x||'').trim().toLowerCase();
+  const e=(f,m)=>E.push({f,m}),w=(f,m)=>W.push({f,m});
+  if(!code)e('misc','সার্ভিস আইডি নেই');
+  if(!name)e('name','নাম দিন');
+  else{
+    if(name.length>120)e('name','নাম ১২০ অক্ষরের বেশি — ছোট করুন');
+    if(BN_RE.test(name))e('name','সাইটের নাম ইংরেজিতে দিন (বাংলা অক্ষর আছে)');
+    const pb=String(r.provider||'').toLowerCase().replace(/\.[a-z]+$/,'');
+    if(LINK_RE.test(name)||(pb.length>=4&&name.toLowerCase().indexOf(pb)>=0))e('name','নামে প্রভাইডারের নাম বা লিংক থাকবে না');
+    if(name.length<8)w('name','নামটা খুব ছোট — ক্রেতা বুঝবে তো?');
+    const dup=((CAT&&CAT.rows)||[]).find(x=>x&&k(x.name)===k(name)&&String(x.code)!==code);
+    if(dup)e('name','এই নামে সাইটে আগেই একটি সার্ভিস আছে (#'+dup.code+') — নাম আলাদা করুন');
+    if((others||[]).some(o=>k(o)===k(name)))e('name','এই তালিকার আরেকটি সার্ভিসেও একই নাম — আলাদা করুন (↻ নাম)');
+  }
+  if(!cat)e('cat','ক্যাটেগরি দিন');
+  else{if(cat.length>120)e('cat','ক্যাটেগরি ১২০ অক্ষরের বেশি');if(BN_RE.test(cat))e('cat','সাইটের ক্যাটেগরি ইংরেজিতে দিন (বাংলা অক্ষর আছে)')}
+  if(PKEYS.indexOf(plat)<0)e('plat','প্ল্যাটফর্ম বাছুন');
+  else{
+    if(plat==='other')w('plat','প্ল্যাটফর্ম \"other\" — সম্ভব হলে ঠিক প্ল্যাটফর্ম বাছুন');
+    else{const g=guess((name||'')+' '+(cat||''));if(g!=='other'&&g!==plat)w('plat','নাম/ক্যাটেগরি দেখে মনে হচ্ছে '+g+', কিন্তু প্ল্যাটফর্ম '+plat+' বাছা')}
+  }
+  if(!(rate>0))e('rate','প্রভাইডারের রেট ০ বা ফাঁকা — এই সার্ভিস চালু করা যাবে না');
+  if(!(mn>0)||!(mx>0))w('mm','min/max পাওয়া যায়নি — সাইটে ডিফল্ট ১০–১০,০০০ বসবে');
+  else if(mx<mn)e('mm','max ('+mx+'), min ('+mn+')-এর চেয়ে ছোট — প্রভাইডারের তথ্য ভুল');
+  const ex=((CAT&&CAT.rows)||[]).find(x=>x&&String(x.code)===code);
+  if(ex){if(ex.src==='static')e('misc','এই আইডি সাইটের মূল তালিকায় অন্য সার্ভিসের — কনফ্লিক্ট হবে');else if(ex.state==='on')w('misc','এই আইডি সাইটে আগে থেকেই চালু আছে — আবার বসালে তথ্য বদলে যাবে')}
+  if(!navigator.onLine)e('misc','ইন্টারনেট নেই — চালু করতে নেট লাগবে');
+  return{E,W,ok:!E.length}}
+const chkHtml=c=>c.E.map(x=>'<div class=\"ck e\">✖ '+esc(x.m)+'</div>').join('')+c.W.map(x=>'<div class=\"ck w\">⚠ '+esc(x.m)+'</div>').join('')+(c.ok&&!c.W.length?'<div class=\"ck g\">✔ সাইটে তোলার জন্য প্রস্তুত</div>':c.ok?'<div class=\"ck g\">✔ চালু করা যাবে (সতর্কতা দেখে নিন)</div>':'');
+let shRun=null,shWired=false;
 function openSheet(r,btn,force,q){NGR=r;setTimeout(ngDraw,0);
   const sh=$('#sheet');$('#shT').textContent=q?`সাইটে চালু করুন (${bn(q.i+1)}/${bn(q.n)})`:'সাইটে চালু করুন';$('#shSkip').textContent=q?'বাদ দিন':'বাতিল';$('#shStop').hidden=!q;$('#shOk').textContent='চালু করুন';$('#shN').textContent=`ID ${r.service_id} · রেট ${rateTk(r.rate,1)} · মূল: ${r.name} | ${r.category}`;
   const t=r.tidy||{};$('#shName').value=nice(r)||t.name||r.name;$('#shCat').value=cmGet(r.category)||matchCat(t.cat||r.category);
@@ -385,15 +419,18 @@ function openSheet(r,btn,force,q){NGR=r;setTimeout(ngDraw,0);
     pl.addEventListener('change',()=>{fill();loadSiteCats(pl.value).then(fill)});ci.addEventListener('input',fill)}
   $('#shPriceBdt').hidden=true;$('#shPriceUsd').hidden=true;$('#shUsd').value=r.rate;
   $('#shInfo').textContent=`প্রভাইডারের রেট $${r.rate}/1K — এই দামই সাইটে যাবে, মার্কআপ শুধু সাইটে একবার বসবে`;$('#shErr').textContent='';
+  shRun=()=>{const c=readyCheck(r,{name:$('#shName').value,plat:$('#shPlat').value,cat:$('#shCat').value});$('#shChk').innerHTML=chkHtml(c);return c};
+  if(!shWired){shWired=true;['#shName','#shCat'].forEach(i=>$(i).addEventListener('input',()=>shRun&&shRun()));['#shPlat','#shCs'].forEach(i=>$(i).addEventListener('change',()=>shRun&&shRun()))}
+  setTimeout(()=>shRun&&shRun(),0);
   sh.onclose=async()=>{const rv=sh.returnValue;
     if(rv!=='ok'){if(q){if(rv==='cancel')q.next();else q.done()}return}
     busy=true;btn.disabled=true;
     try{await api('svc_toggle',{provider:r.provider||cur,code:r.service_id,on:true,name:$('#shName').value,platform:$('#shPlat').value,category:$('#shCat').value.trim(),force:true});cmSet(r.category,$('#shCat').value.trim());
       r.state='on';btn.setAttribute('aria-checked','true');toast('সাইটে চালু হয়েছে ✔')}
-    catch(e){if(authFail(e)){}else toast(e.message)}
+    catch(e){if(authFail(e)){}else toast('চালু হয়নি — '+e.message)}
     busy=false;btn.disabled=false;if(q)q.next();
   };
-  $('#shForm').onsubmit=e=>{const u=+$('#shUsd').value,c=$('#shCat').value.trim();if(e.submitter&&e.submitter.value==='ok'&&!c){e.preventDefault();$('#shErr').textContent='ক্যাটেগরি দিন'}};
+  $('#shForm').onsubmit=e=>{if(e.submitter&&e.submitter.value==='ok'){const c=shRun?shRun():readyCheck(r,{name:$('#shName').value,plat:$('#shPlat').value,cat:$('#shCat').value});if(!c.ok){e.preventDefault();$('#shErr').textContent=c.E.length>1?bn(c.E.length)+'টি সমস্যা ঠিক না করলে চালু হবে না (লাল ✖ গুলো দেখুন)':c.E[0].m}}};
   sh.returnValue='';sh.showModal();
 }
 /* CSV: অনলাইনে সার্ভার থেকে নতুনটা আনে ও ফোনে রাখে; অফলাইনে/সার্ভার না পেলে ফোনের রাখা কপি, সেটাও না থাকলে ফোনের ক্যাটালগ থেকে বানায় */
@@ -423,7 +460,8 @@ function siteCatsFor(pv){const lab=PLB[pv];if(!lab)return[];const m=new Map();
   return [...m.values()].sort((a,b)=>ti(a.c)-ti(b.c)||catLbl(a.c).localeCompare(catLbl(b.c)))}
 const catOpt=x=>`<option value="${esc(x.c)}">${esc(catLbl(x.c))}${x.n?' ('+bn(x.n)+')':''}</option>`,
   catGroups=L=>{const g={};L.forEach(x=>{const k=typeOf(x.c);(g[k]=g[k]||[]).push(x)});return TORD.filter(k=>g[k]).map(k=>`<optgroup label="${esc(TLBL[k])}">${g[k].map(catOpt).join('')}</optgroup>`).join('')};
-async function loadSiteCats(pv){const lab=PLB[pv];if(!lab||CSG[lab])return;try{const d=await api('svc_cat_suggest',{label:lab});CSG[lab]={site:d.site||[],providers:d.providers||[]}}catch(e){}}
+/* S3: সাইটের ক্যাটেগরি ফোনের ক্যাটালগ (CAT) থেকেই আসে; আগের svc_cat_suggest কলের handler সার্ভারে ছিল না (unknown_action) আর উত্তরও কোথাও পড়া হতো না — তাই সার্ভার কল বাদ */
+function loadSiteCats(pv){return Promise.resolve()}
 function fillCatSel(sel,pv,val){const L=siteCatsFor(pv),k=stripEmo(val||'').toLowerCase();
   sel.innerHTML='<option value="">'+(L.length?'সাইটে থাকা ক্যাটেগরি থেকে বাছুন ▾':'এই প্ল্যাটফর্মে সাইটে ক্যাটেগরি নেই — নিজে লিখুন')+'</option>'+catGroups(L);
   const f=L.find(x=>stripEmo(x.c).toLowerCase()===k);sel.value=f?f.c:''}
@@ -445,20 +483,21 @@ function addList(list){
     it.name=nm||(a.length?a[st]:it.name);taken.add(nk2(it.name))});
   const cnt=()=>{const k=items.filter(x=>x.on).length;$('#bsOk').textContent=`সবগুলো চালু করুন (${bn(k)}টি)`;$('#bsOk').disabled=!k};
   items.forEach(it=>{const c=document.createElement('div');c.className='card bsi';
-    c.innerHTML=`<div class="bsh"><label class="bsk"><input type="checkbox" checked aria-label="চালু করুন"><b>#${esc(it.r.service_id)}</b></label><span class="sub">রেট ${rateTk(it.r.rate)}</span><button type="button" class="sm bsn" aria-label="অন্য নাম প্রস্তাব">↻ নাম</button><button type="button" class="sm bsx" aria-label="রিমুভ">✕ রিমুভ</button></div><div class="sub bso"></div><textarea class="bn" rows="2" maxlength="120" aria-label="সাইটে নাম"></textarea><select class="bp" aria-label="প্ল্যাটফর্ম">${PO}</select><select class="bcs" aria-label="সাইটে থাকা ক্যাটেগরি থেকে বাছুন"></select><textarea class="bc" rows="1" autocomplete="off" aria-label="ক্যাটেগরি" placeholder="ক্যাটেগরি (বাছুন বা নিজে লিখুন)"></textarea>`;
+    c.innerHTML=`<div class="bsh"><label class="bsk"><input type="checkbox" checked aria-label="চালু করুন"><b>#${esc(it.r.service_id)}</b></label><span class="sub">রেট ${rateTk(it.r.rate)}</span><button type="button" class="sm bsn" aria-label="অন্য নাম প্রস্তাব">↻ নাম</button><button type="button" class="sm bsx" aria-label="রিমুভ">✕ রিমুভ</button></div><div class="sub bso"></div><textarea class="bn" rows="2" maxlength="120" aria-label="সাইটে নাম"></textarea><select class="bp" aria-label="প্ল্যাটফর্ম">${PO}</select><select class="bcs" aria-label="সাইটে থাকা ক্যাটেগরি থেকে বাছুন"></select><textarea class="bc" rows="1" autocomplete="off" aria-label="ক্যাটেগরি" placeholder="ক্যাটেগরি (বাছুন বা নিজে লিখুন)"></textarea><div class="chk bchk" aria-live="polite"></div>`;
     c.querySelector('.bso').textContent=(it.r.provider?it.r.provider+' · ':'')+'মূল: '+it.r.name;
     const ck=c.querySelector('input[type=checkbox]'),n=c.querySelector('.bn'),p=c.querySelector('.bp'),cc=c.querySelector('.bc');
     const cs=c.querySelector('.bcs');Object.assign(it,{c,ck,n,p,cc,cs});p.value=it.plat;n.value=it.name;cc.value=it.cat;
+    it.chk=(mark)=>{const o=items.filter(x=>x!==it&&!x.removed).map(x=>x.name),res=readyCheck(it.r,{name:it.name,plat:p.value,cat:it.cat},o);c.querySelector('.bchk').innerHTML=chkHtml(res);if(mark){n.classList.toggle('bad',res.E.some(x=>x.f==='name'));cc.classList.toggle('bad',res.E.some(x=>x.f==='cat'));c.classList.toggle('fail',!res.ok)}return res};
     it.fill=()=>fillCatSel(cs,p.value,it.cat);it.fill();
-    cs.onchange=()=>{if(!cs.value)return;it.cat=cs.value;cc.value=cs.value;cc.classList.remove('bad');autoH(cc)};
+    cs.onchange=()=>{if(!cs.value)return;it.cat=cs.value;cc.value=cs.value;cc.classList.remove('bad');autoH(cc);it.chk()};
     n.onkeydown=cc.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();e.target.blur()}};
-    ck.onchange=()=>{it.on=ck.checked;c.classList.toggle('off',!it.on);cnt()};n.oninput=()=>{it.name=n.value;n.classList.remove('bad');autoH(n)};p.onchange=()=>{it.plat=p.value;it.fill();loadSiteCats(p.value).then(it.fill)};cc.oninput=()=>{it.cat=cc.value;cc.classList.remove('bad');autoH(cc);it.fill()};
+    ck.onchange=()=>{it.on=ck.checked;c.classList.toggle('off',!it.on);cnt()};n.oninput=()=>{it.name=n.value;n.classList.remove('bad');autoH(n);it.chk()};p.onchange=()=>{it.plat=p.value;it.fill();loadSiteCats(p.value).then(it.fill);it.chk()};cc.oninput=()=>{it.cat=cc.value;cc.classList.remove('bad');autoH(cc);it.fill();it.chk()};
     c.querySelector('.bsn').onclick=()=>{const a=allIdeas(it.r,PLB[p.value]||'');if(!a.length)return;
       const u=new Set(items.filter(x=>x!==it).map(x=>nk2(x.name)));let ok2=false;for(let t=0;t<a.length;t++){it.k=(it.k+1)%a.length;if(!u.has(nk2(a[it.k]))&&!taken.has(nk2(a[it.k]))){ok2=true;break}}
       let nn=a[it.k];if(!ok2){for(let k=1;k<26;k++){const c=planName(a[it.k],k);if(!u.has(nk2(c))&&!taken.has(nk2(c))){nn=c;break}}}
-      n.value=it.name=nn;n.classList.remove('bad');autoH(n)};
+      n.value=it.name=nn;n.classList.remove('bad');autoH(n);it.chk()};
     c.querySelector('.bsx').onclick=async()=>{if(busy)return;
-      const rm=()=>{const i=items.indexOf(it);if(i>=0)items.splice(i,1);c.remove();$('#bsT').textContent=`সাইটে চালু করুন — ${bn(items.length)}টি (নিচে একটার পর একটা)`;cnt();if(!items.length)d.close()};
+      const rm=()=>{it.removed=true;const i=items.indexOf(it);if(i>=0)items.splice(i,1);c.remove();$('#bsT').textContent=`সাইটে চালু করুন — ${bn(items.length)}টি (নিচে একটার পর একটা)`;cnt();if(!items.length)d.close()};
       if(!it.done){rm();return}   /* এখনো চালু হয়নি: শুধু তালিকা থেকে বাদ */
       if(!confirm('#'+it.r.service_id+' সাইট থেকে রিমুভ করবেন?'))return;   /* চালু হয়ে গেছে: সাইট থেকেও লুকিয়ে ফেলে */
       busy=true;try{await api('svc_toggle',{provider:it.r.provider||cur,code:it.r.service_id,on:false});it.r.state='off';
@@ -474,9 +513,9 @@ function addList(list){
   $('#bsX').onclick=()=>{if(!busy)d.close()};
   d.onclose=()=>{const nr=addNoRf;addNoRf=false;bulkBar();if(any&&cur&&!nr)provider(cur)};   /* স্পিড পাতা থেকে খুলে থাকলে প্রভাইডার পাতা জোর করে খোলে না */
   $('#bsOk').onclick=async()=>{if(busy)return;const L=items.filter(x=>x.on&&!x.done);if(!L.length)return;
-    const bad=L.filter(x=>!x.cat.trim());if(bad.length){bad.forEach(x=>x.cc.classList.add('bad'));E.textContent='ক্যাটেগরি লাগবে — লাল ঘরগুলো পূরণ করুন';bad[0].cc.scrollIntoView({block:'center'});return}
-    {const seen=new Set(items.filter(x=>x.done).map(x=>nk2(x.name))),dup=[];L.forEach(x=>{const k=nk2(x.name);if(seen.has(k))dup.push(x);seen.add(k)});
-      if(dup.length){dup.forEach(x=>x.n.classList.add('bad'));E.textContent='একই নাম একাধিক সার্ভিসে — লাল ঘরের নাম আলাদা করুন (↻ নাম চাপুন)';dup[0].n.scrollIntoView({block:'center'});return}}
+    {const res=L.map(x=>[x,x.chk(true)]),bad=res.filter(z=>!z[1].ok);
+      if(bad.length){E.textContent=`${bn(bad.length)}টি সার্ভিস সাইটে তোলার মতো তৈরি নয় — লাল কার্ডের নিচের ✖ লেখা ঠিক করুন (বাকি ${bn(L.length-bad.length)}টি ঠিক আছে)`;bad[0][0].c.scrollIntoView({block:'center'});return}
+      const nw=res.reduce((a,z)=>a+z[1].W.length,0);E.textContent=nw?`সব ঠিক আছে (${bn(nw)}টি সতর্কতা সহ) — চালু হচ্ছে…`:''}
     busy=true;$('#bsOk').disabled=true;let ok=0;const er=[];
     const mark=x=>{cmSet(x.r.category,x.cat.trim());x.r.state='on';sel.delete(x.r);{const w=RW.get(x.r);if(w){w.cb&&(w.cb.checked=false);w.sw&&w.sw.setAttribute('aria-checked','true')}}x.done=true;x.on=false;x.ck.checked=false;x.ck.disabled=true;x.c.classList.add('done');ok++;any=true};
     const bad1=(x,m)=>{er.push('#'+x.r.service_id+' '+m);x.c.classList.add('fail')};
@@ -493,7 +532,7 @@ function addList(list){
     busy=false;cnt();
     if(!er.length){d.close();toast(bn(ok)+'টি সার্ভিস সাইটে চালু হয়েছে ✔')}
     else E.textContent=`${bn(ok)}টি হয়েছে, ${bn(er.length)}টি হয়নি — ${er.slice(0,3).join(' · ')}। লাল কার্ডগুলো ঠিক করে আবার চাপুন।`};
-  cnt();d.showModal();box.scrollTop=0;items.forEach(x=>{autoH(x.n);autoH(x.cc)})}
+  cnt();d.showModal();box.scrollTop=0;items.forEach(x=>{autoH(x.n);autoH(x.cc);x.chk()})}
 function addQueue(list){addList(list)}
 async function bulk(k){
   if(k==='x'){sel.clear();document.querySelectorAll('.sel').forEach(x=>x.checked=false);return bulkBar()}
@@ -766,7 +805,7 @@ function platPage(label){
   cur=null;$('#title').textContent=label;$('#back').hidden=false;const el=$('#main');ps={q:'',type:'',state:'all',off:0,prov:[],sort:'asc'};
   el.innerHTML=`<div class="phd">${logo(label,48)}<div><b>${esc(label)}</b><div class="sub" id="pcnt"></div></div></div><div class="bar"><input id="pq" type="search" placeholder="নাম বা আইডি খুঁজুন" aria-label="খুঁজুন"></div><div class="chips" id="ppv"></div><div class="chips" id="pty"></div><div class="chips">${[['all','সব'],['on','চালু'],['off','বন্ধ']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${s[0]==='all'}">${s[1]}</button>`).join('')}<button class="chip" id="psa">সব বাছুন</button></div><div class="chips" id="pso" role="group" aria-label="দাম সাজান"><button class="chip" data-so="asc" aria-pressed="true">দাম: কম → বেশি</button><button class="chip" data-so="desc" aria-pressed="false">দাম: বেশি → কম</button></div><div class="list" id="pl"></div><div id="pmore"></div>`;
   $('#pso').querySelectorAll('[data-so]').forEach(b=>b.onclick=()=>{ps.sort=b.dataset.so;$('#pso').querySelectorAll('[data-so]').forEach(x=>x.setAttribute('aria-pressed',x===b));pload(label)});
-  $('#psa').onclick=()=>el.querySelectorAll('#pl .sel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange()}});
+  $('#psa').onclick=()=>el.querySelectorAll('#pl .sel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange({target:x})}});
   $('#pq').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{ps.q=e.target.value;pload(label)},350)};
   el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ps.state=b.dataset.s;el.querySelectorAll('[data-s]').forEach(x=>x.setAttribute('aria-pressed',x===b));pload(label)});
   pload(label)}
@@ -789,7 +828,7 @@ function mng(){
   cur=null;ms.state='on';$('#title').textContent='সাইটের সার্ভিস';$('#back').hidden=true;const el=$('#main');
   el.innerHTML=nav('mng')+`<div class="card" id="fxd"><b>⚙ অটো: যোগ হওয়া মার্কআপ সরান</b><p class="sub">সব সার্ভিসের দাম প্রভাইডারের আসল রেটের সাথে মিলিয়ে দেখে — যেগুলোতে রেটের চেয়ে বেশি দাম বসে আছে (মার্কআপ যোগ হয়ে গেছে), সেগুলো একসাথে প্রভাইডারের আসল রেটে ফেরায়। এরপর সাইট একবারই মার্কআপ দেবে। নিজে খুঁজতে হবে না।</p><div class="acts"><button class="sm" id="fxdChk">🔍 সব যাচাই করুন</button><button class="sm dng" id="fxdGo" hidden>✔ সবগুলো ঠিক করুন</button></div><div id="fxdOut" class="sub"></div></div><div id="mps"></div><div class="bar"><input id="mq" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি" value="${esc(ms.q)}" aria-label="খুঁজুন"></div><div id="mcats"></div><div id="mcm"></div><div class="chips"><button class="chip" id="msa">সব বাছুন</button><button class="chip" id="msy">⟳ সিঙ্ক</button></div><p class="sub" id="mcnt"></p><div class="list" id="ml"></div><div id="mmore"></div>`;
   $('#mq').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{ms.q=e.target.value;mload()},350)};
-  $('#msa').onclick=()=>el.querySelectorAll('.msel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange()}});
+  $('#msa').onclick=()=>el.querySelectorAll('.msel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange({target:x})}});
   $('#fxdChk').onclick=async()=>{const o=$('#fxdOut');o.textContent='খোঁজা হচ্ছে…';try{const d=await api('svc_fix_double',{apply:false});$('#fxdGo').hidden=!d.count;o.innerHTML=d.count?`<b>${bn(d.count)}টি</b> সার্ভিসে দাম বেশি বসে আছে:<br>`+d.items.map(i=>`#${esc(i.code)} ${esc(i.name)} — এখন $${esc(i.stored)} → হবে $${esc(i.rate)}`).join('<br>')+(d.count>d.items.length?`<br>… আরও ${bn(d.count-d.items.length)}টি`:''):'কোনো যোগ-হওয়া মার্কআপ পাওয়া যায়নি ✔ ('+bn(d.checked||0)+'টি যাচাই হয়েছে)'+(d.no_provider?` (${bn(d.no_provider)}টি সার্ভিসে প্রভাইডারের নাম নেই, সেগুলো মেলানো যায়নি)`:'')}catch(e){o.textContent='';if(!authFail(e))toast(e.message)}};
   $('#fxdGo').onclick=async()=>{const b=$('#fxdGo'),o=$('#fxdOut');if(!confirm('এই সার্ভিসগুলোর দাম প্রভাইডারের রেটে ফেরানো হবে। চালিয়ে যাবেন?'))return;b.disabled=true;try{const d=await api('svc_fix_double',{apply:true});o.textContent='ঠিক হয়েছে — '+bn(d.count)+'টি সার্ভিস';b.hidden=true;try{await catSyncNow()}catch(_){}}catch(e){if(!authFail(e))toast(e.message)}b.disabled=false};
   $('#msy').onclick=async e=>{const b=e.currentTarget;if(b.disabled)return;b.disabled=true;try{await catSyncNow((a,t)=>{b.textContent='⟳ '+bn(a)+'/'+bn(t)});toast('সিঙ্ক হয়েছে — '+bn(CAT.rows.length)+'টি সার্ভিস ফোনে');mload()}catch(x){if(!authFail(x))toast(x.message)}b.textContent='⟳ সিঙ্ক';b.disabled=false};
@@ -1304,7 +1343,7 @@ async function poster(){cur=null;$('#title').textContent='পোস্টার'
   try{if(!CAT)await catSyncNow();await priceMeta().catch(()=>{});try{await allReady()}catch(e){}}catch(e){if(!authFail(e))el.innerHTML=nav('poster')+`<div class="card"><p class="err">${esc(e.message)}</p></div>`;return}
   PAI=null;const all=pItems(),pc={};all.forEach(it=>{pc[it.platform_label]=(pc[it.platform_label]||0)+1});const pls=Object.keys(pc).sort((a,b)=>pc[b]-pc[a]),prv=lpRows().length>0;if(PS.plat&&!pc[PS.plat])PS.plat='';if(!pItems().some(it=>PSEL.has(it.key)))PSEL.clear();if(!PSEL.size)pAuto();let lim=60;
   el.innerHTML=nav('poster')+`<div class="card pst"><canvas id="pcv" role="img" aria-label="পোস্টার প্রিভিউ"></canvas><div class="acts"><button class="btn" id="pSh">↗ শেয়ার করুন</button><button class="sm" id="pDl">⤓ ছবি</button><button class="sm" id="pCp">⧉ ক্যাপশন</button></div></div>
-  <div class="card"><b>🎨 ডিজাইন</b><div class="chips" style="margin:10px 0 6px">${PTH.map((t,i)=>`<button class="chip pth" data-th="${i}" aria-pressed="${PS.th===i}" style="background:linear-gradient(135deg,${t[1]},${t[2]},${t[3]});color:#fff;border:0">${t[0]}</button>`).join('')}</div><div class="chips">${PSZ.map((z,i)=>`<button class="chip" data-sz="${i}" aria-pressed="${PS.sz===i}">${z[0]}</button>`).join('')}</div>
+  <div class="card"><b>🎨 ডিজাইন</b><div class="chips" style="margin:10px 0 6px">${PTH.map((t,i)=>`<button class="chip pth" data-th="${i}" aria-pressed="${PS.th===i}" style="--g:linear-gradient(135deg,${t[1]},${t[2]},${t[3]})">${t[0]}</button>`).join('')}</div><div class="chips">${PSZ.map((z,i)=>`<button class="chip" data-sz="${i}" aria-pressed="${PS.sz===i}">${z[0]}</button>`).join('')}</div>
   <label for="pB">ব্র্যান্ড</label><input id="pB" maxlength="30" value="${esc(PS.brand)}"><label for="pH">শিরোনাম</label><input id="pH" maxlength="40" value="${esc(PS.head)}"><label for="pT">ট্যাগলাইন</label><input id="pT" maxlength="60" value="${esc(PS.tag)}"><label for="pC">বোতামের লেখা</label><input id="pC" maxlength="30" value="${esc(PS.cta)}"><label for="pN">যোগাযোগ (WhatsApp / টেলিগ্রাম / সাইট)</label><input id="pN" maxlength="60" value="${esc(PS.con)}" placeholder="যেমন: WhatsApp 01XXXXXXXXX"></div>
   <div class="card"><b>📋 সার্ভিস বাছুন</b> <span class="sub" id="pCnt"></span><p class="sub">${prv?'সব প্রভাইডারের সব সার্ভিস থেকে বাছা যায়।':'প্রভাইডার ডেটা লোড হয়নি — এখন শুধু সাইটের চালু সার্ভিস দেখাচ্ছে।'} দাম সাইটের হিসাবে বসে (খরচ ×৳131 + স্ল্যাব মার্কআপ), কাস্টম দাম থাকলে সেটাই। পোস্টারে সবসময় দাম কম→বেশি সাজানো থাকে।</p>
   <div class="bar" style="margin-top:6px"><select id="pP" aria-label="প্ল্যাটফর্ম"><option value="">সব প্ল্যাটফর্ম (${bn(all.length)})</option>${pls.map(l=>`<option value="${esc(l)}" ${l===PS.plat?'selected':''}>${esc(l)} (${bn(pc[l])})</option>`).join('')}</select><input id="pQ" type="search" placeholder="নাম / ID খুঁজুন" value="${esc(PS.q)}" aria-label="খুঁজুন"></div>
@@ -1635,12 +1674,14 @@ async function provDiag(p){const b=$('#rd'),g=$('#dg');if(!b)return;b.disabled=t
   try{const r=await api('svc_diag',{provider:p,probe:true});const g2=$('#dg');if(g2)g2.innerHTML=(r.verdict?'<p><b>'+esc(r.verdict)+'</b></p>':'')+r.steps.map(s=>`<div class="sub ${s.bad?'hi':'ok'}">${s.bad?'✖':'✔'} <b>${esc(s.k)}:</b> ${esc(s.v)}</div>`).join('')}
   catch(e){if(!authFail(e)){const g2=$('#dg');if(g2)g2.innerHTML='<p class="err">'+esc(e.message)+'</p>'}}
   const b2=$('#rd');if(b2)b2.disabled=false}
-function route(){rid++;const h=decodeURIComponent(location.hash.replace('#',''));const bb=$('#bulk');if(bb)bb.hidden=true;sel.clear();ssel.clear();if(h==='exc')exc();else if(h==='cmp')cmp();else if(h==='chg')chg();else if(h==='tidy')tidy();else if(h==='plat')plat();else if(h==='mng')mng();else if(h==='poster')poster();else if(h==='best')best();else if(h==='spd')spd();else if(h==='cats')catsPage();else if(h.indexOf('cat=')===0)catPage(h.slice(4));else if(h.indexOf('pl=')===0)platPage(h.slice(3));else if(h.indexOf('p=')===0){st={q:'',state:'all',cat:'',off:0};provider(h.slice(2))}else home();$('#main').focus({preventScroll:true})}
+function route(){rid++;const h=decodeURIComponent(location.hash.replace('#',''));const bb=$('#bulk');if(bb)bb.hidden=true;sel.clear();ssel.clear();if(h==='exc')exc();else if(h==='cmp')cmp();else if(h==='chg')chg();else if(h==='tidy')tidy();else if(h==='plat')plat();else if(h==='mng')mng();else if(h==='poster')poster();else if(h==='best')best();else if(h==='spd')spd();else if(h==='dash'&&window.StudioDASH){cur=null;window.StudioDASH.mount({api,esc,bn,toast,authFail})}else if(h==='bk'&&window.StudioBK){cur=null;window.StudioBK.mount({api,esc,bn,toast,authFail})}else if(h==='guard'&&window.StudioGUARD){cur=null;window.StudioGUARD.mount({api,esc,bn,toast,authFail})}else if(h==='rate'&&window.StudioRATE){cur=null;window.StudioRATE.mount({api,esc,bn,toast,authFail})}else if(h==='bal'&&window.StudioBAL){cur=null;window.StudioBAL.mount({api,esc,bn,toast,authFail})}else if(h==='rt'&&window.StudioRT){cur=null;window.StudioRT.mount({api,esc,bn,toast,authFail})}else if(h==='tq'&&window.StudioTQ){cur=null;window.StudioTQ.mount({api,esc,bn,toast,authFail,mnT,dT,addList})}else if(h==='cats')catsPage();else if(h.indexOf('cat=')===0)catPage(h.slice(4));else if(h.indexOf('pl=')===0)platPage(h.slice(3));else if(h.indexOf('p=')===0){st={q:'',state:'all',cat:'',off:0};provider(h.slice(2))}else home();$('#main').focus({preventScroll:true})}
 function show(a){$('#login').hidden=a;$('#app').hidden=!a;aiShow(a)}
 function logout(m){token='';Object.keys(PC).forEach(k=>{idb.set('prov_'+k,null);idb.set('csv_'+k,null);idb.set('ex_'+k,null)});RK.forEach(k=>idb.set(k,null));RK=new Set();RCm={};Q=[];idb.set(QK,null);idb.set('rc_keys',null);PC={};CAT=null;idb.set(CATK,null);wipe();ls.del('pb_studio_token');show(false);$('#loginErr').textContent=m||'';$('#tok').value=''}
 $('#loginForm').onsubmit=async e=>{e.preventDefault();token=$('#tok').value.trim();const b=e.target.querySelector('button');b.disabled=true;$('#loginErr').textContent='';
   try{await api('svc_providers');ls.set('pb_studio_token',token);show(true);route();setTimeout(()=>bgSync(true),2500)}catch(x){$('#loginErr').textContent=ERR[x.code]||('সংযোগ করা যায়নি — '+x.message)}b.disabled=false};
 $('#logout').onclick=()=>logout();$('#back').onclick=()=>{const h=location.hash;location.hash=h.indexOf('#pl=')===0?'plat':h.indexOf('#cat=')===0?'cats':''};
+addEventListener('unhandledrejection',ev=>{const e=ev.reason;ev.preventDefault();try{if(authFail(e))return;toast((e&&e.message)||'কিছু একটা ভুল হয়েছে — আবার চেষ্টা করুন')}catch(_){}});
+addEventListener('error',ev=>{try{if(ev&&ev.message&&!/ResizeObserver/.test(ev.message))toast('ছোট একটা সমস্যা হয়েছে — পেজ আবার খুলুন')}catch(_){}});
 addEventListener('hashchange',()=>token&&route());
 /* ---------- PWA ইনস্টল + সমস্যা পরীক্ষা ---------- */
 let dip=null;const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;

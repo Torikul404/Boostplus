@@ -1,0 +1,77 @@
+/* boostplus স্টুডিও — S1 নতুন ডিজাইন (Boost Plus সাইটের sky-blue সিস্টেম)। app.css-এর ওপরে বসে; JS অপরিবর্তিত। */
+@font-face{font-family:"Plus Jakarta Sans";src:url(fonts/plus-jakarta-sans-latin-400-normal.woff2) format("woff2");font-weight:400;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Plus Jakarta Sans";src:url(fonts/plus-jakarta-sans-latin-500-normal.woff2) format("woff2");font-weight:500;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Plus Jakarta Sans";src:url(fonts/plus-jakarta-sans-latin-600-normal.woff2) format("woff2");font-weight:600;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Plus Jakarta Sans";src:url(fonts/plus-jakarta-sans-latin-700-normal.woff2) format("woff2");font-weight:700;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Plus Jakarta Sans";src:url(fonts/plus-jakarta-sans-latin-800-normal.woff2) format("woff2");font-weight:800;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+/* ---- টোকেন: লাইট (ডিফল্ট; OS ডার্ক হলেও) ---- */
+:root:not([data-theme=dark]){color-scheme:light;--bg:#E9F3FD;--cd:#FFFFFF;--fd:#F4F9FF;--soft:#E9F3FD;--tint:#D6ECFB;--tx:#0F2A44;--mu:#506279;--bd:#DCE9F6;--bdi:#7F9BBB;--pr:#0279B8;--prh:#026AA3;--lk:#0369A1;--hi:#0EA5E9;--ok:#047857;--wa:#A15207;--er:#B91C1C;--sh:0 10px 30px -18px rgb(15 42 68 / .30)}
+:root[data-theme=dark]{color-scheme:dark;--bg:#0B1626;--cd:#101F36;--fd:#13243F;--soft:#172A45;--tint:#17324F;--tx:#EAF4FF;--mu:#9FB3CC;--bd:#22385A;--bdi:#6683AB;--pr:#0279B8;--prh:#0369A1;--lk:#7DD3FC;--hi:#38BDF8;--ok:#34D399;--wa:#FBBF24;--er:#F87171;--sh:0 10px 30px -18px rgb(0 0 0 / .65)}
+:root{--hd:64px;--rad:18px;--font:"Plus Jakarta Sans","Hind Siliguri",Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{font-family:var(--font);font-size:15px;letter-spacing:-.005em;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-weight:800;letter-spacing:-.01em}
+:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
+/* ---- হেডার ---- */
+#top{background:var(--cd);border-bottom:1px solid var(--bd);box-shadow:0 8px 24px -20px rgb(15 42 68 / .45);padding-left:14px;padding-right:12px}
+#top h2{font-size:17px;font-weight:800;color:var(--tx)}
+.ib{border:1px solid var(--bd);border-radius:11px;background:var(--cd);color:var(--tx);transition:all .15s ease}
+.ib:hover{background:var(--tint);border-color:var(--hi)}
+#back{color:var(--lk);font-size:24px;font-weight:700}
+/* ---- কার্ড, বাটন ---- */
+.card{border-radius:var(--rad);border:1px solid var(--bd);box-shadow:var(--sh);padding:16px}
+.btn{border-radius:12px;background:var(--pr);color:#fff;font-weight:700;box-shadow:inset 0 1px 0 rgb(255 255 255 / .35);transition:all .15s ease}
+.btn:hover{background:var(--prh)}.btn:active{transform:translateY(1px)}.btn:disabled{opacity:.55;cursor:not-allowed}
+.sm{border:1.5px solid var(--lk);border-radius:12px;color:var(--lk);font-weight:700;transition:all .15s ease}
+.sm:hover{background:var(--tint)}
+.chip{border:1.5px solid var(--bd);border-radius:99px;background:var(--cd);color:var(--tx);font-weight:600;font-size:14px;transition:all .15s ease}
+.chip:hover{border-color:var(--hi)}
+.chip[aria-pressed=true],.chip[aria-current=true]{background:var(--pr);border-color:var(--pr);color:#fff}
+.chips{scrollbar-width:none;padding:2px 0}.chips::-webkit-scrollbar{display:none}
+.tag{border-radius:9px;border:1px solid var(--bd);background:var(--fd);font-weight:600}
+/* ---- ফর্ম ---- */
+input,select,textarea{background:var(--fd);color:var(--tx);border:1.5px solid var(--bdi);border-radius:13px;transition:border-color .18s,box-shadow .18s}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--hi);box-shadow:0 0 0 3px rgb(14 165 233 / .25)}
+input::placeholder{color:var(--mu);opacity:.85}
+input[type=checkbox],input[type=radio]{accent-color:var(--pr)}
+label{font-weight:600;color:var(--mu)}
+.err{color:var(--er);font-weight:600}
+.login{border-radius:20px}.login h1{font-weight:800;color:var(--lk)}
+/* ---- সুইচ, তালিকা, প্ল্যাটফর্ম টাইল ---- */
+.sw{background:#9DB4CE;border-color:#9DB4CE}
+:root[data-theme=dark] .sw{background:#3B5278;border-color:#3B5278}
+.sw[aria-checked=true],:root[data-theme=dark] .sw[aria-checked=true]{background:var(--ok);border-color:var(--ok)}
+.pt{border:1.5px solid var(--bd);border-radius:13px;background:var(--fd);transition:all .15s ease}
+.pt:hover{border-color:var(--hi);background:var(--tint)}
+.ptile[aria-pressed=true]{box-shadow:0 0 0 2px rgb(14 165 233 / .35)}
+.banner{background:#FFFBEB;color:#92400E;border-bottom:1px solid #FDE68A;font-weight:600}
+:root[data-theme=dark] .banner{background:rgb(245 158 11 / .14);color:#FCD34D;border-color:rgb(245 158 11 / .35)}
+/* ---- ডায়ালগ, টোস্ট, বাল্ক বার ---- */
+dialog{border:1px solid var(--bd);border-radius:20px;box-shadow:0 24px 60px -20px rgb(15 42 68 / .55)}
+dialog::backdrop{background:rgb(11 22 38 / .6)}
+.toast{background:var(--tx);color:var(--bg);border-radius:14px;font-weight:600;box-shadow:0 12px 30px -12px rgb(15 42 68 / .6)}
+.bulk{border:2px solid var(--pr);border-radius:16px;background:var(--cd);box-shadow:0 14px 34px -14px rgb(15 42 68 / .55)}
+.sk{border-radius:var(--rad);background:linear-gradient(90deg,var(--bd),var(--soft),var(--bd));background-size:200% 100%}
+/* ---- AI ভাসমান বাটন ---- */
+.aifab,.aifab[popover]{background:linear-gradient(145deg,#38BDF8,#0279B8)}
+.robot .rb-e,.robot .rb-m{fill:#0369A1}
+.aifab:focus-visible{outline-color:#7DD3FC}
+/* ---- ডেস্কটপ ---- */
+@media(min-width:1024px){:root{--hd:72px}#top{padding-left:24px;padding-right:24px}#main{padding:24px 24px 88px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* S4: সাইট-রেডি চেক */
+.chk{display:grid;gap:4px;margin:8px 0}.chk:empty{display:none}
+.ck{font-size:13.5px;line-height:1.45;padding:6px 10px;border-radius:10px;border:1px solid var(--bd);background:var(--cd)}
+.ck.e{color:var(--er);border-color:var(--er)}.ck.w{color:var(--wa);border-color:var(--wa)}.ck.g{color:var(--ok);border-color:var(--ok);font-weight:600}
+
+/* S9 — কনট্রাস্ট ফিক্স (WCAG AA ≥ 4.5) */
+/* বন্ধ প্রভাইডার/সারি: আগে opacity:.45/.6 দিয়ে লেখা ফ্যাকাশে (২.৪:১) হতো — এখন লেখা পূর্ণ রঙে, বন্ধ বোঝায় ড্যাশড বর্ডার + ম্লান শিরোনাম */
+body .bsi.off{opacity:1;border-style:dashed}
+body .bsi.off>b,body .bsi.off .tl>b{color:var(--mu)}
+body .tqr.off{opacity:1;background:var(--bg);cursor:default}
+/* পোস্টার ডিজাইন-চিপ: সাদা লেখা গ্রেডিয়েন্টের (হলুদ/সবুজ) ওপর ১.৩:১ ছিল → ৫৫% কালো আস্তরে সব রঙে ≥ ৫.৮:১ */
+body .chip.pth{background:linear-gradient(rgb(0 0 0/.55),rgb(0 0 0/.55)),var(--g);color:#fff;border:0;text-shadow:0 1px 2px rgb(0 0 0/.4)}
+body .pvi.dim{opacity:1}
+body .pvi.dim>b,body .pvi.dim .nm{color:var(--mu)}
+body .acts.dim{opacity:1}

@@ -1,0 +1,62 @@
+/* boostplus স্টুডিও — S7 ফোন UX স্টাইল (theme.css-এর ওপরে; app.css অপরিবর্তিত) */
+
+/* ---- ১) দ্রুত সার্চ: বড় ঘর, ম্যাগনিফায়ার আইকন, বড় ✕ ---- */
+input[type=search]{-webkit-appearance:none;appearance:none;font-size:16px;min-height:48px;padding-left:42px;padding-right:12px;border-radius:99px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237F9BBB' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:14px 50%;background-size:19px}
+input[type=search]::-webkit-search-decoration{-webkit-appearance:none}
+input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;width:26px;height:26px;margin-left:6px;cursor:pointer;border-radius:50%;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%237F9BBB'/%3E%3Cpath d='M8 8l8 8M16 8l-8 8' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat}
+#qs{display:grid;place-items:center;padding:0}
+#qs svg{color:var(--lk)}
+/* ফোনে হেডার ঠাসা (৪টি বাটন আগেই আছে) — ⌕ সেখানে হেডারে নয়, "আরও" মেনুর প্রথম টাইলে (পাতায় সার্চ ঘর তো স্টিকি-ই থাকে) */
+@media(max-width:480px){#qs{display:none}}
+#top>div:first-child{min-width:0;flex:1 1 auto}#top h2{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tools{flex:none}
+#moreD .mi{font-family:inherit;cursor:pointer}#moreD .mg+.gh{margin-top:14px}
+/* শীট খোলা থাকলে AI ভাসমান বাটন বাটনের সারি ঢাকে না */
+body:has(#sheet[open]) #aiFab,body:has(#bsheet[open]) #aiFab{display:none!important}
+
+/* সাম্প্রতিক সার্চ প্যানেল */
+#phRec{position:fixed;z-index:60;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px;background:var(--cd);border:1px solid var(--bd);border-radius:16px;box-shadow:0 18px 40px -16px rgb(15 42 68 / .55)}
+#phRec[hidden]{display:none}
+#phRec .phh{flex:1 0 100%;font-size:11.5px;font-weight:800;letter-spacing:.05em;color:var(--mu);padding:0 4px}
+#phRec .chip{min-height:38px;padding:0 14px;font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#phRec .phx{margin-left:auto;border:0;background:none;color:var(--lk);font:700 13px var(--font);min-height:38px;padding:0 8px;cursor:pointer}
+
+/* ---- ২) এক-হাতে এড ফর্ম: ভেতরটা স্ক্রল করে, বাটনের সারি সবসময় নিচে স্থির (ফোন ও ডেস্কটপ দুটোতেই) ---- */
+@keyframes phUp{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+#sheet{--shp:20px;padding:0;overflow:hidden;background:var(--cd)}
+#sheet[open]{display:flex;flex-direction:column}
+#shForm{display:block;flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:18px var(--shp) 0;-webkit-overflow-scrolling:touch}
+#shForm .acts{position:sticky;bottom:0;z-index:2;margin:10px calc(var(--shp) * -1) 0;padding:10px var(--shp) 14px;background:var(--cd);border-top:1px solid var(--bd)}
+#shForm .acts #shStop[hidden]{display:none}
+#sheet select{font-family:inherit}#bsheet select{font-family:inherit}
+@media(min-width:641px){#sheet{max-width:480px;max-height:90vh}}
+@media(max-width:640px){
+  #sheet{--shp:16px;position:fixed;inset:auto 0 var(--phoff,0) 0;margin:0;width:100%;max-width:none;box-sizing:border-box;border:0;border-top:1px solid var(--bd);border-radius:22px 22px 0 0;
+    max-height:calc(var(--phvh,100dvh) - 56px)}
+  #sheet[open]{animation:phUp .22s ease-out}
+  #sheet::before{content:"";flex:none;display:block;width:44px;height:5px;border-radius:9px;background:var(--bdi);opacity:.55;margin:9px auto 0}
+  #shForm{padding-top:8px}
+  #shForm #shT{font-size:18px}
+  #shForm label{margin-top:10px}
+  #sheet input,#sheet select{font-size:16px;min-height:50px;margin-bottom:8px}
+  /* বাটনের সারি বুড়ো আঙুলের নাগালে: "চালু করুন" পুরো প্রস্থ ও বড়, নিচে বাতিল */
+  #shForm .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0));box-shadow:0 -12px 22px -18px rgb(15 42 68 / .5)}
+  #shForm .acts #shOk{grid-column:1/-1;order:-1;min-height:54px;font-size:17px}
+  #shForm .acts .sm{min-height:48px}
+  /* প্রস্তাব-চিপ: লম্বা না হয়ে এক সারিতে সোয়াইপ */
+  #shNg .csgc,#shSg .csgc{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;max-height:none;scroll-snap-type:x proximity;scrollbar-width:none;padding-bottom:2px;margin-right:calc(var(--shp) * -1);padding-right:var(--shp)}
+  #shNg .csgc::-webkit-scrollbar,#shSg .csgc::-webkit-scrollbar{display:none}
+  #shNg .csgc .chip,#shSg .csgc .chip{flex:none;white-space:nowrap;min-height:44px;scroll-snap-align:start}
+  /* বাল্ক শীট: বড় টাচ-এরিয়া, নিচের বার নিরাপদ এলাকায় */
+  #bsheet .bsi .sm{min-height:46px}#bsheet input[type=checkbox]{width:26px;height:26px;margin:0}
+  #bsheet .bsF{display:grid;grid-template-columns:1fr 2fr;gap:8px}#bsheet .bsF .btn{min-height:54px}
+}
+
+/* ---- ৩) অটো-সাজানোর নোট ---- */
+.phn{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:-2px 0 8px;padding:6px 10px;border-radius:10px;background:var(--tint);color:var(--tx);font-size:13px;font-weight:600;line-height:1.4}
+.phn[hidden]{display:none}
+.phn .phm{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.phn .phu{flex:none;border:0;background:none;color:var(--lk);font:800 13px var(--font);padding:0 4px;min-height:36px;cursor:pointer;text-decoration:underline}
+#bsl .phn,#tres .phn{margin:0}

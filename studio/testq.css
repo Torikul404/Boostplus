@@ -1,0 +1,46 @@
+/* S5 — টেস্ট কিউ পেজ। রং শুধু theme.css-এর টোকেন থেকে (লাইট/ডার্ক দুটোতেই চলে) */
+.tq{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;min-width:0}
+.tq>*,#tqBody>*{min-width:0;max-width:100%}
+#tqBody{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.tq h3{margin:0 0 8px;font-size:16px}
+.tqc{display:block;min-width:0}
+.tq label{display:block;margin:10px 0 4px;font-weight:600;font-size:14px}
+.tq label small{font-weight:400;color:var(--mu)}
+.tq input[type=number],.tq input[type=search],.tq input:not([type]),.tq select{width:100%;min-height:46px;box-sizing:border-box}
+.tqg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tqg label{margin-top:0}
+.tqbig{font-size:26px;font-weight:800;line-height:1.2;overflow-wrap:anywhere}
+.tqr{display:flex;gap:12px;align-items:flex-start;padding:12px 4px;border-bottom:1px solid var(--bd);margin:0;font-weight:400;cursor:pointer;min-height:48px}
+.tqr:last-child{border-bottom:0}
+.tqr.off{opacity:.6;cursor:default}
+.tqr input{width:22px;height:22px;margin:2px 0 0;flex:none;accent-color:var(--pr)}
+.tqb{display:grid;gap:3px;min-width:0;flex:1}
+.tqb .bnm,.tqt .bnm{overflow-wrap:anywhere}
+.tqp{height:8px;border-radius:99px;background:var(--bd);overflow:hidden;margin:6px 0}
+.tqp i{display:block;height:100%;background:var(--pr);border-radius:99px;transition:width .3s}
+.tqi{display:grid;gap:0;margin-top:10px}
+.tql{display:flex;gap:10px;align-items:flex-start;padding:10px 2px;border-top:1px solid var(--bd)}
+.tql .tqs{flex:none;width:24px;text-align:center;font-size:17px}
+.tqt{display:grid;gap:2px;min-width:0;flex:1}
+.tql.s-fail .tqt .sub:last-child,.tql.s-skip .tqt .sub:last-child{color:var(--er)}
+.tql.s-sent .tqt .sub:last-child{color:var(--ok)}
+.tql.s-unknown .tqt .sub:last-child{color:var(--wa)}
+.tql .ib{flex:none;width:44px;height:44px;cursor:pointer}
+.tql .sm{flex:none;min-height:44px}
+.tq .er{color:var(--er)}.tq .ok{color:var(--ok)}.tq .wa{color:var(--wa)}
+.tqrp{display:grid;gap:4px;min-width:0}
+.tqrp.v-g{border-left:4px solid var(--ok)}.tqrp.v-w{border-left:4px solid var(--wa)}.tqrp.v-f{border-left:4px solid var(--er)}.tqrp.v-o{border-left:4px solid var(--hi)}
+.tqrp .tv{font-weight:700}
+.tqd{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin:6px 0 2px}
+.tqd div{min-width:0}
+.tqd dt{font-size:12px;color:var(--mu)}
+.tqd dd{margin:0;font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.tqrp .acts a.sm{display:inline-flex;align-items:center;text-decoration:none}
+.tqpr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 0;border-top:1px solid var(--bd)}
+.tqpr:first-of-type{border-top:0}
+.tqpr .sub{grid-column:1/-1}
+.tqbar{display:grid;grid-template-columns:48px 1fr auto;gap:8px;align-items:center;margin:6px 0}
+.tqbar i{display:block;height:10px;border-radius:99px;background:var(--pr)}
+.tqbar b{font-size:13px}
+@media(min-width:1024px){.tq{max-width:880px}}
+.tqm{display:block;margin:6px 0;width:auto;height:auto;background:none;color:inherit;box-shadow:none}
