@@ -1,0 +1,164 @@
+/* ==========================================================
+   design/ref-orders.css — R13 (Orders), part 1: filter card
+   Loaded after ref-services.css. Token based, light + dark.
+   One card holds the search field (arrow button inside, right)
+   and the status pills (2-column grid, last pill full width).
+   ========================================================== */
+#orders-view .rf-oh-filter { margin: 0 0 14px; padding: 14px; border-radius: var(--rf-r-card); }
+
+/* search: field h46, primary arrow button inside at the right */
+#orders-view .rf-oh-filter .pb-oh-search { display: flex; align-items: center; gap: 8px; margin: 0; padding: 0 5px 0 14px; min-height: var(--rf-h-search); overflow: visible;
+  background: var(--rf-field); border: 1.5px solid var(--rf-field-bd); border-radius: var(--rf-r-btn); transition: var(--rf-t); }
+#orders-view .rf-oh-filter .pb-oh-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 4px rgb(var(--primary-rgb) / .18); }
+#orders-view .rf-oh-filter .pb-oh-search .pb-input,
+#orders-view .rf-oh-filter .pb-oh-search input { flex: 1; min-width: 0; height: 40px; min-height: 40px; margin: 0; padding: 0; border: 0 !important; border-radius: 0; background: transparent !important; box-shadow: none !important; outline: 0;
+  -webkit-appearance: none; appearance: none; color: var(--rf-ink); font: 500 16px/1.3 var(--rf-font); }
+#orders-view .rf-oh-filter .pb-oh-search input::placeholder { color: var(--rf-sub); opacity: 1; }
+#orders-view .rf-oh-filter .pb-oh-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+#orders-view .rf-oh-filter .pb-oh-search button { flex: 0 0 auto; width: 38px; min-width: 38px; height: 38px; min-height: 38px; padding: 0; display: grid; place-items: center;
+  border: 0; border-radius: 10px; background: var(--grad); color: var(--on-primary); cursor: pointer;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .4), 0 6px 14px -9px rgb(var(--primary-rgb) / .7); transition: var(--rf-t); -webkit-tap-highlight-color: transparent; }
+#orders-view .rf-oh-filter .pb-oh-search button:hover { filter: brightness(1.06); }
+#orders-view .rf-oh-filter .pb-oh-search button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+#orders-view .rf-oh-filter .pb-oh-search button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* status pills: 2-column grid, 36 high, r10, 12.5 / 800, icon + label (+ real count) */
+#orders-view .rf-oh-filter .pb-oh-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0; padding: 0; border: 0; border-radius: 0; overflow: visible; }
+#orders-view .rf-oh-filter .pb-oh-f { display: flex; align-items: center; justify-content: center; gap: 6px; width: auto; min-width: 0; min-height: var(--rf-h-pill); margin: 0; padding: 0 8px;
+  border: 1.5px solid var(--rf-field-bd); border-radius: 10px; background: var(--rf-field); color: var(--rf-ink);
+  font: 800 var(--rf-fs-sm)/1.1 var(--rf-font); text-align: center; cursor: pointer; transition: var(--rf-t); -webkit-tap-highlight-color: transparent; }
+#orders-view .rf-oh-filter .pb-oh-f:last-child { grid-column: 1 / -1; border-bottom: 1.5px solid var(--rf-field-bd); }
+#orders-view .rf-oh-filter .pb-oh-f:hover { border-color: var(--primary-border); }
+#orders-view .rf-oh-filter .pb-oh-f:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+#orders-view .rf-oh-filter .pb-oh-f .rf-oh-ic { flex: 0 0 auto; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#orders-view .rf-oh-filter .pb-oh-f .rf-oh-lb { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#orders-view .rf-oh-filter .pb-oh-f .pb-oh-c { flex: 0 0 auto; min-width: 20px; padding: 2px 6px; border-radius: 99px; background: rgb(var(--ov-rgb) / .10); color: inherit; font-size: var(--rf-fs-micro); font-weight: 800; line-height: 1.2; text-align: center; }
+#orders-view .rf-oh-filter .pb-oh-f.active { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+#orders-view .rf-oh-filter .pb-oh-f.active .pb-oh-c { background: rgb(255 255 255 / .24); }
+
+/* tablet + desktop: 4 equal columns (4 + 3), no clipped labels */
+@media (min-width: 768px) {
+  #orders-view .rf-oh-filter .pb-oh-filters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #orders-view .rf-oh-filter .pb-oh-f:last-child { grid-column: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #orders-view .rf-oh-filter .pb-oh-search, #orders-view .rf-oh-filter .pb-oh-search button, #orders-view .rf-oh-filter .pb-oh-f { transition: none; }
+}
+
+/* ==========================================================
+   R13b — bulk bar: "Select all orders" + "Copy IDs" (count badge)
+   ========================================================== */
+#orders-view .rf-oh-bulk { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 14px; padding: 8px 10px 8px 14px; border-radius: var(--rf-r-card); }
+#orders-view .rf-oh-all { display: flex; align-items: center; gap: 10px; min-height: 44px; flex: 1 1 auto; min-width: 0; cursor: pointer; color: var(--rf-ink); font: 800 var(--rf-fs-base)/1.2 var(--rf-font); -webkit-tap-highlight-color: transparent; }
+#orders-view .rf-oh-chk { flex: 0 0 auto; width: 22px; height: 22px; margin: 0; accent-color: var(--primary); cursor: pointer; }
+#orders-view .rf-oh-chk:disabled { cursor: default; opacity: .5; }
+#orders-view .rf-oh-chk:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+#orders-view .rf-oh-copyids { flex: 0 0 auto; min-height: 44px; padding: 0 8px 0 14px; background: var(--grad); color: var(--on-primary); border-color: transparent; }
+#orders-view .rf-oh-copyids .rf-oh-ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#orders-view .rf-oh-copyids .rf-oh-n { min-width: 24px; padding: 3px 7px; border-radius: 99px; background: rgb(255 255 255 / .24); font-size: var(--rf-fs-xs); font-weight: 800; line-height: 1.2; text-align: center; font-variant-numeric: tabular-nums; }
+#orders-view .rf-oh-copyids:disabled { cursor: default; background: var(--rf-field); color: var(--rf-sub); border-color: var(--rf-field-bd); box-shadow: none; }
+#orders-view .rf-oh-copyids:disabled .rf-oh-n { background: rgb(var(--ov-rgb) / .08); }
+#orders-view .rf-oh-copyids:not(:disabled):hover { filter: brightness(1.06); }
+#orders-view .rf-oh-copyids:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+#orders-view .rf-oh-copyids.copied { box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / .3); }
+.rf-oh-vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (min-width: 768px) { #orders-view .rf-oh-bulk { padding-left: 18px; } }
+@media (prefers-reduced-motion: reduce) { #orders-view .rf-oh-copyids { transition: none; } }
+
+/* ==========================================================
+   R13c — date-group chip before each day's orders
+   One chip per day: white pill, calendar icon, "17 Nov 2026".
+   ========================================================== */
+#orders-view .rf-oh-day { position: sticky; left: 0; display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 13px 0 11px;
+  background: var(--rf-card); color: var(--rf-ink); border: 1px solid var(--rf-bd); border-radius: var(--rf-r-pill);
+  font: 700 var(--rf-fs-sm)/1.1 var(--rf-font); font-variant-numeric: tabular-nums; white-space: nowrap; box-shadow: var(--rf-card-shadow); }
+#orders-view .rf-oh-day .rf-oh-ic { flex: 0 0 auto; width: 15px; height: 15px; fill: none; stroke: var(--primary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ==========================================================
+   Order card (one layout on every width; the old table styles were removed in R13e)
+   Phone: one column. 768px and up: two columns (cards, not a table).
+   Row order: [checkbox, platform, ID chip, Copy] / service / link / date + Buy now / 2x2 stats / status + Details.
+   ========================================================== */
+#orders-view .pb-oh-box { background: transparent; border: 0; box-shadow: none; padding: 0; }
+#orders-view .pb-oh-box .pb-oh-tools { margin: 0 0 12px; }
+.rf-oc-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
+.rf-oc-list .rf-oh-dayrow { grid-column: 1 / -1; margin: 2px 0 -4px; }
+.rf-oc-list .rf-oh-dayrow:first-child { margin-top: 0; }
+.rf-oc-list .rf-oh-day { position: static; }
+
+.rf-oc { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 14px; background: var(--rf-card); border: 1px solid var(--rf-bd); border-radius: var(--rf-r-card); box-shadow: var(--rf-card-shadow); color: var(--rf-ink); }
+.rf-oc.is-sel { border-color: var(--primary-border); background: linear-gradient(0deg, var(--rf-tint-active), var(--rf-tint-active)), var(--rf-card); }
+.rf-oc-ic { flex: 0 0 auto; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* row 1 */
+.rf-oc-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.rf-oc-chk { position: relative; flex: 0 0 22px; }
+.rf-oc-chk::after { content: ""; position: absolute; inset: -11px; }          /* 44px touch area */
+.rf-oc-plat { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--rf-field); border: 1px solid var(--rf-bd); }
+.rf-oc-plat svg { width: 24px; height: 24px; color: var(--rf-ink); }
+.rf-oc-plat svg.rf-oc-ic { width: 20px; height: 20px; color: var(--rf-sub); }
+.rf-oc-id { min-width: 0; margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; line-height: 30px; }
+.rf-oc-copy { position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 74px; height: 34px; padding: 0 12px; border: 0; border-radius: 10px; background: rgb(var(--primary-rgb) / .10); color: var(--accent); font: 800 12px/1 var(--rf-font); cursor: pointer; transition: var(--rf-t); }
+.rf-oc-copy::after { content: ""; position: absolute; inset: -5px -3px; }       /* 44px touch area */
+.rf-oc-copy:hover { background: rgb(var(--primary-rgb) / .16); }
+.rf-oc-copy.copied { box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / .3); }
+.rf-oc-copy:focus-visible, .rf-oc-more:focus-visible, .rf-oc-buy:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* service block */
+.rf-oc-svc { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px; background: var(--rf-field); border: 1px solid var(--rf-bd); border-radius: 14px; text-align: center; }
+.rf-oc-code { display: inline-flex; align-items: center; gap: 5px; font: 700 11.5px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--rf-sub); }
+.rf-oc-code .rf-oc-ic { width: 13px; height: 13px; }
+.rf-oc-name { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; max-width: 100%; font-size: 14px; font-weight: 800; line-height: 1.4; color: var(--rf-ink); overflow-wrap: anywhere; }
+
+/* link row */
+.rf-oc-link { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 0 2px; }
+.rf-oc-link a, .rf-oc-link > span:not(.rf-iconsq) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--accent); }
+.rf-oc-link > span:not(.rf-iconsq) { color: var(--rf-ink); }
+.rf-oc-link .rf-iconsq svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* date + Buy now */
+.rf-oc-date { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+.rf-oc-dd { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rf-oc-k { font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--rf-sub); }
+.rf-oc-dt { display: inline-flex; align-items: center; gap: 6px; font: 600 12.5px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--rf-ink); white-space: nowrap; }
+.rf-oc-dt .rf-oc-ic { width: 14px; height: 14px; color: var(--primary); }
+.rf-oc-buy { position: relative; flex: 0 0 auto; min-height: 36px; padding: 0 14px; }
+.rf-oc-buy::after { content: ""; position: absolute; inset: -4px -2px; }          /* 44px touch area */
+.rf-oc-buy .rf-oc-ic { width: 16px; height: 16px; }
+
+/* 2x2 stat boxes */
+.rf-oc-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.rf-oc-box { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 12px; background: var(--rf-field); border: 1px solid var(--rf-bd); border-radius: 12px; }
+.rf-oc-box .rf-oc-k { font-size: 10.5px; letter-spacing: 0; text-transform: none; font-weight: 600; }
+.rf-oc-v { font-size: 15px; font-weight: 800; line-height: 1.25; color: var(--rf-ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+/* bottom: status + Details */
+.rf-oc-foot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.rf-oc-st, .rf-oc-more { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 12px; border-radius: 12px; border: 1.5px solid currentColor; font: 800 12.5px/1 var(--rf-font); }
+.rf-oc-st { background: transparent; color: var(--rf-sub); }
+.rf-oc-st--pending { color: var(--status-pending); background: var(--status-pending-bg); }
+.rf-oc-st--processing { color: var(--status-processing); background: var(--status-processing-bg); }
+.rf-oc-st--completed { color: var(--status-completed); background: var(--status-completed-bg); }
+.rf-oc-st--partial { color: var(--status-partial); background: var(--status-partial-bg); }
+.rf-oc-st--canceled { color: var(--status-canceled); background: var(--status-canceled-bg); }
+.rf-oc-more { background: transparent; color: var(--accent); border-color: var(--primary-border); cursor: pointer; transition: var(--rf-t); }
+.rf-oc-more:hover { background: rgb(var(--primary-rgb) / .08); }
+.rf-oc-more[aria-expanded="true"] { background: rgb(var(--primary-rgb) / .12); }
+
+/* Details panel */
+.rf-oc-detail { margin: 0; padding: 12px; background: var(--rf-soft); border-radius: var(--rf-r-panel); }
+.rf-oc-detail[hidden] { display: none; }
+.rf-oc-dl { margin: 0; display: grid; gap: 0; }
+.rf-oc-dr { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; padding: 8px 0; font-size: 13px; line-height: 1.45; }
+.rf-oc-dr + .rf-oc-dr { border-top: 1px solid var(--rf-bd); }
+.rf-oc-dr dt { color: var(--rf-sub); font-weight: 600; }
+.rf-oc-dr dd { margin: 0; color: var(--rf-ink); font-weight: 700; overflow-wrap: anywhere; }
+.rf-oc-dr dd a { color: var(--accent); }
+.rf-oc-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.rf-oc-acts .rf-button { min-height: 44px; }
+.rf-oc-acts .rf-oc-ic { width: 16px; height: 16px; }
+
+@media (min-width: 768px) {
+  .rf-oc-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .rf-oc-copy, .rf-oc-more { transition: none; } }

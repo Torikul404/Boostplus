@@ -1,0 +1,20 @@
+/* design/dashboard.css — R4: সাইডবার গ্রুপ লেবেল + হেডার ব্যালেন্স চিপ
+   শুধু tokens.css / tokens-r1.css-এর টোকেন। ফিরে যেতে: index.html থেকে এই লিংক সরান। */
+
+/* সাইডবার: গ্রুপ লেবেল (ক্লিক হয় না, স্ক্রিন-রিডারে শুধু শিরোনাম) */
+.pb-side-group {
+  margin: var(--space-4) var(--space-2) var(--space-1);
+  font-size: var(--fs-xs); font-weight: 700; letter-spacing: .02em;
+  color: var(--muted-2); text-transform: none;
+}
+.pb-side-group:first-of-type { margin-top: var(--space-3); }
+
+/* হেডার ব্যালেন্স চিপ (id navWalletBal — JS শুধু display ও লেখা বদলায়) */
+.nav-bal {
+  margin-left: var(--space-1); padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs); font-weight: 800; line-height: 1.5;
+  color: var(--status-completed); background: var(--status-completed-bg);
+  border: 1px solid color-mix(in srgb, var(--status-completed) 35%, transparent);
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}

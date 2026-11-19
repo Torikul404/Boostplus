@@ -1,0 +1,15 @@
+/* R20 final fixes (loaded last). */
+/* FAQ answers: legacy rule styles.css `.faq-answer p { color:#d5dde8 }` was light-on-white in the light theme */
+.faq-item .faq-answer, .faq-item .faq-answer p, .faq-item .faq-answer li { color: var(--rf-sub); }
+.faq-item .faq-answer b, .faq-item .faq-answer strong { color: var(--rf-ink); }
+/* count badge inside the active filter pill: dark overlay (white on primary + white overlay was 3.2:1) */
+#orders-view .rf-oh-filter .pb-oh-f.active .pb-oh-c,
+#tickets-view .rf-tk-f[aria-pressed="true"] .rf-tk-f__c { background: rgb(0 0 0 / .22); color: #fff; }
+/* coloured toasts: theme.css set a dark text colour on top of the red/green/amber backgrounds (2.3:1 in light theme) */
+.pb-toast.success, .pb-toast.error, .pb-toast.info { color: #fff; }
+.pb-toast.success .pb-t-msg, .pb-toast.error .pb-t-msg, .pb-toast.info .pb-t-msg { color: #fff; }
+
+/* R21: FAQ lives only in the guest landing (reference layout); footer FAQ link follows it */
+body:not(.pb-guest) .pb-faq-link { display: none !important; }
+#pbLanding .faq-section { max-width: none; margin: 18px 0 0; padding: 0; }
+#pbLanding .faq-section .section-title { max-width: none; }

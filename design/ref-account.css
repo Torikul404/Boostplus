@@ -1,0 +1,122 @@
+/* ==========================================================
+   design/ref-account.css — R18 (Account · Order Rules · Contact). Loaded after ref-refunds.css.
+   Shared page frame `.rf-pg` (header card, cards, link rows) + page parts.
+   Scoped to #account-view / #rules-view / #contact-view, token based, light + dark.
+   Legacy design/account.css (.pb-acc-*) and support.css (.pb-contact-hero, .pb-rules) rules no longer match the new markup,
+   except .pb-acc-head / .pb-acc-body / .pb-acc-note / .pb-acc-dl / .pb-gbtn which app-account.js still uses (restyled below).
+   ========================================================== */
+.rf-pg { max-width: 953px; margin: 0 auto; padding: 8px 0 28px; display: flex; flex-direction: column; gap: 14px; text-align: left; }
+.rf-pg .rf-card, .rf-pg .rf-hero { margin: 0; }
+.rf-pg .rf-ac-ic { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; width: 16px; height: 16px; }
+.rf-pg .rf-iconsq--lg .rf-ac-ic { width: 22px; height: 22px; }
+.rf-pg .rf-ac-ic--sm { width: 14px; height: 14px; }
+.rf-pg h1, .rf-pg h2, .rf-pg h3 { display: block; margin: 0; text-align: left; }   /* global headings are flex-centered in styles.css */
+.rf-pg [hidden] { display: none !important; }
+
+/* ---- header card (dotted-grid decoration) ---- */
+.rf-pg-head { position: relative; overflow: hidden; }
+.rf-pg-head::after { content: ""; position: absolute; top: 0; right: 0; width: 46%; height: 96px; pointer-events: none;
+  background-image: radial-gradient(var(--rf-brand) 1.2px, transparent 1.6px); background-size: 14px 14px; opacity: .28;
+  -webkit-mask-image: linear-gradient(to left, #000, transparent); mask-image: linear-gradient(to left, #000, transparent); }
+.rf-pg-head > * { position: relative; z-index: 1; }
+.rf-pg-head__top { display: flex; align-items: center; gap: 12px; }
+.rf-pg-head__t { min-width: 0; }
+.rf-pg-head .rf-card__sub { margin: 2px 0 0; line-height: 1.4; }
+
+/* ---- generic card + link rows ---- */
+.rf-ac-card { padding: 14px; }
+.rf-ac-links { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.rf-ac-link { display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 8px 12px; background: var(--rf-field); color: var(--rf-ink); border: 1.5px solid var(--rf-bd); border-radius: 14px; text-decoration: none; transition: var(--rf-t); }
+.rf-ac-link:hover { border-color: var(--primary-border); background: var(--rf-tint-active); }
+.rf-ac-link__t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.rf-ac-link__t b { font: 800 13.5px/1.3 var(--rf-font); color: var(--rf-ink); }
+.rf-ac-link__t small { font: 500 12px/1.35 var(--rf-font); color: var(--rf-sub); }
+.rf-pg .rf-ac-chev { width: 16px; height: 16px; color: var(--rf-sub); }
+
+/* ---- Account ---- */
+.rf-ac-guest { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px 16px; text-align: center; color: var(--rf-sub); font-weight: 600; }
+.rf-ac-guest p { margin: 0; }
+#accSections { display: flex; flex-direction: column; gap: 14px; }
+#account-view .pb-acc-sec { padding: 0; overflow: hidden; background: var(--rf-card); border: 1px solid var(--rf-bd); border-radius: var(--rf-r-card); }
+#account-view .pb-acc-head { justify-content: flex-start; gap: 12px; min-height: 60px; padding: 10px 14px; color: var(--rf-ink); font: 800 15px/1.25 var(--rf-font); }
+#account-view .rf-ac-sec__t { flex: 1; min-width: 0; text-align: left; }
+#account-view .pb-acc-head::after { border-color: var(--rf-sub); margin-right: 2px; }
+#account-view .pb-acc-body { gap: 12px; padding: 2px 16px 18px; }
+#account-view .pb-acc-body label { font: 700 13px/1.3 var(--rf-font); color: var(--rf-ink); }
+#account-view .pb-acc-body p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--text-2); }
+#account-view .pb-acc-note { font-size: var(--rf-fs-sm); color: var(--rf-sub); }
+#account-view .pb-acc-body .rf-button { width: 100%; align-self: stretch; }
+/* beat theme.css (input / select get !important there) */
+#account-view .pb-acc-body input.rf-field,
+#account-view .pb-acc-body select.rf-field { width: 100%; min-height: var(--rf-h-field-lg); padding: 0 14px; background-color: var(--rf-field) !important; color: var(--rf-ink) !important; border: 1.5px solid var(--rf-field-bd) !important; border-radius: var(--rf-r-field-lg) !important; font: 500 16px/1.3 var(--rf-font); box-shadow: none; }
+#account-view .pb-acc-body input.rf-field:focus,
+#account-view .pb-acc-body select.rf-field:focus { border-color: var(--primary) !important; box-shadow: 0 0 0 4px rgb(var(--primary-rgb) / .18); }
+#account-view .pb-acc-body input.rf-field::placeholder { color: var(--rf-sub); opacity: 1; }
+#account-view .pb-acc-body input.rf-field:disabled { opacity: .6; cursor: progress; }
+#account-view .pb-acc-body select.rf-field { -webkit-appearance: none; appearance: none; padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23506279' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center; background-size: 16px; }
+[data-theme="premium"] #account-view .pb-acc-body select.rf-field { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239FB3CC' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); }
+#account-view .pb-acc-dl { gap: 0; }
+#account-view .pb-acc-dl > div { padding: 11px 0; border-bottom: 1px solid var(--rf-bd); }
+#account-view .pb-acc-dl > div:first-child { padding-top: 2px; }
+#account-view .pb-acc-dl dt { font: 600 13px/1.3 var(--rf-font); color: var(--rf-sub); }
+#account-view .pb-acc-dl dd { font: 800 14px/1.3 var(--rf-font); color: var(--rf-ink); }
+#account-view .pb-gender { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 2px; }
+#account-view .pb-gbtn { min-height: var(--rf-h-field); padding: 0 10px; background: var(--rf-field); color: var(--rf-ink); border: 1.5px solid var(--rf-field-bd); border-radius: var(--rf-r-field); font: 700 14px/1 var(--rf-font); transition: var(--rf-t); }
+#account-view .pb-gbtn:hover { border-color: var(--primary-border); }
+#account-view .pb-gbtn[aria-checked="true"] { background: var(--rf-tint-active); border-color: var(--primary); box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / .22); font-weight: 800; }
+
+/* ---- Order Rules ---- */
+.rf-ru-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.rf-ru-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: var(--rf-field); border: 1px solid var(--rf-bd); border-radius: 14px; }
+.rf-ru-item .rf-iconsq { margin-top: 1px; }
+.rf-ru-t { min-width: 0; font-size: 13px; line-height: 1.6; color: var(--text-2); }
+.rf-ru-t b { font-weight: 800; color: var(--rf-ink); }
+.rf-ru-help { display: flex; flex-direction: column; gap: 12px; }
+.rf-ru-help__t { display: flex; flex-direction: column; gap: 3px; }
+.rf-ru-help__t b { font: 800 14.5px/1.3 var(--rf-font); color: var(--rf-ink); }
+.rf-ru-help__t span { font-size: 13px; line-height: 1.5; color: var(--rf-sub); }
+.rf-ru-help__a { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.rf-ru-help__a .rf-button { width: 100%; text-align: center; }
+
+/* ---- Contact ---- */
+.rf-ct-hero { padding: 18px; }
+#contact-view .rf-hero__title { display: block; margin: 12px 0 2px; font-size: var(--rf-fs-hero); line-height: 1.25; }
+.rf-ct-hero .rf-hero__pill { background: rgb(2 26 48 / .34); }
+.rf-ct-hero .rf-button--ghost { background: rgb(2 26 48 / .5); }   /* white 10-20% overlays measure ~3.5-4:1; dark overlay keeps >= 4.5:1 */
+.rf-ct-hero .rf-hero__pill .rf-ac-ic { margin-right: 0; }
+.rf-ct-tag { margin: 0 0 8px; font: 800 14px/1.4 var(--rf-font); color: #fff; }
+.rf-ct-hero .rf-hero__sub { max-width: 560px; line-height: 1.6; }
+.rf-ct-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.rf-ct-card { display: flex; flex-direction: column; gap: 14px; }
+.rf-ct-card__h { display: flex; align-items: flex-start; gap: 12px; }
+.rf-ct-card__h > div { min-width: 0; }
+.rf-ct-card .rf-card__sub, .rf-ct-commit .rf-card__sub { margin: 3px 0 0; line-height: 1.55; }
+.rf-ct-card .rf-card__title { font-size: 15px; }
+.rf-ct-card .rf-button, .rf-ct-phone { margin-top: auto; }
+.rf-ct-phone { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 54px; padding: 0 16px; border-radius: 14px; background: var(--rf-tint-green-bg); color: var(--rf-tint-green-fg); border: 1.5px solid currentColor; text-decoration: none; font: 800 19px/1 var(--rf-font); letter-spacing: .02em; font-variant-numeric: tabular-nums; transition: var(--rf-t); }
+.rf-ct-phone:hover { filter: brightness(.96); }
+.rf-button--wa { background: linear-gradient(135deg, #047857, #065F46); color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), 0 8px 18px -10px rgb(4 120 87 / .7); }
+.rf-button--wa:hover { filter: brightness(1.08); }
+.rf-ct-commit__line { margin: 3px 0 0; font: 800 14px/1.45 var(--rf-font); color: var(--accent); }
+
+/* ---- focus (a11y.css gives a 3px ring to links and buttons; rows get the same) ---- */
+.rf-ac-link:focus-visible, .rf-ct-phone:focus-visible, .rf-pg .rf-button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+
+/* ---- desktop ---- */
+@media (min-width: 768px) {
+  .rf-pg-head { padding: 20px 22px; }
+  .rf-ac-card { padding: 18px; }
+  .rf-ac-links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #accSections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  #account-view .pb-acc-head { min-height: 64px; padding: 12px 18px; }
+  #account-view .pb-acc-body { padding: 2px 18px 20px; }
+  .rf-ru-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rf-ru-help { flex-direction: row; align-items: center; justify-content: space-between; }
+  .rf-ru-help__a { grid-template-columns: auto auto; }
+  .rf-ct-hero { padding: 24px 26px; }
+  .rf-ct-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rf-ct-hero .rf-hero__actions .rf-button { flex: 0 0 auto; min-width: 190px; }
+}
+@media (prefers-reduced-motion: reduce) { .rf-ac-link, .rf-ct-phone, #account-view .pb-gbtn { transition: none; } }

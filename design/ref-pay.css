@@ -1,0 +1,21 @@
+/* design/ref-pay.css — R23: Payment Methods section (tappable cards -> Add funds with the method preselected) */
+.pm-section { max-width: 900px; margin: 0 auto; padding: 20px 14px 0; }
+.pm-box { background: var(--rf-card); border: 1px solid var(--rf-bd); border-radius: var(--rf-r-card, 18px); box-shadow: var(--rf-card-shadow); padding: 14px; color: var(--rf-ink); }
+.pm-lead { margin: 0 0 12px; font-size: var(--rf-fs-md, 14px); line-height: 1.45; color: var(--rf-sub); text-align: left; }
+.pm-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.pm-card { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 12px; background: var(--rf-field); border: 1px solid var(--rf-bd); border-radius: var(--rf-r-panel, 15px); color: var(--rf-ink); text-decoration: none; -webkit-tap-highlight-color: transparent; transition: border-color .15s, box-shadow .15s, transform .1s; }
+.pm-card:hover { border-color: var(--rf-brand); box-shadow: 0 6px 18px -12px rgb(2 121 184 / .55); }
+.pm-card:active { transform: scale(.985); }
+.pm-card:focus-visible { outline: 3px solid var(--rf-brand); outline-offset: 2px; }
+.pm-logo { flex: 0 0 auto; width: 44px; height: 44px; border-radius: 12px; background: #fff; border: 1px solid var(--rf-bd); display: flex; align-items: center; justify-content: center; }
+.pm-logo img { width: 28px; height: 28px; object-fit: contain; }
+.pm-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.pm-txt b { font-size: var(--rf-fs-lg, 15px); font-weight: 700; line-height: 1.2; color: var(--rf-ink); }
+.pm-txt small { font-size: var(--rf-fs-sm, 12.5px); color: var(--rf-sub); line-height: 1.2; }
+.pm-go { flex: 0 0 auto; width: 20px; height: 20px; fill: none; stroke: var(--rf-brand); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.pm-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rf-bd); font-size: var(--rf-fs-sm, 12.5px); color: var(--rf-sub); }
+.pm-secure { display: inline-flex; align-items: center; gap: 6px; }
+.pm-secure svg { width: 15px; height: 15px; fill: none; stroke: var(--rf-brand); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pm-min { font-weight: 600; color: var(--rf-ink); }
+@media (min-width: 640px) { .pm-grid { grid-template-columns: repeat(3, 1fr); } .pm-card { min-height: 72px; } }
+@media (prefers-reduced-motion: reduce) { .pm-card { transition: none; } .pm-card:active { transform: none; } }

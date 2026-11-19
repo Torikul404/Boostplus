@@ -1,0 +1,49 @@
+/* ==========================================================
+   design/tokens-r1.css — R1 additive tokens (proposal)
+   Load AFTER design/tokens.css. Adds new names only; changes no existing value.
+   Nothing is wired into pages yet (that happens in R3/R4).
+   Ideas taken from the reference study (scale + tint patterns), not its brand colors.
+   ========================================================== */
+:root {
+  /* Radius scale (boostplus hard-codes 8/10/12/14/16/20/999 in many places) */
+  --radius-xs: 8px;       /* chips, small inputs */
+  --radius-md: var(--radius-sm); /* 12px, one source of truth; use for new code */
+  --radius-lg: 20px;      /* hero cards, modals */
+  --radius-pill: 999px;   /* badges, status pills */
+
+  /* Type scale (14px base, as in the reference; Bangla stays >= --text-min) */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 14px;
+  --fs-md: 16px;
+  --fs-lg: 18px;
+  --fs-xl: 20px;
+  --fs-2xl: 24px;
+
+  /* Brand tint layers (derive from --primary-rgb so both themes work) */
+  --primary-soft:   rgb(var(--primary-rgb) / .10);   /* icon tiles, selected rows */
+  --primary-soft-2: rgb(var(--primary-rgb) / .16);   /* hover on soft surfaces */
+
+  /* Status tint backgrounds for pills (text uses the existing --status-* tokens).
+     Tint strength is theme-aware: dark 14%, light 6% (14% on light drops pill text to 4.13-4.49:1) */
+  --status-tint: 14%;
+  --status-pending-bg:    color-mix(in srgb, var(--status-pending) var(--status-tint), transparent);
+  --status-processing-bg: color-mix(in srgb, var(--status-processing) var(--status-tint), transparent);
+  --status-completed-bg:  color-mix(in srgb, var(--status-completed) var(--status-tint), transparent);
+  --status-partial-bg:    color-mix(in srgb, var(--status-partial) var(--status-tint), transparent);
+  --status-canceled-bg:   color-mix(in srgb, var(--status-canceled) var(--status-tint), transparent);
+}
+
+[data-theme="light"] { --status-tint: 6%; }   /* pill text >= 4.62:1 on surface-2, >= 5.04:1 on white */
+
+/* Reusable pill, opt-in via class; safe to ignore until R4 */
+.pill {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: 2px var(--space-3); border-radius: var(--radius-pill);
+  font-size: var(--fs-xs); font-weight: 600; line-height: 1.6;
+}
+.pill.st-pending    { color: var(--status-pending);    background: var(--status-pending-bg); }
+.pill.st-processing { color: var(--status-processing); background: var(--status-processing-bg); }
+.pill.st-completed  { color: var(--status-completed);  background: var(--status-completed-bg); }
+.pill.st-partial    { color: var(--status-partial);    background: var(--status-partial-bg); }
+.pill.st-canceled   { color: var(--status-canceled);   background: var(--status-canceled-bg); }

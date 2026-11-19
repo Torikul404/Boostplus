@@ -12,13 +12,13 @@
 .pb-oh-search { border: 1px solid var(--bd-input); border-radius: var(--radius-sm); }
 .pb-oh-search .pb-input { font-size: 16px; min-height: 44px; }
 .pb-oh-search button { background: var(--primary); color: var(--on-primary); }
-.pb-oh-page .pb-oh-st, .pb-oh-page .pb-oh-st[class] { background: transparent; border: 1px solid currentColor; }
-.pb-oh-page .pb-oh-st.s-pending { color: var(--status-pending); }
-.pb-oh-page .pb-oh-st.s-in-progress { color: var(--status-processing); }
-.pb-oh-page .pb-oh-st.s-processing { color: var(--status-processing); }
-.pb-oh-page .pb-oh-st.s-completed { color: var(--status-completed); }
-.pb-oh-page .pb-oh-st.s-partial { color: var(--status-partial); }
-.pb-oh-page .pb-oh-st.s-rejected, .pb-oh-page .pb-oh-st.s-canceled, .pb-oh-page .pb-oh-st.s-cancelled { color: var(--status-canceled); }
+.pb-oh-page .pb-oh-st, .pb-oh-page .pb-oh-st[class] { background: transparent; border: 1px solid currentColor; border-radius: var(--radius-pill); }  /* R4: tint below */
+.pb-oh-page .pb-oh-st.s-pending { color: var(--status-pending); background: var(--status-pending-bg); }
+.pb-oh-page .pb-oh-st.s-in-progress { color: var(--status-processing); background: var(--status-processing-bg); }
+.pb-oh-page .pb-oh-st.s-processing { color: var(--status-processing); background: var(--status-processing-bg); }
+.pb-oh-page .pb-oh-st.s-completed { color: var(--status-completed); background: var(--status-completed-bg); }
+.pb-oh-page .pb-oh-st.s-partial { color: var(--status-partial); background: var(--status-partial-bg); }
+.pb-oh-page .pb-oh-st.s-rejected, .pb-oh-page .pb-oh-st.s-canceled, .pb-oh-page .pb-oh-st.s-cancelled { color: var(--status-canceled); background: var(--status-canceled-bg); }
 
 /* বাটন: কমপক্ষে ৪৪ px উচ্চতা */
 .pb-oh-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

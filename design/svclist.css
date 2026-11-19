@@ -89,3 +89,21 @@
   .sl-count { flex: 1 1 100%; }
   .sl-nm { font-size: 1rem; }
 }
+
+/* ---- R5: service badges + quick-filter chips (tokens only) ---- */
+.sl-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-4); }
+.sl-chip {
+  min-height: var(--tap-min); padding: 6px var(--space-4); border-radius: var(--radius-pill);
+  border: 1px solid var(--bd-input); background: var(--surface); color: var(--text);
+  font-size: var(--fs-sm); font-weight: 600; cursor: pointer;
+}
+.sl-chip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.sl-chip[aria-pressed="true"] { background: var(--primary); border-color: var(--primary-border); color: var(--on-primary); }
+.sl-badges { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: var(--space-2) 0 0; }
+.sl-bdg {
+  padding: 2px var(--space-2); border-radius: var(--radius-pill);
+  font-size: var(--fs-xs); font-weight: 600; line-height: 1.6;
+  color: var(--text-2); background: var(--primary-soft); border: 1px solid rgb(var(--primary-rgb) / .25);
+}
+.sl-bdg-refill { color: var(--status-completed); background: var(--status-completed-bg); border-color: transparent; }
+.sl-bdg-non-drop { color: var(--status-processing); background: var(--status-processing-bg); border-color: transparent; }

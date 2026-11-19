@@ -1,0 +1,158 @@
+/* ==========================================================
+   design/ref-order.css — R11 part 2 (loaded after ref-home.css)
+   1) right rail: Which link to paste? / Popular services / Important Notes
+   2) desktop two columns (main + rail) from 1180px
+   3) order-flow screens (#place-order-view and its panels), theme-aware via --rf-* tokens
+   Logic, ids and JS names are untouched. Bank/wallet look-alike pages (topup-*.html) are not touched.
+   ========================================================== */
+
+/* ---------- 1) rail cards ---------- */
+.rf-rail { display: block; }
+.rf-rail .rf-railcard { margin: 0 0 20px; padding: 14px 16px 6px; }
+.rf-rail .rf-railcard[hidden] { display: none; }
+.rf-railhead { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--rf-bd); }
+.rf-railtitle { margin: 0; flex: 1; min-width: 0; font-size: 15px; font-weight: 800; line-height: 1.25; color: var(--rf-ink); }
+.rf-railcard .rf-row { align-items: flex-start; padding: 12px 0; }
+.rf-railcard .rf-row + .rf-row { border-top: 1px solid var(--rf-bd); }
+.rf-railcard .rf-row .rf-iconsq { margin-top: 1px; }
+.rf-railcard .rf-row__title { font-size: 13.5px; font-weight: 800; }
+.rf-railcard .rf-row__sub { margin-top: 2px; font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.rf-railcard .rf-row__sub b { color: var(--rf-ink); font-weight: 800; }
+.rf-railcard--notes { padding-top: 0; overflow: hidden; }
+.rf-railhead--warn { margin: 0 -16px; padding: 14px 16px 12px; background: var(--rf-note-bg); border-bottom: 1px solid var(--rf-note-bd); }
+.rf-railhead--warn .rf-railtitle { color: var(--rf-note-fg); }
+.rf-railmore, .rf-inlink { appearance: none; border: 0; background: none; font: 800 12.5px/1.2 var(--rf-font); color: var(--accent); cursor: pointer; }
+.rf-railmore { min-height: 44px; padding: 0 4px; margin: -8px -4px -8px 0; }
+.rf-inlink { display: inline; padding: 0; text-decoration: underline; text-underline-offset: 2px; font-size: inherit; }
+.rf-railmore:hover, .rf-inlink:hover { color: var(--primary-2); }
+.rf-railmore:focus-visible, .rf-inlink:focus-visible, .rf-popitem:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 8px; }
+
+/* Popular services (admin-picked Top Services; hidden when there are none, D7) */
+.rf-poplist { display: grid; }
+.rf-popitem { appearance: none; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 0; border: 0; border-top: 1px solid var(--rf-bd); background: none; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.rf-popitem:first-child { border-top: 0; }
+.rf-popitem:hover .rf-popname { color: var(--accent); }
+.rf-poppf { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--rf-field); border: 1px solid var(--rf-bd); }
+.rf-poppf svg { width: 20px; height: 20px; }
+.rf-poptxt { min-width: 0; flex: 1; }
+.rf-popname { display: block; font-size: 13px; font-weight: 700; line-height: 1.3; color: var(--rf-ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.rf-popsub { display: block; margin-top: 2px; font-size: 12px; color: var(--rf-sub); }
+.rf-popcaret { flex: 0 0 16px; width: 16px; height: 16px; color: var(--rf-sub); }
+
+/* ---------- 2) desktop two columns ---------- */
+@media (min-width: 1180px) {
+  #services-view { max-width: 993px; display: grid; grid-template-columns: minmax(0, 1fr) 279px; column-gap: 22px; align-items: start; }
+  #services-view > #userDashGuest, #services-view > #userDash { grid-column: 1 / -1; }
+  #services-view > #rfMain { grid-column: 1; min-width: 0; }
+  #services-view > #rfRail { grid-column: 2; min-width: 0; }
+}
+
+/* ---------- 3) order-flow screens ---------- */
+#place-order-view.light-section { background: transparent; color: var(--rf-ink); padding: 12px 12px 30px; }
+@media (min-width: 992px) { #place-order-view.light-section { padding: 18px 20px 40px; } }
+#place-order-view .gateway-overlay,
+#place-order-view .ply-card { background: var(--rf-card); color: var(--rf-ink); border: 1px solid var(--rf-bd); border-radius: var(--rf-r-form); box-shadow: var(--rf-card-shadow); }
+#place-order-view .gateway-overlay { max-width: 520px; padding: 22px 18px; text-align: left; }
+#place-order-view .ply-card { max-width: 440px; padding: 18px 16px 20px; }
+#place-order-view .gateway-header { display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin: 0 0 14px; padding-right: 48px; text-align: left; }
+#place-order-view .gateway-header h2 { margin: 0; font-size: 17px; font-weight: 800; color: var(--rf-ink); }
+#place-order-view .logo-img-gateway { display: block; width: 36px; height: 36px; margin: 0; border: 0; border-radius: 11px; box-shadow: none; }
+#place-order-view .gateway-overlay .close-btn { position: absolute; top: 10px; right: 10px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: var(--rf-sub); font-size: 26px; line-height: 1; cursor: pointer; }
+#place-order-view .gateway-overlay .close-btn:hover { background: var(--rf-field); color: var(--rf-ink); }
+
+/* summary boxes */
+#place-order-view .checkout-trxid-row,
+#place-order-view .order-summary-box,
+#place-order-view .checkout-detail-box { background: var(--rf-field); border: 1px solid var(--rf-bd); border-radius: 14px; color: var(--rf-ink); }
+#place-order-view .checkout-label,
+#place-order-view .checkout-detail-label { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; color: var(--rf-sub); }
+#place-order-view .checkout-trxid-value,
+#place-order-view .order-summary-name,
+#place-order-view .checkout-brand-name { color: var(--rf-ink); }
+#place-order-view .checkout-expiry-value { color: var(--danger); }
+#place-order-view .order-summary-row { color: var(--rf-sub); }
+#place-order-view .order-summary-row span:last-child { color: var(--accent); }
+/* styles.css forces #1e293b !important on these two values: unreadable in dark, so override with the ink token */
+#place-order-view .order-summary-row .order-summary-link { color: var(--rf-ink) !important; font-weight: 700 !important; }
+#place-order-view .checkout-total-big { margin: 10px 0 14px; padding: 16px; border-radius: 14px; background: var(--rf-soft); text-align: center; }
+#place-order-view .checkout-total-big .amt { color: var(--accent); font-size: 26px; font-weight: 800; }
+#place-order-view .checkout-section-label { color: var(--rf-ink); font-size: 13px; font-weight: 800; }
+#place-order-view .gateway-trust-badges span { background: var(--status-completed-bg, rgb(16 185 129 / .12)); color: var(--status-completed, var(--success)); border: 1px solid currentColor; font-size: 11.5px; padding: 4px 10px; }
+#place-order-view .gateway-trust-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin: 10px 0 4px; font-size: 12px; font-weight: 600; color: var(--rf-sub); }
+
+/* wallet pay box (inline-styled dark in markup, so !important) */
+#place-order-view .wallet-pay-box { background: var(--rf-soft) !important; border: 1px solid var(--rf-bd) !important; border-radius: 14px !important; }
+#place-order-view .wallet-pay-box .muted { color: var(--rf-sub); }
+#place-order-view #walletPayBalLabel { color: var(--success) !important; }
+#place-order-view #walletPayBtn { min-height: 44px; border: 0; border-radius: var(--rf-r-btn); background: var(--grad); color: var(--on-primary); font: 800 13px/1 var(--rf-font); box-shadow: inset 0 1px 0 rgb(255 255 255 / .4); cursor: pointer; }
+
+/* payment method tabs + grid */
+#place-order-view .gateway-tabs { display: flex; gap: 6px; padding: 4px; border-radius: 13px; background: var(--rf-field); border: 1px solid var(--rf-bd); }
+#place-order-view .gateway-tab { min-height: 44px; border-radius: 10px; font: 700 13px/1 var(--rf-font); color: var(--rf-sub); border: 0; margin: 0; }
+#place-order-view .gateway-tab.active { background: var(--primary); color: var(--on-primary); border: 0; margin: 0; }
+#place-order-view .payment-grid { gap: 8px; margin-top: 14px; }
+#place-order-view .pay-card { min-height: 84px; justify-content: center; padding: 10px 6px; border: 1.5px solid var(--rf-field-bd); border-radius: 14px; background: var(--rf-field); color: var(--rf-ink); position: relative; }
+#place-order-view .pay-card span { color: var(--rf-ink); font-size: 12px; font-weight: 700; }
+#place-order-view .pay-card:hover { border-color: var(--primary); box-shadow: none; }
+#place-order-view .pay-card:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+#place-order-view .pay-card.selected { border-color: var(--primary); background: var(--rf-tint-active); box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / .18); }
+#place-order-view .pay-card.selected::after { content: "✓"; position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: var(--on-primary); font: 800 12px/22px var(--rf-font); text-align: center; }
+#place-order-view .pay-bottom-bar { min-height: 52px; margin-top: 18px; padding: 0 16px; border: 0; border-radius: var(--rf-r-btn-lg); background: var(--grad); color: var(--on-primary); font: 800 15px/1 var(--rf-font); box-shadow: inset 0 1px 0 rgb(255 255 255 / .4), 0 8px 18px -10px rgb(var(--primary-rgb) / .7); cursor: pointer; }
+#place-order-view .pay-bottom-bar:disabled { opacity: .55; box-shadow: none; }
+
+/* shared top row of the payer / details / waiting cards */
+#place-order-view .ply-back { width: 44px; height: 44px; border-radius: 12px; background: var(--rf-field); color: var(--rf-ink); border: 1px solid var(--rf-bd); }
+#place-order-view .ply-paying-lbl,
+#place-order-view .ply-due-lbl,
+#place-order-view .ply-row-lbl { color: var(--rf-sub); font-size: 10.5px; font-weight: 800; letter-spacing: .08em; }
+#place-order-view .ply-paying-name,
+#place-order-view .ply-due-amt,
+#place-order-view .ply-row-val,
+#place-order-view .ply-wait-title { color: var(--rf-ink); }
+#place-order-view .ply-method-tag { color: var(--rf-ink); border-bottom-color: var(--rf-bd); }
+#place-order-view .ply-hint { background: var(--rf-note-bg); border: 1px solid var(--rf-note-bd); color: var(--rf-note-fg); border-radius: 14px; }
+#place-order-view .ply-amt-inline, #place-order-view .ply-row-val.ply-blue { color: var(--accent); }
+#place-order-view .ply-row { background: var(--rf-field); border: 1px solid var(--rf-bd); border-radius: 14px; }
+#place-order-view .ply-copy { min-height: 44px; min-width: 64px; border: 1.5px solid var(--primary-border); border-radius: 11px; background: transparent; color: var(--accent); font: 800 12.5px/1 var(--rf-font); }
+#place-order-view .ply-copy:active { background: rgb(var(--primary-rgb) / .12); }
+#place-order-view .ply-waiting-bar { background: var(--rf-tint-active); border: 1px solid var(--rf-bd); border-radius: 14px; color: var(--rf-ink); }
+#place-order-view .ply-live-dot { background: var(--primary); }
+#place-order-view .ply-timer, #place-order-view .ply-timer.big { color: var(--rf-sub); }
+#place-order-view .ply-timer.big { color: var(--rf-ink); }
+#place-order-view .ply-auto-note, #place-order-view .ply-trx-link-wrap, #place-order-view .submit-trx-help { color: var(--rf-sub); }
+#place-order-view .ply-link { min-height: 44px; padding: 0 4px; color: var(--accent); }
+#place-order-view .ply-wait-spinner { border-color: var(--rf-bd); border-top-color: var(--primary); }
+#place-order-view .ply-footer-btns .ply-btn-cancel,
+#place-order-view .ply-footer-btns .ply-btn-submit,
+#place-order-view .ply-btn-submit { min-height: 50px; border-radius: var(--rf-r-btn-lg); font: 800 14px/1 var(--rf-font); }
+#place-order-view .ply-btn-cancel { background: var(--rf-field); color: var(--rf-ink); border: 1px solid var(--rf-bd); }
+#place-order-view .ply-btn-submit { background: var(--grad); color: var(--on-primary); box-shadow: inset 0 1px 0 rgb(255 255 255 / .4); }
+#place-order-view .ply-btn-submit:disabled { background: var(--rf-field); color: var(--rf-sub); border: 1px solid var(--rf-bd); box-shadow: none; opacity: .8; }
+#place-order-view .ply-pink { border-radius: 14px; }   /* brand colour of the wallet app stays */
+
+/* Submit Transaction ID + pending + success panels */
+#place-order-view .gateway-details { max-width: 520px; margin: 15px auto 0; padding: 20px 18px; background: var(--rf-card); color: var(--rf-ink); border: 1px solid var(--rf-bd); border-radius: var(--rf-r-form); box-shadow: var(--rf-card-shadow); }
+#place-order-view .checkout-secure-badge { background: var(--rf-tint-active); color: var(--accent); border-radius: var(--rf-r-pill); }
+#place-order-view .status-title { color: var(--rf-ink); font-size: 18px; font-weight: 800; }
+#place-order-view .status-sub { color: var(--rf-sub); }
+#place-order-view .status-icon-circle { width: 64px; height: 64px; }
+#place-order-view .status-icon-pending { background: var(--status-pending-bg, rgb(245 158 11 / .15)); }
+#place-order-view .status-icon-success { background: var(--status-completed-bg, rgb(16 185 129 / .15)); }
+#place-order-view .form-group { margin-top: 14px; }
+#place-order-view .form-group label { margin: 0 0 6px; color: var(--rf-ink); font-size: 13px; font-weight: 700; }
+#place-order-view .form-group input { min-height: 52px; padding: 0 14px; border: 1.5px solid var(--rf-field-bd); border-radius: var(--rf-r-field-lg); background: var(--rf-field); color: var(--rf-ink); font: 500 14px/1.3 var(--rf-font); box-sizing: border-box; }
+#place-order-view .form-group input[readonly] { background: var(--rf-soft); color: var(--rf-sub); }
+#place-order-view .form-group input:focus,
+#place-order-view .ply-pink input:focus { outline: 0; border-color: var(--primary); box-shadow: 0 0 0 4px rgb(var(--primary-rgb) / .18); }
+#place-order-view .verify-btn,
+#place-order-view .track-submit { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; padding: 0 16px; border: 0; border-radius: var(--rf-r-btn-lg); background: var(--grad); color: var(--on-primary); font: 800 14px/1 var(--rf-font); box-shadow: inset 0 1px 0 rgb(255 255 255 / .4), 0 8px 18px -10px rgb(var(--primary-rgb) / .7); cursor: pointer; }
+#place-order-view .verify-btn { margin-top: 16px; }
+#place-order-view .verify-btn:disabled { opacity: .55; box-shadow: none; }
+#place-order-view .proof-pick-btn { min-height: 64px; border: 1.5px dashed var(--rf-field-bd); border-radius: 14px; background: var(--rf-field); color: var(--rf-ink); text-align: left; }
+#place-order-view .proof-pick-btn:hover, #place-order-view .proof-pick-btn:focus-visible { border-color: var(--primary); background: var(--rf-tint-active); }
+#place-order-view .proof-pick-text small { color: var(--rf-sub); }
+#place-order-view .proof-preview img { border: 1px solid var(--rf-bd); background: var(--rf-field); }
+#place-order-view .success-msg { color: var(--rf-ink); }
+#place-order-view .checkout-ssl-footer { color: var(--rf-sub); }
+#place-order-view .checkout-note-box { border-radius: 14px; }
+#pending-view .gateway-details, #success-view .gateway-details { padding: 22px 18px; }

@@ -21,7 +21,7 @@
       "#pbNotice .t{flex:1;min-width:0}#pbNotice button{flex:none;min-width:44px;min-height:44px;margin:-10px -10px -10px 0;border:0;background:none;color:inherit;font-size:18px;cursor:pointer;opacity:.7}#pbNotice button:hover{opacity:1}";
     var d = document.createElement("div"); d.id = "pbNotice"; d.setAttribute("role", "status");
     var t = document.createElement("span"); t.className = "t"; t.textContent = c[1] + " " + n.text;
-    var b = document.createElement("button"); b.type = "button"; b.setAttribute("aria-label", "বন্ধ করুন"); b.textContent = "✕";
+    var b = document.createElement("button"); b.type = "button"; b.setAttribute("aria-label", "Close"); b.textContent = "✕";
     b.onclick = function () { mark(key); d.remove(); };
     d.appendChild(t); d.appendChild(b);
     document.head.appendChild(st); document.body.insertBefore(d, document.body.firstChild);

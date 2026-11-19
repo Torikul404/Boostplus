@@ -1,0 +1,91 @@
+/* ==========================================================
+   design/ref-tokens.css — R9 foundation (loaded LAST, after landing.css)
+   1) --rf-* palette from the reference study (sky blue, D2)
+   2) maps the existing tokens (--bg, --surface, --primary, ...) onto it
+   Theme model is unchanged: data-theme="light" | "premium" (= dark).
+   Contrast: white text on --primary = 4.74:1 (the bright #0EA5E9 is only
+   2.77:1, so it is kept for rings/tints/decor, never for text-bearing fills).
+   ========================================================== */
+
+/* ---- theme-neutral --rf tokens ---- */
+:root {
+  --rf-brand: #0EA5E9;          /* decor only: rings, dots, indicators, tints */
+  --rf-font: "Plus Jakarta Sans", "Hind Siliguri BN", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font: var(--rf-font);       /* design/theme.css reads --font */
+
+  /* radius scale */
+  --rf-r-chip: 9px; --rf-r-btn: 12px; --rf-r-btn-lg: 14px; --rf-r-field: 13px; --rf-r-field-lg: 14px;
+  --rf-r-panel: 15px; --rf-r-card: 18px; --rf-r-form: 20px; --rf-r-pill: 99px;
+
+  /* heights */
+  --rf-h-header: 75px; --rf-h-field-lg: 52px; --rf-h-field: 50px; --rf-h-search: 46px;
+  --rf-h-btn: 46px; --rf-h-btn-lg: 52px; --rf-h-btn-sm: 34px; --rf-h-pill: 36px;
+
+  /* type scale */
+  --rf-fs-micro: 10.5px; --rf-fs-xs: 11.5px; --rf-fs-sm: 12.5px; --rf-fs-base: 13px;
+  --rf-fs-md: 14px; --rf-fs-lg: 15px; --rf-fs-h1: 17px; --rf-fs-hero: 21px;
+
+  /* motion */
+  --rf-t: all .15s ease; --rf-t-bd: border-color .18s;
+
+  /* tinted icon squares: background / glyph colour (glyphs are >=3:1 on their tint) */
+  --rf-tint-blue-bg: rgb(14 165 233 / .14);   --rf-tint-blue-fg: #0369A1;
+  --rf-tint-green-bg: rgb(16 185 129 / .12);  --rf-tint-green-fg: #047857;
+  --rf-tint-purple-bg: rgb(124 58 237 / .12); --rf-tint-purple-fg: #6D28D9;
+  --rf-tint-amber-bg: rgb(245 158 11 / .14);  --rf-tint-amber-fg: #A15207;
+  --rf-tint-rose-bg: rgb(225 29 72 / .10);    --rf-tint-rose-fg: #BE123C;
+}
+
+/* ---- DARK (data-theme="premium"; also the pre-JS fallback, as in tokens.css) ---- */
+:root, [data-theme="premium"] {
+  color-scheme: dark;
+  --bg: #0B1626; --bg-2: #08111F; --surface: #13233A; --surface-2: #172A45; --border: #22385A;
+  --text: #EAF4FF; --text-2: #C9DAEE; --muted: #9FB3CC; --muted-2: #8EA3BD;
+  --accent: #38BDF8; --link: #7DD3FC;
+  --primary: #0279B8; --primary-2: #0369A1;
+  --bg-rgb: 11 22 38; --surface-rgb: 19 35 58; --accent-rgb: 56 189 248; --primary-rgb: 2 121 184; --ov-rgb: 255 255 255;
+  --grad: linear-gradient(135deg, #0369A1 0%, #0279B8 100%);       /* white text >= 4.74 on both ends */
+  --grad-soft: linear-gradient(135deg, rgb(56 189 248 / .16), rgb(14 165 233 / .08));
+  --hero-bg: radial-gradient(900px 380px at 15% -10%, rgb(14 165 233 / .22), transparent 60%), radial-gradient(700px 320px at 95% 0%, rgb(56 189 248 / .14), transparent 60%);
+  --shadow: 0 10px 30px -18px rgb(0 0 0 / .65); --shadow-sm: 0 6px 18px -12px rgb(0 0 0 / .55);
+  --on-primary: #fff; --success: #34D399; --warn: #FBBF24; --danger: #F87171;
+  --bd-input: #6683AB;           /* 3.71:1 on surface-2, 4.06 on surface */
+  --primary-border: #38BDF8; --highlight: #38BDF8; --info: #38BDF8;
+  --focus-ring: #7DD3FC;
+
+  --rf-page: var(--bg); --rf-card: var(--surface); --rf-field: var(--surface-2); --rf-soft: #172A45;
+  --rf-tint-active: #17324F; --rf-bd: #22385A; --rf-field-bd: var(--bd-input);
+  --rf-ink: #EAF4FF; --rf-sub: #9FB3CC;
+  --rf-note-bg: rgb(245 158 11 / .12); --rf-note-fg: #FBBF24; --rf-note-bd: rgb(245 158 11 / .35);
+  --rf-hero: linear-gradient(135deg, #075985 0%, #0369A1 55%, #0279B8 100%);
+  --rf-card-shadow: 0 10px 30px -18px rgb(0 0 0 / .65);
+  --rf-tint-blue-fg: #7DD3FC; --rf-tint-green-fg: #6EE7B7; --rf-tint-purple-fg: #C4B5FD;
+  --rf-tint-amber-fg: #FCD34D; --rf-tint-rose-fg: #FDA4AF;
+}
+
+/* ---- LIGHT (default, D3) ---- */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #E9F3FD; --bg-2: #E1EEFB; --surface: #FFFFFF; --surface-2: #F4F9FF; --border: #DCE9F6;
+  --text: #0F2A44; --text-2: #2B4560; --muted: #506279; --muted-2: #556A82;
+  --accent: #0369A1; --link: #0369A1;
+  --primary: #0279B8; --primary-2: #0369A1;
+  --bg-rgb: 233 243 253; --surface-rgb: 255 255 255; --accent-rgb: 3 105 161; --primary-rgb: 2 121 184; --ov-rgb: 15 42 68;
+  --grad: linear-gradient(135deg, #0369A1 0%, #0279B8 100%);
+  --grad-soft: linear-gradient(135deg, rgb(14 165 233 / .12), rgb(56 189 248 / .06));
+  --hero-bg: radial-gradient(900px 380px at 15% -10%, rgb(14 165 233 / .16), transparent 60%), radial-gradient(700px 320px at 95% 0%, rgb(56 189 248 / .14), transparent 60%);
+  --shadow: 0 10px 30px -18px rgb(15 42 68 / .30); --shadow-sm: 0 6px 18px -14px rgb(15 42 68 / .30);
+  --on-primary: #fff; --success: #047857; --warn: #A15207; --danger: #C81E1E;
+  --bd-input: #6B83A0;           /* 3.9:1 on white, 3.69 on field, 3.48 on page */
+  --primary-border: #0279B8; --highlight: #0284C7; --info: #0369A1;
+  --focus-ring: #0279B8;
+
+  --rf-page: #E9F3FD; --rf-card: #FFFFFF; --rf-field: #F4F9FF; --rf-soft: #E9F3FD;
+  --rf-tint-active: #D6ECFB; --rf-bd: #DCE9F6; --rf-field-bd: var(--bd-input);
+  --rf-ink: #0F2A44; --rf-sub: #506279;
+  --rf-note-bg: #FFFBEB; --rf-note-fg: #92400E; --rf-note-bd: #FDE68A;
+  --rf-hero: linear-gradient(135deg, #0369A1 0%, #0279B8 100%);
+  --rf-card-shadow: 0 10px 30px -18px rgb(15 42 68 / .30);
+  --rf-tint-blue-fg: #0369A1; --rf-tint-green-fg: #047857; --rf-tint-purple-fg: #6D28D9;
+  --rf-tint-amber-fg: #A15207; --rf-tint-rose-fg: #BE123C;
+}

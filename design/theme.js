@@ -7,17 +7,17 @@
   
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) {} return null; }
   function apply(mode) {
-    if (mode !== "premium" && mode !== "light" && mode !== "toggle") mode = "premium";
-    var theme = mode === "toggle" ? (ls(KEY_PICK) === "light" ? "light" : "premium") : mode;
+    if (mode !== "premium" && mode !== "light" && mode !== "toggle") mode = "light";   // R9: default light (D3)
+    var theme = mode === "toggle" ? (ls(KEY_PICK) === "premium" ? "premium" : "light") : mode;
     D.setAttribute("data-theme", theme); D.setAttribute("data-theme-mode", mode);
     var m = document.querySelector('meta[name="theme-color"]');
-    if (m) m.setAttribute("content", theme === "light" ? "#f4f6fb" : "#0b1020");
+    if (m) m.setAttribute("content", theme === "light" ? "#E9F3FD" : "#0B1626");
     syncToggle();
   }
   function syncToggle() {
     var b = document.getElementById("pbThemeToggle"); if (!b) return;
     var mode = D.getAttribute("data-theme-mode"); b.hidden = mode !== "toggle";
-    b.setAttribute("aria-label", D.getAttribute("data-theme") === "light" ? "ডার্ক মোড" : "লাইট মোড");
+    b.setAttribute("aria-label", D.getAttribute("data-theme") === "light" ? "Dark mode" : "Light mode");
   }
   function mountToggle() {
     if (document.getElementById("pbThemeToggle")) return;
@@ -31,7 +31,7 @@
     });
     tabs.appendChild(b); syncToggle();
   }
-  apply(ls(KEY_MODE) || "premium");                      // সঙ্গে সঙ্গে (ক্যাশ থেকে)
+  apply(ls(KEY_MODE) || "light");                      // সঙ্গে সঙ্গে (ক্যাশ থেকে)
   function fetchMode() {
     var API = window.BOOSTPLUS_SHEET_API || ""; if (!API) return;
     fetch(API + "?action=theme_get&_=" + Date.now()).then(function (r) { return r.json(); }).then(function (j) {

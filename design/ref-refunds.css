@@ -1,0 +1,92 @@
+/* ==========================================================
+   design/ref-refunds.css — R17 (Refunds). Loaded after ref-done.css.
+   Header card · dismissible note · list card (search, pills, refund cards).
+   Scoped to #refunds-view, token based, light + dark.
+   ========================================================== */
+#refunds-view .rf-rf { max-width: 953px; margin: 0 auto; padding: 8px 0 28px; display: flex; flex-direction: column; gap: 14px; }
+#refunds-view .rf-card { margin: 0; }
+#refunds-view .rf-rf-ic { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; width: 16px; height: 16px; }
+
+/* ---- header card ---- */
+#refunds-view .rf-rf-head { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 12px; text-align: left; }
+#refunds-view .rf-rf-head::after { content: ""; position: absolute; top: 0; right: 0; width: 46%; height: 96px; pointer-events: none;
+  background-image: radial-gradient(var(--rf-brand) 1.2px, transparent 1.6px); background-size: 14px 14px; opacity: .28;
+  -webkit-mask-image: linear-gradient(to left, #000, transparent); mask-image: linear-gradient(to left, #000, transparent); }
+#refunds-view .rf-rf-head > * { position: relative; z-index: 1; }
+#refunds-view .rf-rf-head__top { display: flex; align-items: center; gap: 12px; }
+#refunds-view .rf-rf-head__top .rf-iconsq .rf-rf-ic { width: 22px; height: 22px; }
+#refunds-view .rf-rf-head__t { min-width: 0; text-align: left; }
+#refunds-view .rf-rf-head .rf-card__title, #refunds-view .rf-rf-head .rf-card__sub { text-align: left; }
+#refunds-view .rf-rf-head h1.rf-card__title { display: block; margin: 0; }   /* global h1 is flex-centered in styles.css */
+#refunds-view .rf-rf-head .rf-card__sub { margin: 2px 0 0; line-height: 1.4; }
+#refunds-view .rf-rf-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#refunds-view .rf-rf-tiles[hidden] { display: none; }
+#refunds-view .rf-rf-tile { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 12px; background: var(--rf-field); border: 1px solid var(--rf-bd); border-radius: var(--rf-r-panel); }
+#refunds-view .rf-rf-tile small { font-size: var(--rf-fs-micro); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--rf-sub); }
+#refunds-view .rf-rf-tile b { font-size: var(--rf-fs-lg); font-weight: 800; color: var(--rf-ink); font-variant-numeric: tabular-nums; word-break: break-word; }
+#refunds-view .rf-rf-tile:first-child b { color: var(--rf-tint-green-fg); }
+
+/* ---- dismissible note ---- */
+#refunds-view .rf-rf-banner { display: flex; align-items: flex-start; gap: 10px; padding: 11px 8px 11px 13px; background: var(--rf-tint-blue-bg, var(--rf-soft)); border: 1px solid var(--rf-bd); border-radius: var(--rf-r-panel); color: var(--rf-ink); }
+#refunds-view .rf-rf-banner[hidden] { display: none; }
+#refunds-view .rf-rf-banner .rf-rf-ic { width: 18px; height: 18px; margin-top: 2px; color: var(--rf-tint-blue-fg); }
+#refunds-view .rf-rf-banner p { flex: 1; min-width: 0; margin: 0; font-size: var(--rf-fs-sm); line-height: 1.5; font-weight: 600; }
+#refunds-view .rf-rf-x { flex: none; width: 44px; height: 44px; margin: -9px -2px -9px 0; border: 0; background: transparent; color: var(--rf-sub); font-size: 24px; line-height: 1; border-radius: 12px; cursor: pointer; }
+#refunds-view .rf-rf-x:hover { background: var(--rf-tint-active); color: var(--rf-ink); }
+
+/* ---- list card ---- */
+#refunds-view .rf-rf-list-card { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+#refunds-view #rfdMain { display: flex; flex-direction: column; gap: 12px; }
+#refunds-view #rfdMain[hidden], #refunds-view .rf-rf-guest[hidden] { display: none; }
+#refunds-view .rf-rf-guest { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 14px 6px; text-align: center; color: var(--rf-sub); font-weight: 600; }
+#refunds-view .rf-rf-guest p { margin: 0; }
+#refunds-view .rf-rf-search { display: flex; align-items: center; gap: 10px; margin: 0; padding: 0 14px; min-height: var(--rf-h-search); background: var(--rf-field); border: 1.5px solid var(--rf-field-bd); border-radius: var(--rf-r-btn); transition: var(--rf-t); cursor: text; }
+#refunds-view .rf-rf-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 4px rgb(var(--primary-rgb) / .18); }
+#refunds-view .rf-rf-search .rf-rf-ic { width: 18px; height: 18px; color: var(--rf-sub); }
+#refunds-view .rf-rf-search input,
+#refunds-view .rf-rf-search input:focus { flex: 1; min-width: 0; height: 40px; min-height: 40px; margin: 0; background: transparent !important; color: var(--rf-ink) !important; border: 0 !important; border-radius: 0 !important; padding: 0 !important; box-shadow: none !important; outline: 0; -webkit-appearance: none; appearance: none; font: 500 16px/1.3 var(--rf-font); }
+#refunds-view .rf-rf-search input::placeholder { color: var(--rf-sub); opacity: 1; }
+#refunds-view .rf-rf-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+#refunds-view .rf-rf-pills { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+#refunds-view .rf-rf-pill { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 8px; background: var(--rf-field); color: var(--rf-ink); border: 1.5px solid var(--rf-field-bd); border-radius: 12px; font: 800 var(--rf-fs-md)/1 var(--rf-font); cursor: pointer; transition: var(--rf-t); }
+#refunds-view .rf-rf-pill i { font-style: normal; font-weight: 800; font-size: var(--rf-fs-xs); padding: 2px 7px; border-radius: 99px; background: var(--rf-tint-active); color: var(--rf-ink); font-variant-numeric: tabular-nums; }
+#refunds-view .rf-rf-pill.active { background: var(--grad); color: var(--on-primary); border-color: transparent; }
+#refunds-view .rf-rf-pill.active i { background: rgb(255 255 255 / .22); color: var(--on-primary); }
+#refunds-view .rf-rf-count { font-size: var(--rf-fs-xs); font-weight: 700; color: var(--rf-sub); }
+#refunds-view .rf-rf-count[hidden] { display: none; }
+
+/* ---- refund card ---- */
+#refunds-view .rf-rf-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+#refunds-view .rf-rf-card { display: flex; flex-direction: column; gap: 11px; padding: 14px; background: var(--rf-card); border: 1px solid var(--rf-bd); border-radius: 16px; box-shadow: var(--rf-shadow, none); }
+#refunds-view .rf-rf-top { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+#refunds-view .rf-rf-copy .rf-rf-ic { width: 15px; height: 15px; }
+#refunds-view .rf-rf-name { margin: 0; text-align: center; font: 700 var(--rf-fs-md)/1.45 var(--rf-font); color: var(--rf-ink); word-break: break-word; }
+#refunds-view .rf-rf-chips { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+#refunds-view .rf-rf-amt { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 12px; border-radius: 99px; background: var(--rf-tint-green-bg); color: var(--rf-tint-green-fg); font-size: var(--rf-fs-lg); font-variant-numeric: tabular-nums; }
+#refunds-view .rf-rf-amt b { font-weight: 800; }
+#refunds-view .rf-rf-date { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; }
+#refunds-view .rf-rf-date .rf-rf-ic { width: 14px; height: 14px; }
+#refunds-view .rf-rf-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; }
+#refunds-view .rf-rf-acts > :only-child { grid-column: 1 / -1; }
+#refunds-view .rf-rf-st { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: var(--rf-h-btn); padding: 0 12px; border-radius: var(--rf-r-btn); border: 1.5px solid currentColor; background: transparent; font: 800 var(--rf-fs-md)/1 var(--rf-font); }
+#refunds-view .rf-rf-st--canceled { color: var(--status-canceled); background: var(--status-canceled-bg); }
+#refunds-view .rf-rf-st--partial { color: var(--status-partial); background: var(--status-partial-bg); }
+#refunds-view .rf-rf-view { width: 100%; }
+#refunds-view .rf-rf-view .rf-rf-ic { width: 18px; height: 18px; }
+#refunds-view .rf-rf-more { width: 100%; }
+#refunds-view .rf-rf-more[hidden] { display: none; }
+#refunds-view .rf-rf-msg { padding: 24px 14px; text-align: center; color: var(--rf-sub); font-weight: 600; line-height: 1.5; background: var(--rf-field); border: 1px dashed var(--rf-bd); border-radius: var(--rf-r-card); }
+
+#refunds-view .rf-rf-search:focus-within, #refunds-view .rf-button:focus-visible, #refunds-view .rf-rf-pill:focus-visible, #refunds-view .rf-rf-x:focus-visible { outline: 0; }
+#refunds-view .rf-button:focus-visible, #refunds-view .rf-rf-pill:focus-visible, #refunds-view .rf-rf-x:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* ---- desktop ---- */
+@media (min-width: 768px) {
+  #refunds-view .rf-rf-head { padding: 20px 22px; }
+  #refunds-view .rf-rf-tiles { max-width: 420px; }
+  #refunds-view .rf-rf-list-card { padding: 18px; }
+  #refunds-view .rf-rf-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #refunds-view .rf-rf-pills { max-width: 460px; }
+}
+@media (prefers-reduced-motion: reduce) { #refunds-view .rf-rf-search, #refunds-view .rf-rf-pill { transition: none; } }

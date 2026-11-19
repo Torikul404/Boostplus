@@ -1,0 +1,115 @@
+/* ==========================================================
+   design/ref-home.css — R11 part 1: New order page (loaded after ref-shell.css)
+   hero, stat tiles, platform card, steps 1-3. Colours only from tokens.
+   Existing ids / classes are kept; theme.css uses !important on .platform-btn, so those overrides do too.
+   ========================================================== */
+
+/* ---- page body ---- */
+#services-view { padding: 12px 12px 30px; max-width: 953px; margin-inline: auto; }
+@media (min-width: 992px) { #services-view { padding: 18px 20px 40px; } }
+
+/* ---- logged-in block: hero + tiles ---- */
+#userDash.user-dash { max-width: none; margin: 0 0 14px; padding: 0; background: none; border: 0; box-shadow: none; }
+#userDash .rf-hero { margin-bottom: 12px; }
+.rf-hero__name { color: #BAE6FD; }
+.rf-hero .ud-badge { margin: 0 0 6px; }
+.rf-hero__title { overflow-wrap: anywhere; }
+.rf-hero__actions .rf-button { gap: 6px; padding: 0 10px; white-space: nowrap; font-size: 13px; }
+.rf-tile { position: relative; }
+.rf-tile__txt { min-width: 0; flex: 1; }
+.rf-tile__add { position: absolute; top: -2px; right: -2px; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; display: grid; place-items: center; cursor: pointer; color: var(--on-primary); }
+.rf-tile__add::before { content: ""; position: absolute; width: 26px; height: 26px; border-radius: 9px; background: var(--primary); z-index: 0; }
+.rf-tile__add svg { position: relative; z-index: 1; }
+.rf-tile__add:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -4px; border-radius: 14px; }
+.rf-tile--active .rf-tile__txt { padding-right: 14px; }
+.rf-tile[hidden] { display: none; }
+@media (max-width: 991px) { .rf-tiles--3 .rf-tile:nth-child(3) { grid-column: 1 / -1; } }
+@media (min-width: 992px) { .rf-tiles--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.rf-tile__value { font-variant-numeric: tabular-nums; }
+
+/* ---- "Jump straight to a platform" card ---- */
+.rf-platform { margin: 0 0 20px; padding: 14px; }
+.rf-platform .platform-bar { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: none; margin: 0 0 12px; }
+#services-view .platform-btn { height: 50px; border-radius: 13px !important; background: var(--rf-field) !important; border: 1.5px solid var(--rf-bd) !important; box-shadow: none !important; transform: none; transition: var(--rf-t); }
+#services-view .platform-btn:hover { border-color: var(--primary) !important; transform: none; }
+#services-view .platform-btn.active { background: var(--primary) !important; border-color: var(--primary) !important; color: #fff; }
+#services-view .platform-btn.active svg { background: #fff; border-radius: 8px; padding: 3px; box-sizing: border-box; width: 26px; height: 26px; color: #0369A1; }
+#services-view .platform-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+@media (min-width: 992px) { #services-view .platform-btn { height: 52px; } .rf-platform { padding: 16px; } }
+
+.rf-platform .toolbar { margin: 0; }
+.rf-platform .search-wrap { position: relative; }
+.rf-search-ic { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--rf-sub); display: grid; pointer-events: none; z-index: 1; }
+.rf-platform #searchInput { width: 100%; min-height: var(--rf-h-search); height: 46px; padding: 0 16px 0 44px; border: 1.5px solid var(--rf-field-bd); border-radius: var(--rf-r-btn); background: var(--rf-field); color: var(--rf-ink); font: 500 14px/1.3 var(--rf-font); }
+.rf-platform #searchInput::placeholder { color: var(--muted-2); }
+.rf-platform #searchInput:focus { outline: 0; border-color: var(--primary); box-shadow: 0 0 0 4px rgb(var(--primary-rgb) / .18); }
+.rf-platform .active-filters { margin: 0; }
+.rf-platform .active-filters:not(:empty) { margin-top: 10px; }
+
+/* ---- step cards ---- */
+#dropdownPicker.dropdown-picker { padding: 0; background: none; border: 0; box-shadow: none; margin: 0; max-width: none; }
+#dropdownPicker .pk { margin: 0; display: block; }
+.rf-stepcard { margin: 0 0 20px; }
+.rf-stepcard .rf-step__title { font-size: 15px; }
+.rf-stepcard .pk-count { font-size: 12px; font-weight: 600; color: var(--rf-sub); margin-left: 2px; }
+#dropdownPicker .pk-trig { min-height: 52px; display: flex; align-items: center; padding: 8px 40px 8px 14px; border: 1.5px solid var(--rf-field-bd); border-radius: var(--rf-r-field-lg); background: var(--rf-field); font: 600 14px/1.35 var(--rf-font); }
+#dropdownPicker .pk-trig:hover { border-color: var(--primary); }
+#dropdownPicker .pk-trig:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 4px rgb(var(--primary-rgb) / .18); }
+#dropdownPicker .pk-trig-txt { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#dropdownPicker .pk-trig-txt .rf-chip { min-height: 24px; padding: 0 9px; margin-right: 6px; vertical-align: 1px; font-size: 12px; }
+#dropdownPicker .pk-sel::after { right: 18px; margin-top: -7px; }
+#dropdownPicker .pk-facts { margin: 12px 0 0; }
+#dropdownPicker .pk-full { font-size: 12.5px; color: var(--rf-sub); }
+
+/* Description panel (Step 2) */
+.rf-step2-slot { display: block; }
+#abDescBox.rf-panel { margin: 14px 0 0; padding: 15px; border: 0; border-radius: var(--rf-r-panel); background: var(--rf-soft); }
+#abDescBox .rf-panel__title { margin: 0 0 10px; font-size: 14px; font-weight: 800; }
+.rf-desc-card { background: var(--rf-card); border: 1px solid var(--rf-bd); border-radius: 14px; padding: 2px 12px; }
+.rf-desc-card .rf-row { min-height: 52px; padding: 8px 0; }
+.rf-desc-val { flex: 0 1 auto; max-width: 58%; text-align: right; font-size: 13px; font-weight: 700; color: var(--rf-ink); overflow-wrap: anywhere; }
+.rf-desc-note { margin-top: 10px; }
+.rf-desc-note .rf-note__title { font-size: 13.5px; }
+.rf-desc-note ul { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 12.5px; line-height: 1.5; }
+.rf-desc-note li { position: relative; padding-left: 16px; }
+.rf-desc-note li::before { content: ""; position: absolute; left: 2px; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .7; }
+
+/* Link + Quantity (Step 2 tail) */
+#abLinkQty { margin-top: 16px; }
+#abLinkQty[hidden] { display: none !important; }
+body.pb-guest #abLinkQty { display: none !important; }
+#abLinkQty .rf-label { margin: 12px 0 6px; font-size: 13px; font-weight: 700; }
+#abLinkQty .rf-label:first-child { margin-top: 0; }
+#dropdownPicker .ab-input { min-height: 52px; padding: 0 14px; border: 1.5px solid var(--rf-field-bd) !important; border-radius: var(--rf-r-field-lg); background: var(--rf-field) !important; color: var(--rf-ink); font: 500 14px/1.3 var(--rf-font); }
+#dropdownPicker textarea.ab-input { padding: 12px 14px; min-height: 130px; }
+#dropdownPicker .ab-input:focus { outline: 0; border-color: var(--primary) !important; box-shadow: 0 0 0 4px rgb(var(--primary-rgb) / .18) !important; }
+#abLinkQty .ab-minmax { margin: 6px 2px 0; font-size: 11.5px; font-weight: 500; color: var(--rf-sub); }
+#abLinkQty .ab-comments-count { margin: 6px 2px 0; font-size: 11.5px; color: var(--rf-sub); }
+
+/* ---- Step 3: Order Details ---- */
+#abOrderFields.rf-card { margin: 0 0 20px; scroll-margin-top: 90px; }
+.rf-totals { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.rf-total { display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 15px; border-radius: 14px; background: var(--rf-field); border: 1px solid var(--rf-bd); min-width: 0; }
+.rf-total__txt { min-width: 0; flex: 1; }
+.rf-total__lbl { margin: 0; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--rf-sub); line-height: 1.3; }
+#abOrderFields .rf-total__val { margin: 2px 0 0; padding: 0; border: 0; background: none; border-radius: 0; box-shadow: none; font-size: 20px; font-weight: 800; line-height: 1.25; color: var(--rf-ink); text-align: left; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+#abOrderFields #abCharge.rf-total__val { color: var(--accent); }
+.rf-taka { font-size: 20px; font-weight: 800; line-height: 1; }
+@media (min-width: 640px) { .rf-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } }
+.rf-avg { margin-top: 10px; padding: 12px 15px; border-radius: 14px; background: var(--rf-field); border: 1px solid var(--rf-bd); }
+.rf-avg .ab-charge-label { margin: 0; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--rf-sub); }
+.rf-avg .ab-charge-box { margin: 2px 0 0; padding: 0; border: 0; background: none; font-size: 14px; font-weight: 700; color: var(--rf-ink); text-align: left; }
+#abOrderFields .ab-lowbal { margin-top: 12px; border-radius: 12px; }
+#abOrderFields .ab-submit-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; margin-top: 14px; padding: 0 16px; border: 0; border-radius: var(--rf-r-btn-lg); background: var(--grad); color: var(--on-primary); font: 800 14px/1 var(--rf-font); box-shadow: inset 0 1px 0 rgb(255 255 255 / .4), 0 8px 18px -10px rgb(var(--primary-rgb) / .7); }
+#abOrderFields .ab-submit-btn:disabled { opacity: .55; box-shadow: none; cursor: not-allowed; }
+#abOrderFields .ab-trust { margin-top: 14px; border: 1px solid var(--rf-bd); border-radius: 14px; background: var(--rf-field); }
+#abOrderFields .ab-trust-text { color: var(--rf-sub); }
+
+/* ---- guest gate card and order result keep working inside the new flow ---- */
+#pbGate.pb-gate { border-radius: var(--rf-r-form); margin: 0 0 20px; }
+#abOrderResult { border-radius: 14px; }
+
+/* hero: keep white text >= 4.5:1 on the gradient (the reference's 10-20% white overlays measure about 3.5-4:1) */
+#rfHero .rf-hero__pill { background: rgb(3 37 65 / .30); }
+#rfHero .rf-button--ghost { background: rgb(3 37 65 / .26); }
+#rfHero .rf-button--ghost:hover { background: rgb(3 37 65 / .36); }
