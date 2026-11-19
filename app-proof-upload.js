@@ -140,7 +140,7 @@ function compressProofImage(file) {
     if (pickBtn) {
       pickBtn.classList.add("has-file");
       const label = pickBtn.querySelector("strong");
-      if (label) label.textContent = file.name || "স্ক্রিনশট সিলেক্ট করা হয়েছে";
+      if (label) label.textContent = file.name || "Screenshot selected";
     }
   });
 
@@ -152,7 +152,7 @@ function compressProofImage(file) {
       if (pickBtn) {
         pickBtn.classList.remove("has-file");
         const label = pickBtn.querySelector("strong");
-        if (label) label.textContent = "গ্যালারি / ফাইল থেকে বেছে নিন";
+        if (label) label.textContent = "Choose from gallery / files";
       }
     });
   }
@@ -187,7 +187,7 @@ if (document.getElementById('finalOrderForm')) {
     const submitBtn = e.target.querySelector('button[type="submit"]');
 
     if (!selectedPackage) {
-      alert("সার্ভিস সিলেক্ট করুন");
+      alert("Select a service");
       return;
     }
 
@@ -195,23 +195,23 @@ if (document.getElementById('finalOrderForm')) {
     // feedback; the server (Apps Script) re-checks this again independently.
     const qtyNum = Number(qty);
     if (!qty || isNaN(qtyNum) || qtyNum <= 0) {
-      alert("সঠিক Quantity দিন।");
+      alert("Enter a valid quantity.");
       return;
     }
     if (qtyNum < selectedPackage.min || qtyNum > selectedPackage.max) {
-      alert(`Quantity অবশ্যই ${selectedPackage.min} থেকে ${selectedPackage.max} এর মধ্যে হতে হবে।`);
+      alert(`Quantity must be between ${selectedPackage.min} and ${selectedPackage.max}.`);
       return;
     }
 
     // Mobile validation — exactly 11 digits
     if (selectedMethod !== "binance") {
       if (!isValidMobile(sender)) {
-        alert("মোবাইল নম্বর অবশ্যই ঠিক ১১ ডিজিটের হতে হবে (01XXXXXXXXX)। অক্ষর বা স্পেস গ্রহণযোগ্য নয়।");
+        alert("The mobile number must be exactly 11 digits (01XXXXXXXXX). Letters or spaces are not allowed.");
         return;
       }
     } else {
       if (!sender || sender.length < 4) {
-        alert("সঠিক Binance UID দিন");
+        alert("Enter a valid Binance UID");
         return;
       }
     }
@@ -219,13 +219,13 @@ if (document.getElementById('finalOrderForm')) {
     // TrxID validation
     if (selectedMethod !== "binance") {
       if (!isValidTrxId(trx, selectedMethod)) {
-        alert("সঠিক Transaction ID দিন। ভুল ফরম্যাট গ্রহণ করা হবে না।");
+        alert("Enter a valid Transaction ID. An invalid format will not be accepted.");
         return;
       }
     } else {
       // For Binance, TrxID field may be hidden; still allow optional
       if (trx && !isValidTrxId(trx, "binance")) {
-        alert("সঠিক Transaction ID দিন।");
+        alert("Enter a valid Transaction ID.");
         return;
       }
     }
@@ -243,7 +243,7 @@ if (document.getElementById('finalOrderForm')) {
     orderSubmissionInProgress = true;
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerText = "যাচাই হচ্ছে...";
+      submitBtn.innerText = "Verifying...";
     }
 
     let proofBase64 = "";
@@ -263,7 +263,7 @@ if (document.getElementById('finalOrderForm')) {
     try {
       const used = JSON.parse(localStorage.getItem("usedTxnIds") || "[]");
       if (trx && used.includes(trx.toUpperCase())) {
-        alert("এই Transaction ID আগেই ব্যবহার করা হয়েছে। অন্য Txn ID দিন।");
+        alert("This Transaction ID has already been used. Enter a different Txn ID.");
         orderSubmissionInProgress = false;
         if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = "Submit"; }
         return;
@@ -348,7 +348,7 @@ if (document.getElementById('finalOrderForm')) {
     }
 
     if (!serverOk) {
-      alert(serverMsg || "অর্ডার সাবমিট করা যায়নি। আবার চেষ্টা করুন।");
+      alert(serverMsg || "The order could not be submitted. Please try again.");
       orderSubmissionInProgress = false;
       if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = "Submit"; }
       return;

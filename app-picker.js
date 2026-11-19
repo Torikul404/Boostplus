@@ -17,14 +17,20 @@
     if (!host || $("pkRoot")) return !!$("pkRoot");
     root = document.createElement("div");
     root.id = "pkRoot"; root.className = "pk";
+    /* R11: Category and Service are two numbered step cards (ids unchanged; #rfStep2Slot receives the Description panel and Link/Quantity from design/ref-home.js) */
     root.innerHTML =
-      '<div class="dd-label pk-lbl" id="pkCatLbl">ক্যাটাগরি</div>' +
-      '<div class="pk-sel"><button type="button" class="pk-trig" id="pkCatBtn" aria-haspopup="dialog" aria-labelledby="pkCatLbl pkCatTxt"><span class="pk-trig-txt" id="pkCatTxt"></span></button>' +
-      '<select id="pkCat" class="pk-select pk-native" aria-hidden="true" tabindex="-1"></select></div>' +
-      '<div class="dd-label pk-lbl" id="pkSvcLbl">সার্ভিস <span class="pk-count" id="pkCount"></span></div>' +
-      '<div class="pk-sel"><button type="button" class="pk-trig" id="pkSvcBtn" aria-haspopup="dialog" aria-labelledby="pkSvcLbl pkSvcTxt"><span class="pk-trig-txt" id="pkSvcTxt"></span></button>' +
-      '<select id="pkSvc" class="pk-select pk-native" aria-hidden="true" tabindex="-1"></select></div>' +
-      '<div class="pk-facts" id="pkFacts"></div>';
+      '<section class="rf-card rf-card--form rf-stepcard" id="rfStep1">' +
+        '<div class="rf-step"><span class="rf-step__no" aria-hidden="true">1</span><div><div class="rf-step__title" id="pkCatLbl">Category</div><div class="rf-step__sub">Choose a main category you need</div></div></div>' +
+        '<div class="pk-sel"><button type="button" class="pk-trig" id="pkCatBtn" aria-haspopup="dialog" aria-labelledby="pkCatLbl pkCatTxt"><span class="pk-trig-txt" id="pkCatTxt"></span></button>' +
+        '<select id="pkCat" class="pk-select pk-native" aria-hidden="true" tabindex="-1"></select></div>' +
+      '</section>' +
+      '<section class="rf-card rf-card--form rf-stepcard" id="rfStep2">' +
+        '<div class="rf-step"><span class="rf-step__no" aria-hidden="true">2</span><div><div class="rf-step__title" id="pkSvcLbl">Service <span class="pk-count" id="pkCount"></span></div><div class="rf-step__sub">Choose a service you want to order</div></div></div>' +
+        '<div class="pk-sel"><button type="button" class="pk-trig" id="pkSvcBtn" aria-haspopup="dialog" aria-labelledby="pkSvcLbl pkSvcTxt"><span class="pk-trig-txt" id="pkSvcTxt"></span></button>' +
+        '<select id="pkSvc" class="pk-select pk-native" aria-hidden="true" tabindex="-1"></select></div>' +
+        '<div class="pk-facts" id="pkFacts"></div>' +
+        '<div class="rf-step2-slot" id="rfStep2Slot"></div>' +
+      '</section>';
     host.insertBefore(root, host.firstChild);
     host.classList.add("pk-on");
 
@@ -72,15 +78,15 @@
       '<div class="pk-sheet-bd" data-pkclose="1"></div>' +
       '<div class="pk-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="pkSheetTitle">' +
         '<div class="pk-sheet-grip" aria-hidden="true"></div>' +
-        '<div class="pk-sheet-head"><div class="pk-sheet-title" id="pkSheetTitle"></div><button type="button" class="pk-sheet-x" data-pkclose="1" aria-label="বন্ধ করুন">&times;</button></div>' +
-        '<div class="pk-sheet-search"><input type="search" id="pkSheetQ" class="pk-sheet-q" placeholder="খুঁজুন…" autocomplete="off" enterkeyhint="search" aria-label="তালিকায় খুঁজুন"></div>' +
+        '<div class="pk-sheet-head"><div class="pk-sheet-title" id="pkSheetTitle"></div><button type="button" class="pk-sheet-x" data-pkclose="1" aria-label="Close">&times;</button></div>' +
+        '<div class="pk-sheet-search"><input type="search" id="pkSheetQ" class="pk-sheet-q" placeholder="Search…" autocomplete="off" enterkeyhint="search" aria-label="Search the list"></div>' +
          '<div class="pk-sheet-list" id="pkSheetList" role="listbox"></div>' +
       '</div>';
     document.body.appendChild(el);
     el.addEventListener("click", function (e) {
       if (e.target.closest("[data-pkclose]")) { closeSheet(); return; }
       var star = e.target.closest(".pk-fav");
-      if (star) { e.stopPropagation(); var on = favToggle(star.getAttribute("data-fav")); star.setAttribute("aria-pressed", on ? "true" : "false"); star.textContent = on ? "★" : "☆"; star.setAttribute("aria-label", on ? "ফেভারিট থেকে সরান" : "ফেভারিটে রাখুন"); if (!$("pkSheetQ").value) paintList(true); return; }
+      if (star) { e.stopPropagation(); var on = favToggle(star.getAttribute("data-fav")); star.setAttribute("aria-pressed", on ? "true" : "false"); star.textContent = on ? "★" : "☆"; star.setAttribute("aria-label", on ? "Remove from favorites" : "Add to favorites"); if (!$("pkSheetQ").value) paintList(true); return; }
       var b = e.target.closest(".pk-opt"); if (!b) return;
       var sel = $(sheetKind === "cat" ? "pkCat" : "pkSvc");
       var v = b.getAttribute("data-v");
@@ -118,7 +124,7 @@
     var btn = '<button type="button" role="option" class="pk-opt pk-opt-' + kind + (on ? " on" : "") + '" aria-selected="' + (on ? "true" : "false") + '" data-v="' + esc(it.v) + '"' + (kind === "svc" ? ' title="' + esc(it.full) + '"' : '') + '>' + inner + '</button>';
     if (kind !== "svc") return btn;
     var f = favGet().indexOf(String(it.v)) >= 0;
-    return '<div class="pk-row">' + btn + '<button type="button" class="pk-fav" data-fav="' + esc(it.v) + '" aria-pressed="' + (f ? "true" : "false") + '" aria-label="' + (f ? "ফেভারিট থেকে সরান" : "ফেভারিটে রাখুন") + '">' + (f ? "★" : "☆") + '</button></div>';
+    return '<div class="pk-row">' + btn + '<button type="button" class="pk-fav" data-fav="' + esc(it.v) + '" aria-pressed="' + (f ? "true" : "false") + '" aria-label="' + (f ? "Remove from favorites" : "Add to favorites") + '">' + (f ? "★" : "☆") + '</button></div>';
   }
 
   /* ধাপ ২০: তালিকা খোলার সময়ই আঁকা হয়, ৩০টা করে (স্ক্রলে আরও) — শুরুতে DOM-এ সার্ভিসের সারি থাকে না */
@@ -136,7 +142,7 @@
   function paintList(keep) {
     var list = $("pkSheetList"), sel = $(sheetKind === "cat" ? "pkCat" : "pkSvc"), top = keep ? list.scrollTop : 0;
     listAll = filtered(); shown = 0; list.innerHTML = "";
-    if (!listAll.length) { list.innerHTML = '<div class="pk-empty">কিছু পাওয়া যায়নি</div>'; return; }
+    if (!listAll.length) { list.innerHTML = '<div class="pk-empty">Nothing found</div>'; return; }
     moreItems(sel.value, Math.max(CHUNK, keep ? Math.ceil((top + list.clientHeight) / 56) + 5 : 0));
     if (keep) list.scrollTop = top;
   }
@@ -145,7 +151,7 @@
     var html = listAll.slice(shown, end).map(function (it) { return optHTML(sheetKind, it, cur); }).join("");
     var old = list.querySelector(".pk-more"); if (old) old.remove();
     list.insertAdjacentHTML("beforeend", html); shown = end;
-    if (shown < listAll.length) list.insertAdjacentHTML("beforeend", '<button type="button" class="pk-more" data-more="1">আরও দেখান (' + (listAll.length - shown) + ')</button>');
+    if (shown < listAll.length) list.insertAdjacentHTML("beforeend", '<button type="button" class="pk-more" data-more="1">Show more (' + (listAll.length - shown) + ')</button>');
   }
 
   function openSheet(kind) {
@@ -154,7 +160,7 @@
     if (!sel || sel.disabled || !items.length) return;
     sheetKind = kind;
     var el = ensureSheet();
-    $("pkSheetTitle").textContent = kind === "cat" ? "ক্যাটাগরি বেছে নিন" : "সার্ভিস বেছে নিন";
+    $("pkSheetTitle").textContent = kind === "cat" ? "Choose a category" : "Choose a service";
     $("pkSheetQ").value = "";
     var cur = sel.value;
     paintList(false);
@@ -184,7 +190,7 @@
     else ct.textContent = (ci.em ? ci.em + " " : "") + ci.name + " (" + ci.n + ")";
     var si = svcItems.filter(function (x) { return String(x.v) === String(ss.value); })[0];
     if (ss.disabled || !si) st.textContent = ss.options[ss.selectedIndex] ? ss.options[ss.selectedIndex].text : "";
-    else { st.textContent = si.v + " · " + si.name; st.title = si.full; }
+    else { st.innerHTML = '<span class="rf-chip rf-chip--id">' + esc(si.v) + '</span> <span class="pk-svc-nm">' + esc(si.name) + '</span>'; st.title = si.full; }   /* R11: ID chip + name */
     $("pkCatBtn").disabled = cs.disabled; $("pkSvcBtn").disabled = ss.disabled;
   }
 
@@ -239,8 +245,8 @@
 
     // ---- Category ----
     var cs = $("pkCat");
-    if (loading) cs.innerHTML = '<option value="">লোড হচ্ছে…</option>';
-    else if (!cats.length) cs.innerHTML = '<option value="">কোনো ক্যাটাগরি নেই</option>';
+    if (loading) cs.innerHTML = '<option value="">Loading…</option>';
+    else if (!cats.length) cs.innerHTML = '<option value="">No categories</option>';
     else cs.innerHTML = cats.filter(function (c) { return c === selectedCategoryValue; }).map(function (c) {   // ধাপ ২০: শুধু নির্বাচিতটা DOM-এ
       var pl = ""; try { pl = pbCatPlatform(c); } catch (e) {}
       var em = ""; try { em = pbCatEmoji(c, pl); } catch (e) {}
@@ -259,7 +265,7 @@
     var ss = $("pkSvc");
     $("pkCount").textContent = pool.length ? "(" + pool.length + ")" : "";
     if (!pool.length) {
-      ss.innerHTML = '<option value="">' + (loading ? "সার্ভিস লোড হচ্ছে…" : "এই ক্যাটাগরিতে কোনো সার্ভিস নেই") + '</option>';
+      ss.innerHTML = '<option value="">' + (loading ? "Loading services…" : "No services in this category") + '</option>';
       ss.disabled = true; $("pkFacts").innerHTML = ""; syncAvg(null);
       svcItems = []; syncTriggers();
       return;
@@ -284,7 +290,7 @@
     // ---- নির্বাচিত সার্ভিসের ছোট তথ্য (পিল + ডেলিভারি রেকর্ড) ----
     var cur = pool.find(function (p) { return String(p.code) === String(selectedServiceCode); }) || null;
     var curItem = cur ? svcItems.filter(function (x) { return x.v === String(cur.code); })[0] : null;
-    $("pkFacts").innerHTML = cur ? (curItem && curItem.full && curItem.full !== curItem.name ? '<div class="pk-full"><span class="pk-full-l">পুরো নাম</span> ' + esc(curItem.full) + '</div>' : '') + '<div class="pk-pills">' + pills(cur) + '</div>' + (function () { try { return deliveryBadgeHTML(cur) || ""; } catch (e) { return ""; } })() : "";
+    $("pkFacts").innerHTML = cur ? (curItem && curItem.full && curItem.full !== curItem.name ? '<div class="pk-full"><span class="pk-full-l">Full name</span> ' + esc(curItem.full) + '</div>' : '') + '<div class="pk-pills">' + pills(cur) + '</div>' + (function () { try { return deliveryBadgeHTML(cur) || ""; } catch (e) { return ""; } })() : "";
     syncAvg(cur);
   }
 

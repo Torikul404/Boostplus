@@ -25,7 +25,7 @@
       return await res.json();
     } finally { clearTimeout(t); }
   }
-  const netMsg = 'ইন্টারনেট সংযোগে সমস্যা হয়েছে। আবার চেষ্টা করুন।';
+  const netMsg = 'Internet connection problem. Please try again.';
 
   // ---------- অ্যাকর্ডিয়ন (<768 px) ----------
   const mq = window.matchMedia ? window.matchMedia('(min-width: 768px)') : null;
@@ -64,8 +64,8 @@
     try {
       const d = await post({ action: 'wallet_auth', sub: 'account_get', token: token() });
       if (d && d.ok) { paintProfile(d.name || ls(LS_NAME), d.mobile || ls(LS_MOBILE)); em.value = d.email || ''; setGender(d.gender || ''); }
-      else if (d && d.error === 'auth') { paintGuest(true); toast('error', d.message || 'আবার লগইন করুন'); }
-      else toast('error', (d && d.message) || 'তথ্য আনা যায়নি');
+      else if (d && d.error === 'auth') { paintGuest(true); toast('error', d.message || 'Please log in again'); }
+      else toast('error', (d && d.message) || 'Could not load your details');
     } catch (e) { toast('error', netMsg); }
     em.disabled = false;
   }
@@ -85,8 +85,8 @@
     gBtns.forEach((x) => { x.disabled = true; });
     try {
       const d = await post({ action: 'wallet_auth', sub: 'account_save', token: token(), gender: next });
-      if (d && d.ok) { setGender(d.gender || ''); toast('success', d.message || 'সেভ হয়েছে'); }
-      else toast('error', (d && d.message) || 'সেভ করা যায়নি');
+      if (d && d.ok) { setGender(d.gender || ''); toast('success', d.message || 'Saved'); }
+      else toast('error', (d && d.message) || 'Could not save');
     } catch (e) { toast('error', netMsg); }
     gBtns.forEach((x) => { x.disabled = false; });
   }));
@@ -95,12 +95,12 @@
   const saveBtn = $('accEmailSave');
   saveBtn.addEventListener('click', async () => {
     const email = ($('accEmail').value || '').trim();
-    if (email && !/^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']{2,}$/.test(email)) { toast('error', 'ইমেইল ঠিক নয়'); return; }
+    if (email && !/^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']{2,}$/.test(email)) { toast('error', 'Invalid email'); return; }
     saveBtn.disabled = true;
     try {
       const d = await post({ action: 'wallet_auth', sub: 'account_save', token: token(), email: email });
-      if (d && d.ok) { $('accEmail').value = d.email || ''; toast('success', d.message || 'সেভ হয়েছে'); }
-      else toast('error', (d && d.message) || 'সেভ করা যায়নি');
+      if (d && d.ok) { $('accEmail').value = d.email || ''; toast('success', d.message || 'Saved'); }
+      else toast('error', (d && d.message) || 'Could not save');
     } catch (e) { toast('error', netMsg); }
     saveBtn.disabled = false;
   });
@@ -121,10 +121,10 @@
   if (zones.indexOf(cur) < 0) cur = DEFAULT_TZ;
   sel.value = cur;
   function clock() {
-    try { return new Date().toLocaleString('bn-BD', { timeZone: sel.value, hour: 'numeric', minute: '2-digit', day: 'numeric', month: 'short' }); } catch (e) { return ''; }
+    try { return new Date().toLocaleString('en-GB', { timeZone: sel.value, hour: 'numeric', minute: '2-digit', day: 'numeric', month: 'short' }); } catch (e) { return ''; }
   }
-  function note() { $('accTzNote').textContent = 'এখন ওই জোনে: ' + clock() + ' · শুধু এই ডিভাইসে সেভ হয় (অর্ডারের সময় দেখানোয় প্রয়োগ পরে)।'; }
-  sel.addEventListener('change', () => { try { localStorage.setItem(LS_TZ, sel.value); } catch (e) {} note(); toast('success', 'টাইমজোন সেভ হয়েছে'); });
+  function note() { $('accTzNote').textContent = 'Now in that zone: ' + clock() + ' · Saved on this device only (applied to order times later).'; }
+  sel.addEventListener('change', () => { try { localStorage.setItem(LS_TZ, sel.value); } catch (e) {} note(); toast('success', 'Time zone saved'); });
   note();
 
   document.addEventListener('pb:account-open', () => { layout(); note(); load(); });

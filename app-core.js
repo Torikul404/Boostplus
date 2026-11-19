@@ -1,3 +1,14 @@
+/* R8: the server sends durations as (possibly Bangla) text; show it in English without a server change */
+window.pbTookEn = function (s) {
+  var d = "\u09E6\u09E7\u09E8\u09E9\u09EA\u09EB\u09EC\u09ED\u09EE\u09EF";
+  return String(s == null ? "" : s)
+    .replace(/[\u09E6-\u09EF]/g, function (c) { return String(d.indexOf(c)); })
+    .replace(/\u09B8\u09C7\u0995\u09C7\u09A8\u09CD\u09A1/g, "sec")
+    .replace(/\u09AE\u09BF\u09A8\u09BF\u099F/g, "min")
+    .replace(/\u0998\u09A3\u09CD\u099F\u09BE|\u0998\u09A8\u09CD\u099F\u09BE/g, "h")
+    .replace(/\u09A6\u09BF\u09A8/g, "d")
+    .trim();
+};
 /* ==========================================================
    app-core.js — Shared foundation. Loaded FIRST.
    Global state, constants (payment methods, platform logos, category
@@ -57,13 +68,13 @@ let selectedSubTag = ''; // '' shows sub-layer cards; '__all__' or a group key s
 // Most specific / highest-signal groups go first; "Fast" (which ~60% of all
 // services carry) is deliberately near the bottom so it doesn't swallow everything.
 const SUBLAYER_GROUPS = [
-  { key: 'bd', label: '🇧🇩 বাংলাদেশি (BD)', test: p => /🇧🇩/.test(p.name) || (p.tags || []).some(t => t.includes('🇧🇩')) },
-  { key: 'othercountry', label: '🌍 অন্যান্য দেশ', test: p => /[\u{1F1E6}-\u{1F1FF}]{2}/u.test(p.name) && !/🇧🇩/.test(p.name) },
+  { key: 'bd', label: '🇧🇩 Bangladeshi (BD)', test: p => /🇧🇩/.test(p.name) || (p.tags || []).some(t => t.includes('🇧🇩')) },
+  { key: 'othercountry', label: '🌍 Other countries', test: p => /[\u{1F1E6}-\u{1F1FF}]{2}/u.test(p.name) && !/🇧🇩/.test(p.name) },
   { key: 'nondrop', label: '✅ Non-Drop', test: p => (p.tags || []).some(t => t === 'Non-Drop' || t === 'Non Drop') },
   { key: 'hq', label: '⭐ HQ / Premium', test: p => (p.tags || []).some(t => ['HQ', 'NR', 'Real'].includes(t)) },
   { key: 'refill', label: '🔄 Refill Guarantee', test: p => (p.tags || []).includes('Refill') },
   { key: 'fast', label: '🚀 Fast / Instant', test: p => (p.tags || []).includes('Fast') },
-  { key: 'general', label: '📦 সাধারণ', test: p => !p.tags || p.tags.length === 0 }
+  { key: 'general', label: '📦 General', test: p => !p.tags || p.tags.length === 0 }
 ];
 
 /** Each service belongs to exactly one sub-layer card: the first group in
@@ -285,7 +296,7 @@ window.pbRenderBonusUI = function () {
   const promo = document.getElementById("topupPromo");
   if (promo) {
     promo.hidden = !on;
-    if (on) promo.innerHTML = "🎁 <b>টপ-আপে বোনাস!</b> <span>" + pbBonusTiersText() + "</span>";
+    if (on) promo.innerHTML = "🎁 <b>Top-up bonus!</b> <span>" + pbBonusTiersText() + "</span>";
   }
   const banner = document.getElementById("tfBonusBanner");
   const cell = document.getElementById("afSumBonusCell");
@@ -300,9 +311,9 @@ window.pbRenderBonusUI = function () {
   }
   const r = pbBonusFor(v);
   if (banner) {
-    let line = "🎁 <b>টপ-আপ বোনাস:</b> " + pbBonusTiersText();
-    if (v > 0 && r.bonus > 0) line += "<div class=\"tf-bonus-now\">এই টপ-আপে পাচ্ছেন <b>+৳" + r.bonus + "</b> বোনাস (" + r.percent + "%)</div>";
-    else if (r.next) line += "<div class=\"tf-bonus-now\">৳" + r.next.min + " বা তার বেশি টপ-আপ করলে " + r.next.percent + "% বোনাস পাবেন" + (v > 0 ? " (আরও ৳" + (r.next.min - v) + ")" : "") + "</div>";
+    let line = "🎁 <b>Top-up bonus:</b> " + pbBonusTiersText();
+    if (v > 0 && r.bonus > 0) line += "<div class=\"tf-bonus-now\">You get <b>+৳" + r.bonus + "</b> bonus on this top-up (" + r.percent + "%)</div>";
+    else if (r.next) line += "<div class=\"tf-bonus-now\">৳" + r.next.min + " or more top-up gets you " + r.next.percent + "% bonus" + (v > 0 ? " (৳" + (r.next.min - v) + ")" : "") + "</div>";
     banner.innerHTML = line;
     banner.hidden = false;
   }

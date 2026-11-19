@@ -7,6 +7,7 @@
    • ডেটা: app-catalog.js-এর allPackages (স্টুডিও/অ্যাডমিন থেকে যোগ-বন্ধ service_meta-সহ) — নতুন কোনো রিকোয়েস্ট নেই
    • হালকা: একসাথে ২৪টি কার্ড আঁকে (নিচে নামলে নিজে আরও), আইকন = একটি SVG স্প্রাইট (বারের SVG থেকে), ছবি নেই, ইভেন্ট ডেলিগেশন
    • Average time/Statistics শুধু আসল ডেলিভারি রেকর্ড থাকলে (ভুয়া সময় কখনো নয়)
+   • R12: Attention banner · hero stats (সত্যিকারের গণনা) · কার্ড = ☆ + ID চিপ, দাম "PER 1000", Min/Max/সময় চিপ, Statistics/Details, Buy Now · ক্যাটাগরি বার + "N services" · ডেস্কটপে এক-সারির কার্ড (ref-services.css)
    ========================================================== */
 (function () {
   "use strict";
@@ -16,7 +17,14 @@
 
   var PAGE = 24;                         // একবারে কত কার্ড আঁকা হবে (DOM হালকা রাখতে)
   var FAVK = "pb_fav_svc";
-  var state = { plats: {}, cat: "", q: "", min: null, max: null, favOnly: false, shown: PAGE, open: {} };
+  var state = { plats: {}, tags: {}, cat: "", q: "", min: null, max: null, favOnly: false, shown: PAGE, open: {} };
+  /* R5: quick-filter tags (admin labels from packages data; General is not informative, so left out) */
+  var TAGS = ["Fast", "Non Drop", "HQ", "Cheap", "Bangladeshi", "Refill"];
+  function hasTag(p, t) {
+    if (t === "Refill") return String(p.refill || "").toLowerCase() === "yes" || (p.tags || []).indexOf("Refill") !== -1;
+    return (p.tags || []).indexOf(t) !== -1;
+  }
+  function tagsOn() { return TAGS.filter(function (k) { return state.tags[k]; }); }
   var waitTimer = null, built = false, favs = {}, labels = {}, iconSet = {}, io = null;
 
   function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -63,12 +71,13 @@
   function platsOn() { return Object.keys(state.plats).filter(function (k) { return state.plats[k]; }); }
   function filtered(opts) {
     opts = opts || {};
-    var q = state.q.trim().toLowerCase(), words = q ? q.split(/\s+/) : null, po = platsOn();
+    var q = state.q.trim().toLowerCase(), words = q ? q.split(/\s+/) : null, po = platsOn(), to = tagsOn();
     var hasMin = state.min != null && isFinite(state.min), hasMax = state.max != null && isFinite(state.max);
     return pkgs().filter(function (p) {
       if (po.length && !state.plats[p.platform]) return false;
       if (!opts.ignoreCat && state.cat && (p.category || "Other") !== state.cat) return false;
       if (state.favOnly && !favs[String(p.code)]) return false;
+      if (to.length && !to.every(function (k) { return hasTag(p, k); })) return false;
       if (hasMin || hasMax) { var pr = priceOf(p); if (!isFinite(pr)) return false; if (hasMin && pr < state.min) return false; if (hasMax && pr > state.max) return false; }
       if (words) {
         var hay = (String(p.code) + " " + nameOf(p) + " " + (p.category || "") + " " + (p.platform || "")).toLowerCase();
@@ -93,11 +102,31 @@
     $("slModalX").addEventListener("click", closeModal);
     $("slModal").addEventListener("click", function (e) { if (e.target === this) closeModal(); });
     $("slApply").addEventListener("click", applyModal);
-    $("slReset").addEventListener("click", function () { state.plats = {}; state.min = null; state.max = null; state.favOnly = false; state.cat = ""; state.shown = PAGE; closeModal(); render(); });
+    $("slReset").addEventListener("click", function () { state.plats = {}; state.min = null; state.max = null; state.favOnly = false; state.tags = {}; state.cat = ""; state.shown = PAGE; closeModal(); syncChips(); render(); });
     $("slPlats").addEventListener("click", function (e) { var b = e.target.closest("[data-sl-plat]"); if (b) b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true"); });
     var t = null;
     $("slSearch").addEventListener("input", function () { var v = this.value; clearTimeout(t); t = setTimeout(function () { state.q = v; state.shown = PAGE; render(); }, 160); });
     $("slList").addEventListener("click", onListClick);
+    var ab = $("slAttnBtn"), abody = $("slAttnBody");
+    if (ab && abody) ab.addEventListener("click", function () { var o = abody.hidden; abody.hidden = !o; ab.setAttribute("aria-expanded", o ? "true" : "false"); });
+    view.addEventListener("click", function (e) {
+      var g = e.target.closest ? e.target.closest("[data-go]") : null;
+      if (g && view.contains(g) && window.PB_nav && PB_nav.go) PB_nav.go(g.getAttribute("data-go"));
+    });
+    buildChips();
+  }
+  function buildChips() {
+    var box = $("slChips"); if (!box) return;
+    box.innerHTML = TAGS.map(function (k) { return '<button type="button" class="sl-chip" data-sl-tag="' + esc(k) + '" aria-pressed="false">' + esc(k) + "</button>"; }).join("");
+    box.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-sl-tag]"); if (!b) return;
+      var k = b.getAttribute("data-sl-tag"); state.tags[k] = !state.tags[k];
+      b.setAttribute("aria-pressed", state.tags[k] ? "true" : "false"); state.shown = PAGE; render();
+    });
+  }
+  function syncChips() {
+    var box = $("slChips"); if (!box) return;
+    Array.prototype.forEach.call(box.querySelectorAll("[data-sl-tag]"), function (b) { b.setAttribute("aria-pressed", state.tags[b.getAttribute("data-sl-tag")] ? "true" : "false"); });
   }
 
   function onListClick(e) {
@@ -107,7 +136,7 @@
     if (f) {
       var c = f.getAttribute("data-sl-fav"), on = !favs[c];
       if (on) favs[c] = 1; else delete favs[c];
-      saveFavs(); f.setAttribute("aria-pressed", on ? "true" : "false"); f.textContent = on ? "♥" : "♡"; return;
+      saveFavs(); f.setAttribute("aria-pressed", on ? "true" : "false"); f.textContent = on ? "★" : "☆"; return;
     }
     var cp = e.target.closest("[data-sl-copy]");
     if (cp) { copyId(cp.getAttribute("data-sl-copy"), cp); return; }
@@ -132,7 +161,7 @@
     if (!p) return "";
     if (kind === "stat") {
       var d = p.delivery;
-      return d && d.label ? "⏱ সর্বশেষ <b>" + esc(d.n) + "</b>টি সম্পন্ন অর্ডারের মিডিয়ান সময়: <b>" + esc(String(d.label)) + "</b>" : "এখনো যথেষ্ট ডেলিভারি রেকর্ড নেই।";
+      return d && d.label ? "⏱ Median time of the last <b>" + esc(d.n) + "</b> completed orders: <b>" + esc(delText(d)) + "</b>" : "Not enough delivery records yet.";
     }
     var html = ""; try { html = pbKnowBeforeHTML(p); } catch (e) {}
     return html || "<p>" + esc(nameOf(p)) + "</p>";
@@ -187,35 +216,60 @@
   function advCount() { return platsOn().length + (state.min != null ? 1 : 0) + (state.max != null ? 1 : 0) + (state.favOnly ? 1 : 0); }
 
   /* ---------- আঁকা ---------- */
+  function delText(d) { try { return pbDeliveryText(d); } catch (e) { return String(d.label); } }
+  function badgesHTML(p) {
+    var b = TAGS.filter(function (k) { return hasTag(p, k); });
+    return b.length ? '<div class="sl-badges">' + b.map(function (k) { return '<span class="sl-bdg sl-bdg-' + k.toLowerCase().replace(/\s+/g, "-") + '">' + esc(k) + "</span>"; }).join("") + "</div>" : "";
+  }
+  var I = {
+    bars: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 20V11M12 20V4M18 20v-6"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+    cart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11l2-8H6"/></svg>',
+    down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6"/></svg>',
+    up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 15l6-6 6 6"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
+  };
   function cardHTML(p) {
     var code = esc(p.code), price = priceOf(p), base = baseOf(p), fav = !!favs[String(p.code)];
     var priceHTML = (isFinite(price) && isFinite(base) && price < base - 1e-9)
       ? "<s>" + esc(fmt(base)) + "</s>" + esc(fmt(price)) : esc(fmt(price));
     var d = p.delivery && p.delivery.label ? p.delivery : null;
     return '<article class="sl-card" data-code="' + code + '">' +
-      '<div class="sl-r1">' + icon(p.platform) +
-      '<button type="button" class="sl-heart" data-sl-fav="' + code + '" aria-pressed="' + fav + '" aria-label="Favorite">' + (fav ? "♥" : "♡") + "</button>" +
-      '<button type="button" class="sl-idc" data-sl-copy="' + code + '" aria-label="Copy ID ' + code + '"><span>' + code + '</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>' +
-      '<span class="sl-price">' + priceHTML + "</span></div>" +
-      '<h3 class="sl-nm">' + esc(nameOf(p)) + "</h3>" +
-      '<div class="sl-r2"><span class="sl-min">⌄ Min: ' + num(p.min) + '</span><span class="sl-max">⌃ Max: ' + num(p.max) + "</span></div>" +
-      (d ? '<div class="sl-avg">⏱ ' + esc(String(d.label)) + "</div>" : "") +
-      '<div class="sl-acts">' + (d ? '<button type="button" class="sl-btn" data-sl-stat="' + code + '">Statistics</button>' : "") +
-      '<button type="button" class="sl-btn" data-sl-view="' + code + '">Details</button>' +
-      '<button type="button" class="sl-btn sl-buy" data-sl-buy="' + code + '">Buy Now</button></div>' +
+      '<div class="sl-c-l"><span class="sl-pfsq">' + icon(p.platform) + "</span>" +
+      '<button type="button" class="sl-heart" data-sl-fav="' + code + '" aria-pressed="' + fav + '" aria-label="Favorite">' + (fav ? "★" : "☆") + "</button>" +
+      '<button type="button" class="sl-idc" data-sl-copy="' + code + '" aria-label="Copy ID ' + code + '"><span>' + code + '</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>' +
+      '<div class="sl-c-r"><div class="sl-pricebox"><span class="sl-price">' + priceHTML + '</span><span class="sl-per">PER 1000</span></div>' +
+      '<div class="sl-acts">' + (d ? '<button type="button" class="sl-btn sl-stat" data-sl-stat="' + code + '">' + I.bars + "<span>Statistics</span></button>" : "") +
+      '<button type="button" class="sl-btn sl-det" data-sl-view="' + code + '">' + I.info + "<span>Details</span></button></div>" +
+      '<button type="button" class="sl-btn sl-buy sl-buynow" data-sl-buy="' + code + '">' + I.cart + "<span>Buy Now</span></button></div>" +
+      '<div class="sl-c-m"><h3 class="sl-nm">' + esc(nameOf(p)) + "</h3>" + badgesHTML(p) +
+      '<div class="sl-r2"><span class="sl-min">' + I.down + "Min: " + num(p.min) + '</span><span class="sl-max">' + I.up + "Max: " + num(p.max) + "</span>" +
+      (d ? '<span class="sl-avg">' + I.clock + esc(delText(d)) + "</span>" : "") + "</div></div>" +
       '<div class="sl-panel" hidden></div></article>';
+  }
+
+  /* hero stats: only real counts of the catalog; hidden while it is empty (D7) */
+  function fillStats() {
+    var all = pkgs(), box = $("slStats"); if (!box) return;
+    var cats = {}, plats = {};
+    all.forEach(function (p) { cats[p.category || "Other"] = 1; if (p.platform) plats[p.platform] = 1; });
+    $("slStSvc").textContent = all.length.toLocaleString("en-US");
+    $("slStCat").textContent = Object.keys(cats).length.toLocaleString("en-US");
+    $("slStPlat").textContent = Object.keys(plats).length.toLocaleString("en-US");
+    box.hidden = !all.length;
   }
 
   function render(keepScroll) {
     var list = $("slList"), ls = loadState();
-    if (ls === "loading" && !pkgs().length) { list.innerHTML = '<div class="sl-msg" role="status">সার্ভিস লোড হচ্ছে…</div>'; $("slCount").textContent = ""; return; }
-    if (ls === "error" && !pkgs().length) { list.innerHTML = '<div class="sl-msg" role="alert">সার্ভিস লোড করা যায়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।<br><button type="button" class="sl-btn sl-buy" data-sl-retry="1">আবার চেষ্টা করুন</button></div>'; $("slCount").textContent = ""; return; }
+    if (ls === "loading" && !pkgs().length) { list.innerHTML = '<div class="sl-msg" role="status">Loading services…</div>'; $("slCount").textContent = ""; return; }
+    if (ls === "error" && !pkgs().length) { list.innerHTML = '<div class="sl-msg" role="alert">Couldn\u2019t load services. Check your connection and try again.<br><button type="button" class="sl-btn sl-buy" data-sl-retry="1">Try again</button></div>'; $("slCount").textContent = ""; return; }
     $("slCatLabel").textContent = state.cat || "Category";
     var n = advCount(), dot = $("slAdvN"); dot.hidden = !n; dot.textContent = n;
     var items = filtered(), total = items.length;
-    $("slCount").textContent = total ? total + " টি সার্ভিস" : "";
+    fillStats();
+    $("slCount").textContent = total ? total + (total === 1 ? " service" : " services") : "";
     if (!total) {
-      list.innerHTML = '<div class="sl-msg">' + (pkgs().length ? "এই ফিল্টারে কোনো সার্ভিস নেই।" : "এখনো কোনো সার্ভিস যোগ করা হয়নি।") + "</div>";
+      list.innerHTML = '<div class="sl-msg">' + (pkgs().length ? "No services match these filters." : "No services have been added yet.") + "</div>";
       return;
     }
     // ক্যাটাগরি ধরে ভাগ — ক্যাটাগরির ক্রম সাইটের নিজস্ব ক্রমে
@@ -225,11 +279,11 @@
       if (cut) return;
       var arr = groups[c], take = Math.min(arr.length, state.shown - used);
       if (take <= 0) { cut = true; return; }
-      out.push('<h2 class="sl-gh">' + icon(arr[0].platform) + "<span>" + esc(c) + ' <small>(' + arr.length + ")</small></span></h2>");
+      out.push('<h2 class="sl-gh"><span class="sl-pfsq">' + icon(arr[0].platform) + '</span><span class="sl-gh__t">' + esc(c) + '</span><span class="sl-gh__n">' + arr.length + (arr.length === 1 ? " service" : " services") + "</span></h2>");
       for (var i = 0; i < take; i++) out.push(cardHTML(arr[i]));
       used += take; if (take < arr.length) cut = true;
     });
-    if (used < total) out.push('<div class="sl-more"><button type="button" class="sl-btn sl-buy" data-sl-more="1">আরও দেখান (' + (total - used) + ")</button></div>");
+    if (used < total) out.push('<div class="sl-more"><button type="button" class="sl-btn sl-buy" data-sl-more="1">Show more (' + (total - used) + ")</button></div>");
     var y = window.pageYOffset;
     list.innerHTML = out.join("");
     if (keepScroll) window.scrollTo(0, y);

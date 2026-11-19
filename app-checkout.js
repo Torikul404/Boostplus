@@ -214,9 +214,9 @@ function formatElapsedBn(ms) {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = sec % 60;
-  if (h > 0) return h + " ঘণ্টা " + m + " মিনিট " + s + " সেকেন্ড";
-  if (m > 0) return m + " মিনিট " + s + " সেকেন্ড";
-  return s + " সেকেন্ড";
+  if (h > 0) return h + " h " + m + " min " + s + " sec";
+  if (m > 0) return m + " min " + s + " sec";
+  return s + " sec";
 }
 
 let _trackTimerIv = null;
@@ -238,17 +238,17 @@ function buildOrderDetailHTML(data, statusOverride) {
   let color = "#f1c40f";
   let badgeBg = "rgba(241,196,15,0.15)";
   let borderCol = "rgba(241,196,15,0.45)";
-  let msg = "পেমেন্ট ভেরিফিকেশন Pending আছে";
+  let msg = "Payment verification is Pending";
 
   if (status === "Processing") {
     color = "#38bdf8"; badgeBg = "rgba(56,189,248,0.15)"; borderCol = "rgba(56,189,248,0.45)";
-    msg = "অর্ডার Processing এ আছে";
+    msg = "Order is Processing";
   } else if (status === "Completed") {
     color = "#6ee7b7"; badgeBg = "rgba(110,231,183,0.15)"; borderCol = "rgba(110,231,183,0.45)";
-    msg = "অর্ডার Completed হয়েছে! 🎉";
+    msg = "Order Completed! 🎉";
   } else if (status === "Rejected") {
     color = "#f87171"; badgeBg = "rgba(248,113,113,0.15)"; borderCol = "rgba(248,113,113,0.45)";
-    msg = "অর্ডার Rejected হয়েছে";
+    msg = "Order Rejected";
   }
 
   // All values come from the sheet / customer input → always HTML-escaped.
@@ -277,11 +277,11 @@ function buildOrderDetailHTML(data, statusOverride) {
     if (status === "Completed" || status === "Partial") {
       const ms = (doneMs && !isNaN(doneMs) ? doneMs : Date.now()) - fwdMs;
       const label = data.elapsed_label || formatElapsedBn(ms);
-      timerRow = row("ডেলিভারি সময়", label + (status === "Completed" ? " (সম্পন্ন)" : " (Partial)"));
+      timerRow = row("Delivery time", label + (status === "Completed" ? " (completed)" : " (Partial)"));
     } else if (status === "Processing") {
       timerRow = `
     <div class="od-row od-timer-row">
-      <span class="od-label">চলমান সময়</span>
+      <span class="od-label">Time elapsed</span>
       <span class="od-value od-live-timer" data-start-ms="${fwdMs}" style="color:#38bdf8;font-weight:800;font-variant-numeric:tabular-nums;">${escapeHtml(data.elapsed_label || formatElapsedBn(Date.now() - fwdMs))}</span>
     </div>`;
     }
@@ -320,7 +320,7 @@ function buildOrderDetailText(data) {
     ? new Date(data.created_at).toLocaleString("en-BD", { timeZone: "Asia/Dhaka" })
     : "—";
   return [
-    "📌 *boostplus Order Details*",
+    "📌 *Boost Plus Order Details*",
     "",
     `Order ID: ${data.order_id || "—"}`,
     `Status: ${status}`,
@@ -480,14 +480,14 @@ if (document.getElementById('checkStatusBtn')) {
     const orderId = (document.getElementById('orderId').value || "").trim();
     const trackResult = document.getElementById('trackResult');
     if (!orderId) {
-      trackResult.innerHTML = 'অর্ডার আইডি লিখুন।';
+      trackResult.innerHTML = 'Enter an order ID.';
       return;
     }
-    trackResult.innerHTML = 'স্ট্যাটাস যাচাই করা হচ্ছে...';
+    trackResult.innerHTML = 'Checking status...';
 
     const api = sheetApi();
     if (!api) {
-      trackResult.innerHTML = 'Sheet API সেট করা নেই।';
+      trackResult.innerHTML = 'Sheet API is not configured.';
       return;
     }
 
@@ -496,7 +496,7 @@ if (document.getElementById('checkStatusBtn')) {
       const data = await response.json();
 
       if (data.error) {
-        trackResult.innerHTML = '<h3 style="color:#f87171; text-align:center;">অর্ডারটি খুঁজে পাওয়া যায়নি!</h3>';
+        trackResult.innerHTML = '<h3 style="color:#f87171; text-align:center;">Order not found!</h3>';
         return;
       }
 
@@ -528,7 +528,7 @@ if (document.getElementById('checkStatusBtn')) {
       }
     } catch (error) {
       stopTrackTimer();
-      trackResult.innerHTML = 'সার্ভারে সমস্যা হয়েছে, আবার চেষ্টা করুন।';
+      trackResult.innerHTML = 'Server problem, please try again.';
     }
   });
 }

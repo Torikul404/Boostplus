@@ -1,7 +1,7 @@
 {
   "id": "/boostplus",
-  "name": "boostplus",
-  "short_name": "boostplus",
+  "name": "Boost Plus",
+  "short_name": "Boost Plus",
   "description": "Facebook, Instagram, TikTok, X, Telegram SMM services — fast order & secure payment.",
   "start_url": "./index.html?utm_source=pwa_shop",
   "scope": "./",

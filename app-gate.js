@@ -28,10 +28,10 @@
     var f = $("abOrderFields"); if (!f || !f.parentNode) return null;
     g = document.createElement("div"); g.id = "pbGate"; g.className = "pb-gate"; g.hidden = true;
     g.innerHTML = '<div class="pb-gate-ico" aria-hidden="true">🔒</div>' +
-      '<h3 class="pb-gate-t">অর্ডার করতে একাউন্ট লগইন করুন</h3>' +
-      '<p class="pb-gate-s">User name এবং পাসওয়ার্ড দিয়ে একাউন্ট খুলুন।</p>' +
-      '<div class="pb-gate-row"><a class="pb-gate-btn" id="pbGateReg" href="login.html?tab=register">একাউন্ট খুলুন</a></div>' +
-      '<p class="pb-gate-alt">আগে থেকেই একাউন্ট আছে? <a id="pbGateLogin" href="login.html">লগইন করুন</a></p>';
+      '<h3 class="pb-gate-t">Log in to place an order</h3>' +
+      '<p class="pb-gate-s">Create an account with a user name and password.</p>' +
+      '<div class="pb-gate-row"><a class="pb-gate-btn" id="pbGateReg" href="login.html?tab=register">Create account</a></div>' +
+      '<p class="pb-gate-alt">Already have an account? <a id="pbGateLogin" href="login.html">Log in</a></p>';
     f.parentNode.insertBefore(g, f);
     return g;
   }

@@ -66,7 +66,7 @@
       if (login) login.hidden = true;
       paintAvatar(nm);
     } else {
-      num.textContent = 'লগইন করা নেই';
+      num.textContent = 'Not logged in';
       if (mob) { mob.textContent = ''; mob.hidden = true; }
       bal.textContent = '—';
       if (bb) bb.hidden = true;
@@ -110,7 +110,6 @@
   paintAccount();
 
   // ---------- order history ----------
-  function statusClass(st) { return 's-' + String(st || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
   function statusLabel(st) { return /^(rejected|canceled|cancelled)$/i.test(String(st || '')) ? 'Canceled' : (st || ''); }
   // ধাপ ১৮: ফিল্টারের নাম ইংরেজিতে (All, Pending, In progress, Processing, Completed, Partial, Canceled); Rejected/Cancelled = Canceled
   function stKey(st) {
@@ -136,12 +135,11 @@
     const out = [];
     if (o.can_refill) {
       const wait = Number(o.refill_next_ms) > Date.now();
-      out.push('<button type="button" class="pb-oh-act pb-oh-refill" data-act="refill" data-id="' + id + '"' + (wait ? ' disabled title="পরের রিফিল: ' + esc(waitLabel(o.refill_next_ms)) + ' পর"' : '') + '>🔄 Refill' + (wait ? ' (' + esc(waitLabel(o.refill_next_ms)) + ')' : '') + '</button>');
+      out.push('<button type="button" class="pb-oh-act pb-oh-refill" data-act="refill" data-id="' + id + '"' + (wait ? ' disabled title="Next refill in: ' + esc(waitLabel(o.refill_next_ms)) + '"' : '') + '>🔄 Refill' + (wait ? ' (' + esc(waitLabel(o.refill_next_ms)) + ')' : '') + '</button>');
     }
     // Speed up / Cancel request / সাহায্য বাটন অর্ডার হিস্ট্রিতে আর দেখানো হয় না (শুধু Refill থাকে)
     return out.length ? out.join(' ') : '<span class="pb-oh-note">—</span>';
   }
-  function hasFlags(o) { return !!(o && o.can_refill); }   // হিস্ট্রিতে এখন শুধু Refill বাটন
   function showMsg(text, ok) {
     const el = $('ohMsg');
     if (!el) return;
@@ -158,7 +156,7 @@
       if (list.some((t) => t.ticket_id === d.ticket_id)) return;
       const sub = act === 'refill' ? 'Refill' : (act === 'cancel' ? 'Partial / Cancel' : 'Speed up');
       list.unshift({ ticket_id: d.ticket_id, created_at: new Date().toLocaleString('en-GB'), category: 'Orders',
-        subcategory: sub, order_id: String(id).toUpperCase(), message: 'অর্ডার পাতা থেকে অনুরোধ', status: 'Open' });
+        subcategory: sub, order_id: String(id).toUpperCase(), message: 'Request from the orders page', status: 'Open' });
       localStorage.setItem(KEY, JSON.stringify(list.slice(0, 50)));
     } catch (e) {}
   }
@@ -176,11 +174,11 @@
     if (!id || btn.disabled) return;
     if (act === 'help') { openHelp(id); return; }
     const sure = act === 'refill'
-      ? 'অর্ডার ' + id + '-এ রিফিল পাঠাতে চান?'
-      : act === 'speedup' ? 'অর্ডার ' + id + '-এ Speed up অনুরোধ পাঠাবেন? একবার পাঠালে ৩ ঘণ্টা পরে আবার পাঠানো যাবে।'
+      ? 'Send a refill request for order ' + id + '?'
+      : act === 'speedup' ? 'Send a Speed up request for order ' + id + '? After sending, you can request again after 3 hours.'
       : (btn.dataset.kind === 'instant'
-          ? 'অর্ডার ' + id + ' বাতিল করবেন? টাকা ওয়ালেটে ফেরত যাবে।'
-          : 'অর্ডার ' + id + ' বাতিলের অনুরোধ পাঠাবেন? শুরু হয়ে যাওয়া অর্ডার বাতিল নাও হতে পারে।');
+          ? 'Cancel order ' + id + '? The money will be refunded to your wallet.'
+          : 'Send a cancel request for order ' + id + '? An order that has already started may not be cancellable.');
     if (!window.confirm(sure)) return;
     btn.disabled = true;
     const label = btn.textContent;
@@ -192,14 +190,14 @@
         body: JSON.stringify({ action: 'wallet_auth', sub: act, token: token(), order_id: id })
       });
       const d = await res.json();
-      if (d && d.error === 'auth') { showMsg('লগইন মেয়াদ শেষ। আবার লগইন করুন।', false); return; }
+      if (d && d.error === 'auth') { showMsg('Session expired. Please log in again.', false); return; }
       if (d && d.ok) rememberTicket(d, act, id);
       let dm = d && d.message;
-      if (!dm && d && d.error === 'too_soon' && d.next_ms) dm = 'আগের অনুরোধের পর অপেক্ষা করুন: ' + waitLabel(d.next_ms) + ' পর আবার চেষ্টা করা যাবে।';
-      if (!dm && d && d.ok && act === 'speedup') dm = 'Speed up অনুরোধ পাঠানো হয়েছে।';
-      showMsg(dm || (d && d.ok ? 'সম্পন্ন হয়েছে।' : 'ব্যর্থ হয়েছে। আবার চেষ্টা করুন।'), !!(d && d.ok));
+      if (!dm && d && d.error === 'too_soon' && d.next_ms) dm = 'Please wait after your previous request: you can try again in ' + waitLabel(d.next_ms) + '.';
+      if (!dm && d && d.ok && act === 'speedup') dm = 'Speed up request sent.';
+      showMsg(dm || (d && d.ok ? 'Done.' : 'Failed. Please try again.'), !!(d && d.ok));
     } catch (e) {
-      showMsg('নেটওয়ার্ক সমস্যা। ইন্টারনেট চেক করে আবার চেষ্টা করুন।', false);
+      showMsg('Network problem. Check your internet and try again.', false);
     } finally {
       btn.textContent = label;
       btn.disabled = false;
@@ -207,22 +205,38 @@
     }
   }
 
-  // ReOrder: নতুন-অর্ডার ফর্মে একই সার্ভিস + লিংক + পরিমাণ বসিয়ে দেয় (নিজে যাচাই করে অর্ডার দিতে হবে)
+  // Buy now / ReOrder: opens New order with the same service + link + quantity filled in (the customer still checks and submits).
+  // Waits (up to ~5 s) if the service list is still loading; tells the customer if the service is not in the list any more.
   function reorder(id) {
     const o = all.find((x) => String(x.order_id) === String(id));
     if (!o || !o.service_code) return;
-    if (window.PB_nav && PB_nav.go) PB_nav.go('new-order');
-    setTimeout(() => {
-      try { if (typeof pickSearchResult === 'function') pickSearchResult(String(o.service_code)); } catch (err) { console.warn('reorder:', err); }
-      let n = 0;
-      (function fill() {
-        const l = $('abLink'), q = $('abQty');
-        if (l && q) {
-          l.value = o.link || ''; q.value = o.quantity || '';
-          ['input', 'change'].forEach((t) => { l.dispatchEvent(new Event(t, { bubbles: true })); q.dispatchEvent(new Event(t, { bubbles: true })); });
-        } else if (n++ < 10) setTimeout(fill, 150);
-      })();
-    }, 200);
+    const code = String(o.service_code);
+    const state = () => (typeof catalogLoadState !== 'undefined' ? catalogLoadState : '');
+    const list = () => (typeof allPackages !== 'undefined' && allPackages) ? allPackages : [];
+    let tries = 0;
+    (function wait() {
+      // 'loading' / 'popular' = the service list is still on its way; 'full' = loaded (it can still be empty); 'error' = failed
+      const st = state();
+      if ((st === 'loading' || st === 'popular' || (!st && !list().length)) && tries++ < 25) { setTimeout(wait, 200); return; }
+      if (st === 'error') { showMsg('The service list could not be loaded. Please refresh the page and try again.', false); return; }
+      if (st === 'loading' || st === 'popular') { showMsg('The service list is still loading. Please try again in a moment.', false); return; }
+      if (!list().some((p) => String(p.code) === code)) { showMsg('Service #' + code + ' is not available any more. Please choose another service from New order.', false); return; }
+      showMsg('', true);
+      if (window.PB_nav && PB_nav.go) PB_nav.go('new-order');
+      setTimeout(() => {
+        try { pickSearchResult(code); } catch (err) { console.warn('reorder:', err); }
+        let n = 0;
+        (function fill() {
+          const l = $('abLink'), q = $('abQty');
+          if (l && q) {
+            l.value = o.link || ''; q.value = o.quantity || '';
+            ['input', 'change'].forEach((t) => { l.dispatchEvent(new Event(t, { bubbles: true })); q.dispatchEvent(new Event(t, { bubbles: true })); });
+            // pickSearchResult can finish after the first fill and clear the fields: check again once and refill if needed
+            if (n++ < 2) setTimeout(() => { if (l.value !== (o.link || '') || String(q.value) !== String(o.quantity || '')) fill(); }, 250);
+          } else if (n++ < 10) setTimeout(fill, 150);
+        })();
+      }, 200);
+    })();
   }
   function shortLink(l) { return String(l || '').replace(/^https?:\/\//i, ''); }
 
@@ -232,27 +246,12 @@
   const PAGE = 20;
   const liveMap = {};      // order_id -> { start_count, remains, live, ts }
   let liveBusy = false;
+  const sel = new Set();   // selected order_id values (bulk bar)
 
   const ACTIVE = ['pending', 'processing'];
   const lc = (v) => String(v || '').toLowerCase();
   function toDate(v) { const d = new Date(String(v || '')); return isNaN(d.getTime()) ? null : d; }
-  function dayKey(d) { return d ? (d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate()) : 'x'; }
-  function dayLabel(d) {
-    if (!d) return 'Earlier';
-    const t = new Date(), y = new Date(); y.setDate(t.getDate() - 1);
-    if (dayKey(d) === dayKey(t)) return 'Today';
-    if (dayKey(d) === dayKey(y)) return 'Yesterday';
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  }
-  function timeLabel(d) { return d ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''; }
   function money(v) { const n = Number(v); return isNaN(n) ? String(v == null ? '' : v) : (n % 1 ? n.toFixed(2) : String(n)); }
-  function progressPct(st, o) {
-    const k = lc(st);
-    const lv = o && liveMap[String(o.order_id)];
-    const q = o ? Number(o.quantity) : 0;
-    if (lv && lv.live && k === 'processing' && q > 0 && lv.remains != null) return Math.max(8, Math.min(97, Math.round((q - lv.remains) / q * 100)));
-    return k === 'pending' ? 15 : k === 'processing' ? 55 : (k === 'completed' || k === 'partial' || k === 'rejected') ? 100 : 0;
-  }
 
   function counts() {
     const c = { All: all.length, Pending: 0, 'In progress': 0, Processing: 0, Completed: 0, Partial: 0, Canceled: 0 };
@@ -285,18 +284,6 @@
   }
 
   function num(v) { return Number(v).toLocaleString('en-US'); }
-  function liveRowHtml(o) {
-    const k = lc(o.status);
-    if (k !== 'processing' && k !== 'partial' && k !== 'completed') return '';
-    const lv = liveMap[String(o.order_id)];
-    const sc = !lv ? '…' : (lv.live && lv.start_count != null ? num(lv.start_count) : '—');
-    const rm = !lv ? '…' : (lv.live && lv.remains != null ? num(lv.remains) : '—');
-    return '<div class="pb-oh-live" data-live="' + esc(o.order_id) + '">' +
-      '<div><span class="k">Start count</span><b>' + sc + '</b></div>' +
-      '<div><span class="k">Remaining</span><b>' + rm + '</b></div>' +
-      '<span class="pb-oh-livedot" title="Live from provider"></span>' +
-    '</div>';
-  }
 
   // Ask the server for provider-side Start count / Remaining of the orders on screen (max 8, active first).
   async function loadLive() {
@@ -331,89 +318,177 @@
   // সাইটে যে আইডি দেখাই: প্রোভাইডারের অর্ডার আইডি (গেলে), নইলে আমাদের ডিফল্ট। অ্যাকশন/সাপোর্ট সবসময় ভেতরের order_id দিয়ে চলে।
   const did = (o) => String(o.display_id || o.order_id);
 
-  function cardHtml(o) {
-    const d = toDate(o.created_at);
-    const id = esc(o.order_id);
-    const safe = typeof safeHttpUrl === 'function' ? safeHttpUrl(o.link) : '';
-    const linkHtml = o.link
-      ? (safe ? '<a href="' + esc(safe) + '" target="_blank" rel="noopener noreferrer">' + esc(shortLink(o.link)) + '</a>' : '<span>' + esc(shortLink(o.link)) + '</span>')
-      : '';
-    const hasAct = hasFlags(o);
+
+  function chg(v) { const n = Number(v); return isNaN(n) ? String(v == null ? '' : v) : String(parseFloat(n.toFixed(5))); }
+  // R13c: date-group chip (calendar icon + "17 Nov 2026") before the first order of each day.
+  // The day comes from the same date text the Date column shows (fmtDate), so chip and column always agree.
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function dayText(o) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(fmtDate(o.created_at));
+    return m && MON[+m[2] - 1] ? (+m[3] + ' ' + MON[+m[2] - 1] + ' ' + m[1]) : 'Earlier';
+  }
+  // ---------- order card (one layout on every screen width; the old table code was removed in R13e) ----------
+  // Real data only: Start count / Remains come from the live status call (liveMap); a box with no value is not drawn.
+  const openDet = new Set();      // order_id values whose Details panel is open (kept across re-renders)
+  const OCI = {
+    tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="8" cy="8" r="1.3"/>',
+    link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+    cal: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/>',
+    copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
+    cart: '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.4a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L21 7H6"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    sync: '<path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12A9 9 0 0 1 18.5 5.8L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/>',
+    half: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
+    x: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
+    help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8"/><path d="M12 17h.01"/>'
+  };
+  function oci(name, cls) {
+    return '<svg class="' + (cls || 'rf-oc-ic') + '" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + OCI[name] + '</svg>';
+  }
+  // platform of the ordered service: from the catalog (by code), else from the service name; no match -> generic tag icon
+  let pkgMap = null, pkgRef = null;
+  const PLAT_NAMES = [['instagram', /instagram/i], ['tiktok', /tik\s?tok/i], ['youtube', /youtube/i], ['facebook', /facebook/i],
+    ['telegram', /telegram/i], ['whatsapp', /whats\s?app/i], ['twitter', /twitter|\bx\b\s*(\(|-|\u2013|followers|likes|views|post)/i]];
+  function platOf(o) {
+    try {
+      if (typeof allPackages !== 'undefined' && allPackages.length) {
+        if (pkgRef !== allPackages) { pkgRef = allPackages; pkgMap = new Map(); allPackages.forEach((p) => pkgMap.set(String(p.code), p.platform || '')); }
+        const pl = pkgMap.get(String(o.service_code || ''));
+        if (pl) return pl;
+      }
+    } catch (e) {}
+    const n = String(o.service_name || '');
+    for (let i = 0; i < PLAT_NAMES.length; i++) if (PLAT_NAMES[i][1].test(n)) return PLAT_NAMES[i][0];
+    return '';
+  }
+  const platCache = {};
+  function platIconHtml(pl) {
+    if (!pl) return oci('tag');
+    if (platCache[pl] === undefined) {
+      const el = document.querySelector('#services-view .platform-bar .platform-btn[data-platform="' + pl + '"] svg');
+      platCache[pl] = el ? el.outerHTML : '';
+    }
+    return platCache[pl] || oci('tag');
+  }
+  function ocState(o) {
     const k = lc(o.status);
-    return '<article class="pb-oh-card s-' + esc(k.replace(/[^a-z0-9]+/g, '-')) + '" data-id="' + id + '">' +
-      '<div class="pb-oh-ch">' +
-        '<button type="button" class="pb-oh-idbtn" data-copy="' + esc(did(o)) + '" title="Copy order ID" aria-label="Copy order ID ' + esc(did(o)) + '">#' + esc(did(o)) + ' <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg></button>' +
-        '<span class="pb-oh-st ' + statusClass(o.status) + '">' + esc(statusLabel(o.status)) + '</span>' +
+    if (k === 'completed') return ['completed', 'check'];
+    if (k === 'pending') return ['pending', 'clock'];
+    if (k === 'processing' || k === 'in progress') return ['processing', 'sync'];
+    if (k === 'partial') return ['partial', 'half'];
+    if (/^(rejected|canceled|cancelled)$/.test(k)) return ['canceled', 'x'];
+    return ['other', 'tag'];
+  }
+  const LIVE_STATES = { processing: 1, 'in progress': 1, partial: 1, completed: 1 };
+  // value for Start count / Remains: null = not known -> the box is not drawn (no fake zeros)
+  function liveVal(o, f) {
+    const k = lc(o.status);
+    if (!LIVE_STATES[k]) return null;
+    const lv = liveMap[String(o.order_id)];
+    if (!lv) return '…';
+    const v = lv.live ? lv[f] : null;
+    return v == null || v === '' || isNaN(Number(v)) ? null : num(v);
+  }
+  function statBox(label, value, cls) {
+    return '<div class="rf-oc-box' + (cls ? ' ' + cls : '') + '"><span class="rf-oc-k">' + label + '</span><b class="rf-oc-v">' + value + '</b></div>';
+  }
+  function ocDetail(o, id, started, remains) {
+    const safe = typeof safeHttpUrl === 'function' ? safeHttpUrl(o.link) : '';
+    const rows = [];
+    const row = (k, v) => rows.push('<div class="rf-oc-dr"><dt>' + k + '</dt><dd>' + v + '</dd></div>');
+    row('Order ID', esc(did(o)));
+    if (o.service_code || o.service_name) row('Service', esc((o.service_code ? '#' + o.service_code + ' ' : '') + (o.service_name || '')));
+    if (o.link) row('Link', safe ? '<a href="' + esc(safe) + '" target="_blank" rel="noopener noreferrer">' + esc(o.link) + '</a>' : esc(o.link));
+    row('Placed', esc(fmtDate(o.created_at)));
+    row('Status', esc(statusLabel(o.status)));
+    row('Quantity', esc(num(o.quantity)));
+    row('Charge', '৳' + esc(chg(o.amount)));
+    if (started != null && started !== '…') row('Start count', esc(started));
+    if (remains != null && remains !== '…') row('Remains', esc(remains));
+    const lv = liveMap[String(o.order_id)], q = Number(o.quantity);
+    if (lv && lv.live && lv.remains != null && lv.remains !== '' && q > 0 && lc(o.status) !== 'pending') {
+      const pct = Math.max(0, Math.min(100, Math.round((q - Number(lv.remains)) / q * 100)));
+      row('Delivered', pct + '%');
+    }
+    const acts = [];
+    if (o.can_refill) acts.push(actionsHtml(o));
+    acts.push('<button type="button" class="rf-button rf-button--soft rf-button--sm pb-oh-act" data-act="help" data-id="' + id + '">' + oci('help') + 'Need help with this order?</button>');
+    return '<dl class="rf-oc-dl">' + rows.join('') + '</dl><div class="rf-oc-acts">' + acts.join(' ') + '</div>';
+  }
+  function ocHtml(o) {
+    const id = esc(o.order_id), k = lc(o.status), st = ocState(o);
+    const on = sel.has(String(o.order_id)), isOpen = openDet.has(String(o.order_id));
+    const safe = typeof safeHttpUrl === 'function' ? safeHttpUrl(o.link) : '';
+    const linkHtml = o.link ? (safe ? '<a href="' + esc(safe) + '" target="_blank" rel="noopener noreferrer">' + esc(shortLink(o.link)) + '</a>' : '<span>' + esc(shortLink(o.link)) + '</span>') : '';
+    const active = k === 'pending' || k === 'processing' || k === 'in progress';
+    const started = liveVal(o, 'start_count'), remains = liveVal(o, 'remains');
+    const name = o.service_name || o.service_code || 'Order';
+    return '<article class="rf-oc s-' + st[0] + (on ? ' is-sel' : '') + '" data-id="' + id + '">' +
+      '<div class="rf-oc-top">' +
+        '<input type="checkbox" class="rf-oh-chk rf-oc-chk" data-sel="' + id + '"' + (on ? ' checked' : '') + ' aria-label="Select order ' + esc(did(o)) + '">' +
+        '<span class="rf-oc-plat" aria-hidden="true">' + platIconHtml(platOf(o)) + '</span>' +
+        '<span class="rf-chip rf-chip--id rf-oc-id">#' + esc(did(o)) + '</span>' +
+        '<button type="button" class="rf-oc-copy" data-copy="' + esc(did(o)) + '" title="Copy order ID" aria-label="Copy order ID ' + esc(did(o)) + '">' + oci('copy') + '<span>Copy</span></button>' +
       '</div>' +
-      '<h4 class="pb-oh-svcname">' + esc(o.service_name || o.service_code || 'Order') + '</h4>' +
-      (linkHtml ? '<div class="pb-oh-link">' + linkHtml + '</div>' : '') +
-      '<div class="pb-oh-grid">' +
-        '<div><span class="k">Quantity</span><b>' + esc(o.quantity) + '</b></div>' +
-        '<div><span class="k">Charge</span><b>৳' + esc(money(o.amount)) + '</b></div>' +
-        '<div><span class="k">Time</span><b>' + esc(d ? timeLabel(d) : fmtDate(o.created_at)) + '</b></div>' +
-      '</div>' +
-      liveRowHtml(o) +
-      '<div class="pb-oh-prog" aria-hidden="true"><i style="width:' + progressPct(o.status, o) + '%"></i></div>' +
-      (hasAct ? '<div class="pb-oh-actions">' + actionsHtml(o) + '</div>' : '') +
+      '<div class="rf-oc-svc">' + (o.service_code ? '<span class="rf-oc-code">' + oci('tag') + '#' + esc(o.service_code) + '</span>' : '') +
+        '<b class="rf-oc-name" title="' + esc(name) + '">' + esc(name) + '</b></div>' +
+      (linkHtml ? '<div class="rf-oc-link"><span class="rf-iconsq">' + oci('link') + '</span>' + linkHtml + '</div>' : '') +
+      '<div class="rf-oc-date"><div class="rf-oc-dd"><span class="rf-oc-k">Date</span><span class="rf-oc-dt">' + oci('cal') + esc(fmtDate(o.created_at)) + '</span></div>' +
+        (o.service_code && !active ? '<button type="button" class="rf-button rf-button--primary rf-button--sm rf-oc-buy" data-act="reorder" data-id="' + id + '">' + oci('cart') + 'Buy now</button>' : '') + '</div>' +
+      '<div class="rf-oc-stats">' + statBox('Quantity', esc(num(o.quantity))) + statBox('Charge', '৳' + esc(chg(o.amount))) +
+        (started != null ? statBox('Start count', esc(started)) : '') + (remains != null ? statBox('Remains', esc(remains)) : '') + '</div>' +
+      '<div class="rf-oc-foot"><span class="rf-oc-st rf-oc-st--' + st[0] + '">' + oci(st[1]) + '<span>' + esc(statusLabel(o.status)) + '</span></span>' +
+        '<button type="button" class="rf-oc-more" data-det="' + id + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="ocd-' + id + '">' + oci('eye') + '<span>Details</span></button></div>' +
+      '<div class="rf-oc-detail" id="ocd-' + id + '"' + (isOpen ? '' : ' hidden') + '>' + ocDetail(o, id, started, remains) + '</div>' +
     '</article>';
   }
+  function dayChipHtml(txt) {
+    return '<div class="rf-oh-dayrow rf-oh-dayrow--card"><span class="rf-oh-day"><svg class="rf-oh-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>' + esc(txt) + '</span></div>';
+  }
+  function cardsHtml(list) {
+    let out = '', last = null;
+    list.forEach((o) => {
+      if (sortBy !== 'amt') { const t = dayText(o); if (t !== last) { out += dayChipHtml(t); last = t; } }
+      out += ocHtml(o);
+    });
+    return '<div class="rf-oc-list">' + out + '</div>';
+  }
 
-  // ডেস্কটপ (≥১০২৪ px): টেবিল — ID | সার্ভিস | লিংক | পরিমাণ | স্ট্যাটাস | বাটন; মোবাইল: কার্ড
-  const mqTable = window.matchMedia ? window.matchMedia('(min-width: 1024px)') : { matches: false };
-  function chg(v) { const n = Number(v); return isNaN(n) ? String(v == null ? '' : v) : String(parseFloat(n.toFixed(5))); }
-  function liveCell(o, f) {
-    const k = lc(o.status);
-    if (k === 'pending') return '0';
-    const lv = liveMap[String(o.order_id)];
-    if (!lv) return (k === 'processing' || k === 'in progress' || k === 'partial' || k === 'completed') ? '…' : '—';
-    const v = lv.live ? lv[f] : null;
-    return v == null || v === '' ? '—' : num(v);
-  }
-  function actCell(o) {
-    const k = lc(o.status), out = [];
-    if (o.service_code && !/^(pending|processing|in progress)$/.test(k)) out.push('<button type="button" class="pb-oh-act pb-oh-reorder" data-act="reorder" data-id="' + esc(o.order_id) + '">ReOrder</button>');
-    if (o.can_refill) out.push(actionsHtml(o));
-    return out.length ? out.join(' ') : '<span class="pb-oh-note">—</span>';
-  }
-  function rowHtml(o) {
-    const id = esc(o.order_id), k = lc(o.status);
-    const safe = typeof safeHttpUrl === 'function' ? safeHttpUrl(o.link) : '';
-    const linkHtml = o.link ? (safe ? '<a href="' + esc(safe) + '" target="_blank" rel="noopener noreferrer">' + esc(shortLink(o.link)) + '</a>' : '<span>' + esc(shortLink(o.link)) + '</span>') : '—';
-    const fd = fmtDate(o.created_at).split(' ');
-    return '<tr class="pb-oh-row s-' + esc(k.replace(/[^a-z0-9]+/g, '-')) + '" data-id="' + id + '">' +
-      '<td class="oh-id"><button type="button" class="pb-oh-idbtn" data-copy="' + esc(did(o)) + '" title="Copy order ID" aria-label="Copy order ID ' + esc(did(o)) + '">' + esc(did(o)) + '</button></td>' +
-      '<td class="oh-date">' + esc(fd[0] || '') + (fd[1] ? '<br>' + esc(fd[1]) : '') + '</td>' +
-      '<td class="oh-link">' + linkHtml + '</td>' +
-      '<td class="oh-num">' + esc(chg(o.amount)) + '</td>' +
-      '<td class="oh-num" data-live="' + id + '">' + liveCell(o, 'start_count') + '</td>' +
-      '<td class="oh-num">' + esc(o.quantity) + '</td>' +
-      '<td class="oh-num">' + liveCell(o, 'remains') + '</td>' +
-      '<td class="oh-svc"><span class="oh-svcname" title="' + esc(o.service_name || '') + '">' + esc(o.service_name || o.service_code || 'Order') + '</span></td>' +
-      '<td class="oh-stat"><span class="pb-oh-st ' + statusClass(o.status) + '">' + esc(statusLabel(o.status)) + '</span></td>' +
-      '<td class="oh-act"><div class="pb-oh-actions">' + actCell(o) + '</div></td>' +
-    '</tr>';
-  }
   function render(fromLive) {
     const rows = filtered();
     const part = rows.slice(0, shown);
-    let html = '', lastKey = null;
-    if (true) {
-      html = '<div class="pb-oh-tablewrap"><table class="pb-oh-table"><thead><tr><th scope="col">ID</th><th scope="col">Date</th><th scope="col">Link</th><th scope="col">Charge (৳)</th><th scope="col">Start count</th><th scope="col">Quantity</th><th scope="col">Remains</th><th scope="col">Service</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead><tbody>' + part.map(rowHtml).join('') + '</tbody></table></div>';
-    } else part.forEach((o) => {
-      if (sortBy !== 'amt') {
-        const d = toDate(o.created_at), key = dayKey(d);
-        if (key !== lastKey) { html += '<div class="pb-oh-day">' + esc(dayLabel(d)) + '</div>'; lastKey = key; }
-      }
-      html += cardHtml(o);
-    });
-    $('ohList').innerHTML = html;
+    $('ohList').innerHTML = cardsHtml(part);
     const em = $('ohEmpty');
     em.hidden = rows.length > 0;
-    if (!rows.length) em.textContent = loading ? 'লোড হচ্ছে…' : (all.length ? 'এই ফিল্টারে কোনো অর্ডার নেই' : 'এখনো কোনো অর্ডার করা হয়নি');
+    if (!rows.length) em.textContent = loading ? 'Loading…' : (all.length ? 'No orders match this filter' : 'No orders yet');
     const more = $('ohMore');
     more.hidden = rows.length <= shown;
-    if (rows.length > shown) more.textContent = 'আরও দেখুন (' + (rows.length - shown) + ' টি বাকি)';
+    if (rows.length > shown) more.textContent = 'Show more (' + (rows.length - shown) + ' left)';
+    syncBulk(rows);
     if (!fromLive) loadLive();
+  }
+
+  // ---------- bulk bar: Select all + Copy IDs ----------
+  function syncBulk(rows) {
+    rows = rows || filtered();
+    const all_ = $('ohSelAll'), btn = $('ohCopyIds');
+    if (!all_ || !btn) return;
+    const n = rows.reduce((a, o) => a + (sel.has(String(o.order_id)) ? 1 : 0), 0);
+    all_.disabled = !rows.length;
+    all_.checked = rows.length > 0 && n === rows.length;
+    all_.indeterminate = n > 0 && n < rows.length;
+    if ($('ohSelN')) $('ohSelN').textContent = sel.size;
+    btn.disabled = sel.size === 0;
+    btn.setAttribute('aria-label', sel.size ? 'Copy ' + sel.size + ' selected order ID' + (sel.size > 1 ? 's' : '') : 'Copy selected order IDs');
+  }
+  function copyIds() {
+    const ids = all.filter((o) => sel.has(String(o.order_id))).map(did);
+    if (!ids.length) return;
+    copyText(ids.join('\n'), $('ohCopyIds'));
+    showMsg('Copied ' + ids.length + ' order ID' + (ids.length > 1 ? 's' : '') + '.', true);
+    setTimeout(() => { const m = $('ohMsg'); if (m && /^Copied \d+ order ID/.test(m.textContent)) showMsg('', true); }, 2500);
   }
 
   function copyText(text, btn) {
@@ -433,29 +508,11 @@
     done();
   }
 
-  function exportCsv() {
-    const rows = filtered();
-    if (!rows.length) { showMsg('এক্সপোর্ট করার মতো অর্ডার নেই', false); return; }
-    const cell = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-    const head = ['Order ID', 'Date', 'Service', 'Code', 'Link', 'Quantity', 'Charge', 'Status'];
-    const lines = [head.map(cell).join(',')].concat(rows.map((o) => [
-      did(o), fmtDate(o.created_at), o.service_name, o.service_code, o.link, o.quantity, o.amount, statusLabel(o.status)
-    ].map(cell).join(',')));
-    try {
-      const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'orders-' + new Date().toISOString().slice(0, 10) + '.csv';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    } catch (e) { showMsg('CSV ডাউনলোড করা যায়নি', false); }
-  }
-
   /** ধাপ ১৬: ত্রুটিতে role=alert + "আবার চেষ্টা" বাটন; ঠিক হলে সাধারণ অবস্থায় ফেরে */
 function ohFail(msg) {
   const em = $('ohEmpty');
   em.hidden = false; em.setAttribute('role', 'alert');
-  em.innerHTML = '<p></p><button type="button" class="pb-retry" data-pb-retry="orders">আবার চেষ্টা করুন</button>';
+  em.innerHTML = '<p></p><button type="button" class="pb-retry" data-pb-retry="orders">Try again</button>';
   em.firstChild.textContent = msg;
 }
 function ohOk() { const em = $('ohEmpty'); if (em) em.removeAttribute('role'); }
@@ -474,7 +531,7 @@ async function load(force) {
     if (!all.length) render();
     try {
       const url = apiUrl();
-      if (!url) throw new Error('API নেই');
+      if (!url) throw new Error('API is not configured');
       const res = await fetch(url, {
         method: 'POST', mode: 'cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -484,18 +541,20 @@ async function load(force) {
       if (d && d.ok) {
         all = (d.orders || []).filter(function (o) { return String(o.service_code || '').toUpperCase() !== 'TOPUP'; });
         loadedAt = Date.now();
+        const have = new Set(all.map((o) => String(o.order_id)));
+        sel.forEach((k) => { if (!have.has(k)) sel.delete(k); });
         shown = Math.max(shown, PAGE);
         if ($('ohUpdated')) $('ohUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
       } else if (d && d.error === 'auth') {
-        all = [];
+        all = []; sel.clear();
         guest.hidden = false; main.hidden = true;
       } else {
         failed = true;
-        ohFail((d && (d.message || d.error)) || 'লোড ব্যর্থ। আবার চেষ্টা করুন।');
+        ohFail((d && (d.message || d.error)) || 'Failed to load. Please try again.');
       }
     } catch (e) {
       failed = true;
-      ohFail('নেটওয়ার্ক সমস্যা। ইন্টারনেট চেক করে আবার চেষ্টা করুন।');
+      ohFail('Network problem. Check your internet and try again.');
     } finally {
       loading = false;
       if (window.PB_A11Y) PB_A11Y.busy($('ohList'), false);
@@ -506,13 +565,12 @@ async function load(force) {
 
   function wire() {
     if (!$('ohFilters')) return;
-    try { (mqTable.addEventListener ? mqTable.addEventListener('change', () => render(true)) : (mqTable.addListener && mqTable.addListener(() => render(true)))); } catch (e) {}
     $('ohFilters').addEventListener('click', (e) => {
       const b = e.target.closest('.pb-oh-f');
       if (!b) return;
       filter = b.dataset.st;
       shown = PAGE;
-      document.querySelectorAll('.pb-oh-f').forEach((x) => x.classList.toggle('active', x === b));
+      document.querySelectorAll('.pb-oh-f').forEach((x) => { x.classList.toggle('active', x === b); x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
       render();
     });
     const reset = () => { shown = PAGE; render(); };
@@ -521,9 +579,29 @@ async function load(force) {
     $('ohSearchBtn').addEventListener('click', reset);
     $('ohSort').addEventListener('change', () => { sortBy = $('ohSort').value; shown = PAGE; render(); });
     $('ohRefresh').addEventListener('click', () => load(true));
-    $('ohExport').addEventListener('click', exportCsv);
     $('ohMore').addEventListener('click', () => { shown += PAGE; render(); });
+    $('ohSelAll').addEventListener('change', () => {
+      const rows = filtered(), on = $('ohSelAll').checked;
+      rows.forEach((o) => { if (on) sel.add(String(o.order_id)); else sel.delete(String(o.order_id)); });
+      render(true);
+    });
+    $('ohCopyIds').addEventListener('click', copyIds);
+    $('ohList').addEventListener('change', (e) => {
+      const c = e.target.closest('input[data-sel]');
+      if (!c) return;
+      if (c.checked) sel.add(c.dataset.sel); else sel.delete(c.dataset.sel);
+      const tr = c.closest('tr, .rf-oc'); if (tr) tr.classList.toggle('is-sel', c.checked);
+      syncBulk();
+    });
     $('ohList').addEventListener('click', (e) => {
+      const dt = e.target.closest('button[data-det]');
+      if (dt) {
+        const id = dt.dataset.det, panel = $('ocd-' + id), open = dt.getAttribute('aria-expanded') !== 'true';
+        dt.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (panel) panel.hidden = !open;
+        if (open) openDet.add(String(id)); else openDet.delete(String(id));
+        return;
+      }
       const c = e.target.closest('button[data-copy]');
       if (c) { copyText(c.dataset.copy, c); return; }
       const b = e.target.closest('button[data-act]');

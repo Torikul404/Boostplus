@@ -33,27 +33,27 @@
   function apply(code) {
     var c = (list || [DEF]).filter(function (x) { return x.code === code; })[0] || DEF;
     cur = c; save(c.code);
-    if (btn) { btn.firstChild.textContent = c.code + " "; btn.setAttribute("aria-label", "মুদ্রা: " + c.code + " — বদলান"); }
+    if (btn) { btn.firstChild.textContent = c.code + " "; btn.setAttribute("aria-label", "Currency: " + c.code + " — change"); }
     try { document.dispatchEvent(new CustomEvent("pb:currency", { detail: { code: c.code } })); } catch (e) {}
     try { if (typeof renderDropdownPicker === "function") renderDropdownPicker(); } catch (e) {}
   }
   function close() { if (!panel) return; panel.hidden = true; btn.setAttribute("aria-expanded", "false"); }
   function open() {
     btn.setAttribute("aria-expanded", "true");
-    if (!panel) { panel = document.createElement("div"); panel.className = "pb-cur-panel"; panel.setAttribute("role", "listbox"); panel.setAttribute("aria-label", "মুদ্রা বেছে নিন"); btn.parentNode.appendChild(panel); }
-    panel.hidden = false; panel.innerHTML = '<div class="pb-cur-load">লোড হচ্ছে…</div>';
+    if (!panel) { panel = document.createElement("div"); panel.className = "pb-cur-panel"; panel.setAttribute("role", "listbox"); panel.setAttribute("aria-label", "Choose currency"); btn.parentNode.appendChild(panel); }
+    panel.hidden = false; panel.innerHTML = '<div class="pb-cur-load">Loading…</div>';
     load().then(function (a) {
       if (panel.hidden) return;
       panel.innerHTML = a.map(function (c) {
         return '<button type="button" role="option" class="pb-cur-opt' + (c.code === cur.code ? " on" : "") + '" aria-selected="' + (c.code === cur.code) + '" data-c="' + esc(c.code) + '"><b>' + esc(c.code) + "</b> <span>" + esc(c.name || "") + "</span></button>";
-      }).join("") + '<div class="pb-cur-note">শুধু দাম দেখানোর জন্য। পেমেন্ট ও ওয়ালেট BDT-তে।</div>';
+      }).join("") + '<div class="pb-cur-note">For viewing prices only. Payments and wallet are in BDT.</div>';
       var on = panel.querySelector(".on"); if (on) on.focus();
     });
   }
   function mount() {
     var tabs = document.querySelector(".site-nav-tabs"); if (!tabs || document.getElementById("pbCurBtn")) return;
     var wrap = document.createElement("div"); wrap.className = "pb-cur";
-    wrap.innerHTML = '<button type="button" class="pb-cur-btn" id="pbCurBtn" aria-haspopup="listbox" aria-expanded="false" aria-label="মুদ্রা: BDT — বদলান">BDT <span aria-hidden="true">▾</span></button>';
+    wrap.innerHTML = '<button type="button" class="pb-cur-btn" id="pbCurBtn" aria-haspopup="listbox" aria-expanded="false" aria-label="Currency: BDT — change">BDT <span aria-hidden="true">▾</span></button>';
     tabs.insertBefore(wrap, tabs.firstChild); btn = wrap.firstChild;
     btn.addEventListener("click", function () { if (panel && !panel.hidden) close(); else open(); });
     wrap.addEventListener("click", function (e) { var o = e.target.closest(".pb-cur-opt"); if (!o) return; apply(o.getAttribute("data-c")); close(); btn.focus(); });

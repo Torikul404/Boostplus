@@ -1,15 +1,15 @@
 /* ==========================================================
-   app-done.js — "সম্পন্ন অর্ডার" ট্যাব (পাবলিক, লগইন লাগে না)
-   Backend: GET <api>?action=done_list
-   দেখায়: সার্ভিস কোড, সার্ভিসের নাম, পরিমাণ, সময়।
-   অর্ডার দ্রুত (সীমার মধ্যে) সম্পন্ন হলে "কত সময়ে হয়েছে" দেখায়, নইলে কত আগে সম্পন্ন হয়েছে।
+   app-done.js — "Order Statistics" (public feed, no login needed)
+   Backend (unchanged): GET <api>?action=done_list
+   Shows: service ID, service name, quantity, delivered time, completed-in time.
+   R16: card template rebuilt, search added, header buttons wired.
+   Customer names, order IDs and links are never shown (privacy).
    ========================================================== */
 (function () {
   const $ = (id) => document.getElementById(id);
   const apiUrl = () => (typeof sheetApi === 'function' ? sheetApi() : '') || window.BOOSTPLUS_SHEET_API || '';
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const bn = (n) => String(n).replace(/\d/g, (d) => '০১২৩৪৫৬৭৮৯'[d]);
-  let loadedAt = 0, loading = false;
+  let loadedAt = 0, loading = false, feed = [];
 
   const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   function when(iso) {
@@ -23,45 +23,70 @@
   function pkgOf(code) {
     try { return (typeof allPackages !== 'undefined' ? allPackages : []).find((p) => String(p.code) === String(code)) || null; } catch (e) { return null; }
   }
-  // প্ল্যাটফর্ম আইকন: নতুন-অর্ডার পাতার প্ল্যাটফর্ম-বার থেকে কপি
+  // platform icon: copied from the New order platform bar (same icons, no new assets)
   function platInfo(key) {
     const btn = key ? document.querySelector('#services-view .platform-bar .platform-btn[data-platform="' + key + '"]') : null;
     const sv = btn && btn.querySelector('svg');
     return {
       label: (btn && (btn.getAttribute('aria-label') || btn.getAttribute('title'))) || (key ? key.charAt(0).toUpperCase() + key.slice(1) : ''),
-      icon: sv ? '<span class="dn-pf">' + sv.outerHTML.replace(/id="/g, 'id="dn-').replace(/url\(#/g, 'url(#dn-').replace(/href="#/g, 'href="#dn-') + '</span>' : ''
+      icon: sv ? sv.outerHTML.replace(/id="/g, 'id="dn-').replace(/url\(#/g, 'url(#dn-').replace(/href="#/g, 'href="#dn-') : ''
     };
+  }
+  const CHECK = '<svg class="rf-dn-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>';
+  const COPY = '<svg class="rf-dn-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
+  const CART = '<svg class="rf-dn-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2.5l2.2 11h10.3l2-8H6.5"/></svg>';
+
+  // everything a card and the search need, resolved at paint time
+  // (the service catalog may finish loading after the feed does)
+  function prep(x) {
+    const p = pkgOf(x.code), pf = platInfo(p && p.platform);
+    let nm = x.name || '—';
+    try { if (p && typeof pbDropdownName === 'function') nm = pbDropdownName(p) || nm; } catch (e) {}
+    const svc = p ? [pf.label, p.category].filter(Boolean).join(' · ') : '';
+    return { x, nm, svc, icon: pf.icon, hay: (String(x.code) + ' ' + nm + ' ' + (x.name || '') + ' ' + svc).toLowerCase() };
+  }
+
+  function card(r) {
+    const x = r.x;
+    return '<article class="rf-card rf-dn-card">' +
+      '<div class="rf-dn-top"><span class="rf-dn-pf' + (r.icon ? '' : ' rf-dn-pf--ic') + '">' + (r.icon || CHECK) + '</span>' +
+        '<span class="rf-chip rf-chip--id">#' + esc(x.code) + '</span>' +
+        '<button type="button" class="rf-button rf-button--outline rf-button--sm rf-dn-copy" data-copy="' + esc(x.code) + '">' + COPY + '<span>Copy</span></button></div>' +
+      '<h3 class="rf-dn-name">' + esc(x.code) + ' – ' + esc(r.nm) + '</h3>' +
+      '<div class="rf-dn-acts"><span class="rf-pill rf-pill--completed">Completed</span>' +
+        '<button type="button" class="rf-button rf-button--primary rf-dn-buy" data-buy="' + esc(x.code) + '">' + CART + '<span>Buy now</span></button></div>' +
+      '<div class="rf-dn-grid">' +
+        '<div class="rf-dn-tile"><small>Delivered</small><b>' + esc(when(x.at)) + '</b></div>' +
+        '<div class="rf-dn-tile"><small>Quantity</small><b>' + esc(Number(x.qty).toLocaleString('en-US')) + '</b></div>' +
+        '<div class="rf-dn-tile"><small>Completed in</small><b class="rf-dn-fast">' + esc((window.pbTookEn || String)(x.took)) + '</b></div>' +
+        (r.svc ? '<div class="rf-dn-tile"><small>Service</small><b>' + esc(r.svc) + '</b></div>' : '') +
+      '</div></article>';
+  }
+
+  function msg(t) { $('dnList').innerHTML = '<div class="rf-dn-msg" role="status">' + esc(t) + '</div>'; }
+  function setCount(txt) { const c = $('dnCount'); if (!c) return; c.textContent = txt || ''; c.hidden = !txt; }
+
+  function paint() {
+    const q = (($('dnSearch') && $('dnSearch').value) || '').trim().toLowerCase().replace(/^#/, '');
+    if (!feed.length) { setCount(''); msg('No completed orders to show yet.'); return; }
+    const all = feed.map(prep);
+    const rows = q ? all.filter((r) => r.hay.indexOf(q) >= 0) : all;
+    setCount(q ? rows.length + ' of ' + feed.length + ' orders' : feed.length + ' recent orders');
+    if (!rows.length) { msg('No orders match your search. Try a service ID or a shorter name.'); return; }
+    $('dnList').innerHTML = rows.map(card).join('');
   }
 
   function render(d) {
-    const box = $('dnList');
-    const items = ((d && d.items) || []).filter((x) => x.took);   // শুধু দ্রুত সম্পন্ন
-    if (!items.length) { box.innerHTML = '<div class="dn-msg">এখনো কোনো সম্পন্ন অর্ডার নেই।</div>'; return; }
-    box.innerHTML = items.map((x) => {
-      const p = pkgOf(x.code), pf = platInfo(p && p.platform);
-      let nm = x.name || '—';
-      try { if (p && typeof pbDropdownName === 'function') nm = pbDropdownName(p) || nm; } catch (e) {}
-      const svc = p ? [pf.label, p.category].filter(Boolean).join(' · ') : '';
-      return '<article class="dn-card">' +
-        '<div class="dn-top">' + pf.icon + '<span class="dn-code">#' + esc(x.code) + '</span>' +
-          '<button type="button" class="dn-copy" data-copy="' + esc(x.code) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Copy</span></button></div>' +
-        '<h3 class="dn-name">' + esc(x.code) + ' – ' + esc(nm) + '</h3>' +
-        '<div class="dn-acts"><span class="dn-badge">✔ Completed</span>' +
-          '<button type="button" class="dn-buy" data-buy="' + esc(x.code) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1.5" fill="currentColor"/><circle cx="18" cy="20" r="1.5" fill="currentColor"/><path d="M3 4h2.5l2.2 11h10.3l2-8H6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Buy now</span></button></div>' +
-        '<div class="dn-grid">' +
-          '<div class="dn-tile"><small>DELIVERED</small><b>' + esc(when(x.at)) + '</b></div>' +
-          '<div class="dn-tile"><small>QUANTITY</small><b>' + esc(Number(x.qty).toLocaleString('en-US')) + '</b></div>' +
-          '<div class="dn-tile"><small>COMPLETED IN</small><b class="dn-fast">' + esc(x.took) + '</b></div>' +
-          (svc ? '<div class="dn-tile"><small>SERVICE</small><b>' + esc(svc) + '</b></div>' : '') +
-        '</div></article>';
-    }).join('');
+    const items = ((d && d.items) || []).filter((x) => x.took);   // only orders with a real completion time
+    feed = items;
+    paint();
   }
 
   document.addEventListener('click', (e) => {
     const cp = e.target.closest && e.target.closest('#dnList [data-copy]');
     if (cp) {
       const span = cp.querySelector('span');
-      try { navigator.clipboard.writeText(cp.getAttribute('data-copy')).then(() => { if (span) { span.textContent = '✓'; setTimeout(() => { span.textContent = 'Copy'; }, 900); } }, () => {}); } catch (_) {}
+      try { navigator.clipboard.writeText(cp.getAttribute('data-copy')).then(() => { if (span) { span.textContent = 'Copied'; setTimeout(() => { span.textContent = 'Copy'; }, 900); } }, () => {}); } catch (_) {}
       return;
     }
     const by = e.target.closest && e.target.closest('#dnList [data-buy]');
@@ -69,14 +94,20 @@
       const code = by.getAttribute('data-buy');
       if (window.PB_nav && PB_nav.go) PB_nav.go('new-order');
       setTimeout(() => { try { pickSearchResult(code); } catch (err) { console.warn('done buy:', err); } }, 160);
+      return;
     }
+    const nav = e.target.closest && e.target.closest('#dnNew, #dnMy, #dnFind');
+    if (nav && window.PB_nav && PB_nav.go) PB_nav.go(nav.id === 'dnNew' ? 'new-order' : nav.id === 'dnMy' ? 'orders' : 'services');
   });
+
+  const sIn = $('dnSearch');
+  if (sIn) sIn.addEventListener('input', paint);
 
   async function load(force) {
     if (loading) return;
-    if (!force && loadedAt && Date.now() - loadedAt < 60000) return;
+    if (!force && loadedAt && Date.now() - loadedAt < 60000) { paint(); return; }
     const api = apiUrl();
-    if (!api) { $('dnList').innerHTML = '<div class="dn-msg">তালিকা এখন লোড করা যাচ্ছে না।</div>'; return; }
+    if (!api) { setCount(''); msg('The list cannot be loaded right now.'); return; }
     loading = true;
     try {
       const res = await fetch(api + (api.indexOf('?') >= 0 ? '&' : '?') + 'action=done_list', { method: 'GET', cache: 'no-store' });
@@ -85,7 +116,7 @@
       render(d);
       loadedAt = Date.now();
     } catch (e) {
-      $('dnList').innerHTML = '<div class="dn-msg">লোড করা যায়নি। একটু পরে আবার চেষ্টা করুন।</div>';
+      feed = []; setCount(''); msg('Could not load. Please try again in a moment.');
     } finally { loading = false; }
   }
 

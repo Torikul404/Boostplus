@@ -67,7 +67,7 @@ function getDiscountInfo(pkg) {
     label: d.label || "",
     original: base,
     price: base - off,
-    badge: d.type === "fixed" ? ("৳" + val + " ছাড়") : (val + "% ছাড়")
+    badge: d.type === "fixed" ? ("৳" + val + " off") : (val + "% off")
   };
 }
 

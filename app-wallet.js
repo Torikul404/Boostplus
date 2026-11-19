@@ -15,7 +15,7 @@
 
   async function walletPost(body) {
     const url = api();
-    if (!url) throw new Error("API নেই");
+    if (!url) throw new Error("API is not configured");
     const ctrl = typeof AbortController === "function" ? new AbortController() : null;
     const timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, REQUEST_TIMEOUT_MS);
     try {
@@ -42,8 +42,8 @@
   /** Friendly message for a failed request (timeout vs. network). */
   function netErrMsg(e) {
     return (e && e.isTimeout)
-      ? "সার্ভার সাড়া দিচ্ছে না (৩০ সেকেন্ড পেরিয়ে গেছে)। একটু পর আবার চেষ্টা করুন।"
-      : "নেটওয়ার্ক সমস্যা। ইন্টারনেট চেক করে আবার চেষ্টা করুন।";
+      ? "The server is not responding (30 seconds passed). Please try again in a moment."
+      : "Network problem. Check your internet and try again.";
   }
 
   // ---------- Toast / banner (success = green, error = red, info = yellow) ----------
@@ -63,7 +63,7 @@
     t.setAttribute("role", kind === "error" ? "alert" : "status");
     const ic = document.createElement("span"); ic.className = "pb-t-ic"; ic.textContent = icons[kind];
     const m = document.createElement("span"); m.className = "pb-t-msg"; m.textContent = text;
-    const x = document.createElement("button"); x.type = "button"; x.className = "pb-t-x"; x.setAttribute("aria-label", "বন্ধ"); x.textContent = "×";
+    const x = document.createElement("button"); x.type = "button"; x.className = "pb-t-x"; x.setAttribute("aria-label", "Close"); x.textContent = "×";
     t.appendChild(ic); t.appendChild(m); t.appendChild(x);
     host.appendChild(t);
     while (host.children.length > 3) host.removeChild(host.firstChild);
@@ -127,13 +127,13 @@
     const token = getToken();
     const hist = document.getElementById("walletFundHistory");
     if (!hist) return;
-    if (!token) { hist.textContent = "লগইন করুন"; return; }
+    if (!token) { hist.textContent = "Please log in"; return; }
     try {
       const d = await walletPost({ action: "wallet_auth", sub: "history", token: token, limit: 30 });
-      if (!d || !d.ok) { hist.textContent = (d && d.message) || "লোড ব্যর্থ"; return; }
+      if (!d || !d.ok) { hist.textContent = (d && d.message) || "Failed to load"; return; }
       // শুধু ডিপোজিট (টপ-আপ) — পজিটিভ অ্যামাউন্টের এন্ট্রি
       const rows = (d.ledger || []).filter(function (r) { return (Number(r.amount) || 0) > 0; });
-      if (!rows.length) { hist.innerHTML = "<span class='muted'>এখনো কোনো ফান্ড অ্যাড করা হয়নি</span>"; return; }
+      if (!rows.length) { hist.innerHTML = "<span class='muted'>No funds have been added yet</span>"; return; }
       hist.innerHTML = rows.map(function (r) {
         const n = Number(r.amount) || 0;
         const when = String(r.created_at || r.date || "").slice(0, 19).replace("T", " ");
@@ -308,20 +308,20 @@
     location.href = "login.html?tab=register"; return; // name + number + PIN form lives on login.html
     const mobile = val("walRegMobile");
     const pin = (document.getElementById("walRegPin") || {}).value || "";
-    if (!mobile || !pin) return toast("info", "মোবাইল নম্বর ও পিন দিন");
-    await withLoading(document.getElementById("walBtnRegister"), "অপেক্ষা করুন…", async function () {
+    if (!mobile || !pin) return toast("info", "Enter your mobile number and PIN");
+    await withLoading(document.getElementById("walBtnRegister"), "Please wait…", async function () {
       try {
         const d = await walletPost({ action: "wallet_auth", sub: "register", mobile: mobile, pin: pin });
         if (!d || !d.ok) {
-          if (d && (d.error === "exists" || (d.message && d.message.indexOf("আগেই") !== -1))) {
-            toast("error", "এই নম্বর দিয়ে ইতিমধ্যে অ্যাকাউন্ট আছে। লগইন ট্যাব ব্যবহার করুন।");
+          if (d && (d.error === "exists" || (d.message && (d.message.indexOf("আগেই") !== -1 || /already/i.test(d.message))))) {
+            toast("error", "An account already exists for this number. Use the Log in tab.");
           } else {
-            toast("error", (d && d.message) || (d && d.error) || "রেজিস্টার ব্যর্থ");
+            toast("error", (d && d.message) || (d && d.error) || "Registration failed");
           }
           return;
         }
         setSession(d.token, d.mobile);
-        toast("success", "আপনার অ্যাকাউন্ট তৈরি হয়েছে");
+        toast("success", "Your account has been created");
         refreshWalletUI();
         refreshUserDash();
       } catch (e) {
@@ -334,16 +334,16 @@
     location.href = "login.html"; return; // name + number + PIN form lives on login.html
     const mobile = val("walLoginMobile");
     const pin = (document.getElementById("walLoginPin") || {}).value || "";
-    if (!mobile || !pin) return toast("info", "মোবাইল নম্বর ও পিন দিন");
-    await withLoading(document.getElementById("walBtnLogin"), "লগইন হচ্ছে…", async function () {
+    if (!mobile || !pin) return toast("info", "Enter your mobile number and PIN");
+    await withLoading(document.getElementById("walBtnLogin"), "Logging in…", async function () {
       try {
         const d = await walletPost({ action: "wallet_auth", sub: "login", mobile: mobile, pin: pin });
         if (!d || !d.ok) {
-          toast("error", (d && d.message) || (d && d.error) || "লগইন ব্যর্থ");
+          toast("error", (d && d.message) || (d && d.error) || "Login failed");
           return;
         }
         setSession(d.token, d.mobile);
-        toast("success", "লগইন সফল");
+        toast("success", "Logged in");
         refreshWalletUI();
         refreshUserDash();
       } catch (e) {
@@ -355,16 +355,16 @@
   async function doSetPin() {
     const mobile = val("walLoginMobile");
     const pin = (document.getElementById("walLoginPin") || {}).value || "";
-    if (!mobile || !pin) return toast("info", "মোবাইল নম্বর ও নতুন পিন দিন");
-    await withLoading(document.getElementById("walBtnSetPin"), "অপেক্ষা করুন…", async function () {
+    if (!mobile || !pin) return toast("info", "Enter your mobile number and new PIN");
+    await withLoading(document.getElementById("walBtnSetPin"), "Please wait…", async function () {
       try {
         const d = await walletPost({ action: "wallet_auth", sub: "set_pin", mobile: mobile, pin: pin });
         if (!d || !d.ok) {
-          toast("error", (d && d.message) || "পিন সেট ব্যর্থ");
+          toast("error", (d && d.message) || "Failed to set PIN");
           return;
         }
         setSession(d.token, d.mobile);
-        toast("success", d.message || "পিন সেট হয়েছে");
+        toast("success", d.message || "PIN has been set");
         refreshWalletUI();
       } catch (e) {
         toast("error", netErrMsg(e));
@@ -377,11 +377,11 @@
     const oldPin = val("walOldPin");
     const newPin = val("walNewPin");
     const confirm = val("walConfirmPin");
-    if (!pinOk(oldPin)) return toast("info", "পুরনো পাসওয়ার্ড/পিন দিন");
-    if (!pwNewOk(newPin)) return toast("info", "নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
-    if (newPin !== confirm) return toast("error", "নতুন পিন ও কনফার্ম পিন মিলছে না");
-    if (newPin === oldPin) return toast("info", "নতুন পিন পুরনো পিনের মতো হতে পারবে না");
-    await withLoading(document.getElementById("walBtnChangePin"), "পরিবর্তন হচ্ছে…", async function () {
+    if (!pinOk(oldPin)) return toast("info", "Enter your old password/PIN");
+    if (!pwNewOk(newPin)) return toast("info", "New password must be at least 6 characters");
+    if (newPin !== confirm) return toast("error", "New PIN and confirm PIN do not match");
+    if (newPin === oldPin) return toast("info", "New PIN cannot be the same as the old PIN");
+    await withLoading(document.getElementById("walBtnChangePin"), "Changing…", async function () {
       try {
         const d = await walletPost({ action: "wallet_auth", sub: "change_pin", token: getToken(), old_pin: oldPin, new_pin: newPin });
         if (!d || !d.ok) {
@@ -389,12 +389,12 @@
             clearSession();
             refreshWalletUI();
           }
-          toast("error", (d && d.message) || "পিন পরিবর্তন ব্যর্থ");
+          toast("error", (d && d.message) || "Failed to change PIN");
           return;
         }
         clearVals(["walOldPin", "walNewPin", "walConfirmPin"]);
         showWalletView();
-        toast("success", d.message || "পিন সফলভাবে পরিবর্তন হয়েছে");
+        toast("success", d.message || "PIN changed successfully");
       } catch (e) {
         toast("error", netErrMsg(e));
       }
@@ -415,10 +415,10 @@
         clearInterval(forgotCooldownIv);
         forgotCooldownIv = null;
         btn.disabled = false;
-        btn.textContent = "আবার অনুরোধ করুন";
+        btn.textContent = "Request again";
         return;
       }
-      btn.textContent = "আবার অনুরোধ (" + left + "s)";
+      btn.textContent = "Request again (" + left + "s)";
       left--;
     };
     tick();
@@ -427,20 +427,20 @@
 
   async function doForgotSend() {
     const mobile = val("walForgotMobile");
-    if (!mobile) return toast("info", "মোবাইল নম্বর বা User name দিন");
+    if (!mobile) return toast("info", "Enter your mobile number or user name");
     const btn = document.getElementById("walBtnForgotSend");
     let sent = false;
-    await withLoading(btn, "অনুরোধ পাঠানো হচ্ছে…", async function () {
+    await withLoading(btn, "Sending request…", async function () {
       try {
         const d = await walletPost({ action: "wallet_auth", sub: "forgot_pin_request", mobile: mobile });
         if (!d || !d.ok) {
-          toast("error", (d && d.message) || "অনুরোধ পাঠানো ব্যর্থ");
+          toast("error", (d && d.message) || "Failed to send request");
           return;
         }
         sent = true;
         const s2 = document.getElementById("walForgotStep2");
         if (s2) s2.style.display = "grid";
-        toast("success", d.message || "অনুরোধ এডমিনের কাছে পাঠানো হয়েছে");
+        toast("success", d.message || "Request sent to admin");
         const c = document.getElementById("walForgotCode");
         if (c) c.focus();
       } catch (e) {
@@ -455,21 +455,21 @@
     const code = val("walForgotCode");
     const newPin = val("walForgotNewPin");
     const confirm = val("walForgotConfirmPin");
-    if (!/^[0-9]{6}$/.test(code)) return toast("info", "এডমিনের দেওয়া ৬ ডিজিটের কোড দিন");
-    if (!pwNewOk(newPin)) return toast("info", "নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
-    if (newPin !== confirm) return toast("error", "নতুন পিন ও কনফার্ম পিন মিলছে না");
-    await withLoading(document.getElementById("walBtnForgotReset"), "সেট হচ্ছে…", async function () {
+    if (!/^[0-9]{6}$/.test(code)) return toast("info", "Enter the 6-digit code from admin");
+    if (!pwNewOk(newPin)) return toast("info", "New password must be at least 6 characters");
+    if (newPin !== confirm) return toast("error", "New PIN and confirm PIN do not match");
+    await withLoading(document.getElementById("walBtnForgotReset"), "Setting…", async function () {
       try {
         const d = await walletPost({ action: "wallet_auth", sub: "forgot_pin_reset", mobile: mobile, code: code, new_pin: newPin });
         if (!d || !d.ok) {
-          toast("error", (d && d.message) || "পিন রিসেট ব্যর্থ");
+          toast("error", (d && d.message) || "Failed to reset PIN");
           return;
         }
         clearVals(["walForgotCode", "walForgotNewPin", "walForgotConfirmPin"]);
         const s2 = document.getElementById("walForgotStep2");
         if (s2) s2.style.display = "none";
         setSession(d.token, d.mobile);
-        toast("success", "নতুন পিন সেট হয়েছে। আপনি লগইন অবস্থায় আছেন।");
+        toast("success", "New PIN set. You are logged in.");
         refreshWalletUI();
         refreshUserDash();
       } catch (e) {
@@ -481,7 +481,7 @@
   function doLogout() {
     clearSession();
     const msg = document.getElementById("walletMsg");
-    if (msg) msg.textContent = "লগআউট হয়েছে";
+    if (msg) msg.textContent = "Logged out";
     refreshWalletUI();
   }
 
@@ -529,7 +529,7 @@
       const m = Math.floor(sec / 60);
       const s = sec % 60;
       const el = document.getElementById("tfCountdown");
-      if (el) el.textContent = m + "m " + (s < 10 ? "0" : "") + s + "s বাকি";
+      if (el) el.textContent = m + "m " + (s < 10 ? "0" : "") + s + "s left";
       if (left <= 0 && tfCountdownIv) {
         clearInterval(tfCountdownIv);
         tfCountdownIv = null;
@@ -555,12 +555,12 @@
             if (data && String(data.status || "").toLowerCase() === "completed") {
               tfStopTimers();
               const msg = document.getElementById("walletTopMsg");
-              if (msg) msg.innerHTML = "✅ টপ-আপ সফল!";
+              if (msg) msg.innerHTML = "✅ Top-up successful!";
               refreshWalletUI();
               refreshUserDash();
               tfShow("tfStepA");
               showWalletView();
-              alert("টপ-আপ ভেরিফাই হয়েছে। ব্যালেন্স আপডেট হয়েছে।");
+              alert("Top-up verified. Balance updated.");
               return;
             }
           }
@@ -572,7 +572,7 @@
           refreshUserDash();
           tfShow("tfStepA");
           showWalletView();
-          alert("টপ-আপ সফল! নতুন ব্যালেন্স: ৳" + bal.toFixed(2));
+          alert("Top-up successful! New balance: ৳" + bal.toFixed(2));
         }
       } catch (e) {}
     }, 8000);
@@ -592,11 +592,11 @@
   function tfGoToPayer() {
     const amount = Number((document.getElementById("walTopAmount") || {}).value);
     if (!amount || amount < MIN_TOPUP) {
-      alert("সর্বনিম্ন " + MIN_TOPUP + " টাকা");
+      alert("Minimum " + MIN_TOPUP + " BDT");
       return;
     }
     if (!tfState.method) {
-      alert("মেথড বেছে নিন");
+      alert("Choose a method");
       return;
     }
     tfState.amount = amount;
@@ -610,12 +610,12 @@
     const msg = document.getElementById("walletTopMsg");
     const token = getToken();
     if (!token) {
-      if (msg) msg.textContent = "আগে লগইন করুন";
+      if (msg) msg.textContent = "Please log in first";
       return;
     }
     const digits = sender.replace(/\D/g, "");
     if (digits.length < 10) {
-      alert("যে নম্বর থেকে পাঠাবেন সেটি লিখুন");
+      alert("Enter the number you will send from");
       return;
     }
     tfState.sender = digits.slice(0, 11);
@@ -639,7 +639,7 @@
     const pa2 = document.getElementById("tfPayAmt2");
     if (pa2) pa2.textContent = tfState.amount + " BDT";
     const pid = document.getElementById("tfPendingId");
-    if (pid) pid.textContent = "পেমেন্ট পাঠানোর পর নিচে থেকে TrxID সাবমিট করুন, অথবা SMS অটো-ভেরিফাইয়ের জন্য অপেক্ষা করুন।";
+    if (pid) pid.textContent = "After sending the payment, submit the TrxID below, or wait for SMS auto-verification.";
     if (msg) msg.textContent = "";
     tfShow("tfStepC");
     tfStartCountdown();
@@ -653,18 +653,18 @@
     const msg = document.getElementById("walletTopMsg");
     const token = getToken();
     if (!token) {
-      if (msg) msg.textContent = "আগে লগইন করুন";
+      if (msg) msg.textContent = "Please log in first";
       return;
     }
     if (!amount || amount < MIN_TOPUP) {
-      if (msg) msg.textContent = "সর্বনিম্ন " + MIN_TOPUP + " টাকা";
+      if (msg) msg.textContent = "Minimum " + MIN_TOPUP + " BDT";
       return;
     }
     if (!txn || txn.length < 6) {
-      if (msg) msg.textContent = "সঠিক TrxID দিন";
+      if (msg) msg.textContent = "Enter a valid TrxID";
       return;
     }
-    if (msg) msg.textContent = "জমা হচ্ছে…";
+    if (msg) msg.textContent = "Submitting…";
     try {
       const d = await walletPost({
         action: "wallet_topup",
@@ -677,14 +677,14 @@
         replace_order_id: tfState.orderId || ""
       });
       if (!d || !d.ok) {
-        if (msg) msg.textContent = (d && d.message) || (d && d.error) || "টপ-আপ ব্যর্থ";
+        if (msg) msg.textContent = (d && d.message) || (d && d.error) || "Top-up failed";
         return;
       }
       tfStopTimers();
       if (msg) {
-        msg.innerHTML = "টপ-আপ ID: <b>" + esc(d.order_id) + "</b><br>" +
+        msg.innerHTML = "Top-up ID: <b>" + esc(d.order_id) + "</b><br>" +
           esc(d.message || "") +
-          (d.status === "Completed" ? "<br>নতুন ব্যালেন্স: ৳" + (Number(d.balance) || 0) : "<br>ভেরিফাই হলে ব্যালেন্স যোগ হবে।");
+          (d.status === "Completed" ? "<br>New balance: ৳" + (Number(d.balance) || 0) : "<br>Balance will be added once verified.");
       }
       if (d.status === "Completed") {
         if (d.balance != null) window._walletBalance = Number(d.balance);
@@ -739,7 +739,7 @@
     function copyText(t) {
       try {
         navigator.clipboard.writeText(t);
-        alert("কপি হয়েছে");
+        alert("Copied");
       } catch (e) {
         const ta = document.createElement("textarea");
         ta.value = t;
@@ -747,7 +747,7 @@
         ta.select();
         document.execCommand("copy");
         document.body.removeChild(ta);
-        alert("কপি হয়েছে");
+        alert("Copied");
       }
     }
     const cn = document.getElementById("tfCopyNum");
@@ -766,22 +766,22 @@
     const msg = document.getElementById("walletPayMsg");
     const token = getToken();
     if (!token) {
-      if (msg) msg.textContent = "আগে Wallet ট্যাব থেকে লগইন করুন";
+      if (msg) msg.textContent = "Please log in from the Wallet tab first";
       return;
     }
     if (typeof selectedPackage === "undefined" || !selectedPackage) {
-      if (msg) msg.textContent = "সার্ভিস সিলেক্ট নেই";
+      if (msg) msg.textContent = "No service selected";
       return;
     }
     const link = (document.getElementById("orderLink") || {}).value || "";
     const qty = Number((document.getElementById("orderQuantity") || {}).value || 0);
     const total = Number((document.getElementById("payAmountDisplay") || {}).innerText || 0);
     if (!link || !qty) {
-      if (msg) msg.textContent = "লিংক/পরিমাণ ঠিক করুন";
+      if (msg) msg.textContent = "Fix the link/quantity";
       return;
     }
-    if (!confirm("Wallet থেকে ৳" + total.toFixed(2) + " কেটে অর্ডার হবে। OK?")) return;
-    if (msg) msg.textContent = "প্রসেস হচ্ছে…";
+    if (!confirm("৳" + total.toFixed(2) + " will be deducted from your Wallet and the order placed. OK?")) return;
+    if (msg) msg.textContent = "Processing…";
     const btn = document.getElementById("walletPayBtn");
     if (btn) btn.disabled = true;
     try {
@@ -797,11 +797,11 @@
         amount: total
       });
       if (!d || !d.ok) {
-        if (msg) msg.textContent = (d && d.message) || (d && d.error) || "অর্ডার ব্যর্থ";
+        if (msg) msg.textContent = (d && d.message) || (d && d.error) || "Order failed";
         if (btn) btn.disabled = false;
         return;
       }
-      if (msg) msg.textContent = "সফল! Order: " + d.order_id + " · ব্যালেন্স ৳" + (Number(d.balance) || 0).toFixed(2);
+      if (msg) msg.textContent = "Success! Order: " + d.order_id + " · Balance ৳" + (Number(d.balance) || 0).toFixed(2);
       try { localStorage.setItem("lastOrderId", d.order_id); } catch (e) {}
       // Show success-ish pending with processing
       if (typeof showSuccessStatus === "function") {
@@ -829,7 +829,7 @@
           txn_id: "WALLET"
         });
       } else {
-        alert("অর্ডার সফল: " + d.order_id + "\nProcessing এ আছে। Track Order থেকে দেখুন।");
+        alert("Order placed: " + d.order_id + "\nIt is now Processing. Check Track Order.");
       }
       // hide gateway grids
       const go = document.getElementById("gateway-overlay");
@@ -857,11 +857,11 @@
       const need = Number((document.getElementById("payAmountDisplay") || {}).innerText || 0);
       if (d && d.ok) {
         const bal = Number(d.balance) || 0;
-        if (label) label.textContent = "ব্যালেন্স ৳" + bal.toFixed(2) + (need ? (" · দরকার ৳" + need.toFixed(2)) : "");
+        if (label) label.textContent = "Balance ৳" + bal.toFixed(2) + (need ? (" · Needed ৳" + need.toFixed(2)) : "");
         const btn = document.getElementById("walletPayBtn");
         if (btn) {
           btn.disabled = bal < need;
-          btn.textContent = bal < need ? "ব্যালেন্স কম — টপ-আপ করুন" : "Wallet দিয়ে পে";
+          btn.textContent = bal < need ? "Low balance, top up" : "Pay with Wallet";
         }
       } else {
         box.style.display = "none";
@@ -902,7 +902,7 @@
     if (!(total > 0) || isNaN(bal) || bal >= total) { box.hidden = true; return; }
     const need = Math.max(MIN_TOPUP, Math.ceil(total - bal));
     const txt = document.getElementById("abLowBalTxt");
-    if (txt) txt.textContent = "ব্যালেন্স ৳" + bal.toFixed(2) + " · দরকার ৳" + total.toFixed(2);
+    if (txt) txt.textContent = "Balance ৳" + bal.toFixed(2) + " · Needed ৳" + total.toFixed(2);
     const btn = document.getElementById("abLowBalBtn");
     if (btn) btn.setAttribute("data-amt", String(need));
     box.hidden = false;
@@ -949,20 +949,20 @@
     const price = (typeof packageSellPrice === "function") ? packageSellPrice(pkg) : 0;
     const total = Number(((price * Number(qty)) / 1000).toFixed(2));
     if (!total || total <= 0) {
-      abShowResult(false, "<b>অর্ডার হয়নি</b><br>দাম যাচাই করা যায়নি। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।");
+      abShowResult(false, "<b>Order not placed</b><br>The price could not be verified. Refresh the page and try again.");
       return true;
     }
     let bal;
     try {
       const me = await walletPost({ action: "wallet_auth", sub: "me", token: token });
       if (!me || !me.ok) {
-        abShowResult(false, "<b>লগইন সেশন শেষ</b><br>আবার <a href=\"login.html\" style=\"color:inherit;text-decoration:underline;\">লগইন করুন</a>।");
+        abShowResult(false, "<b>Session expired</b><br>Please <a href=\"login.html\" style=\"color:inherit;text-decoration:underline;\">log in</a> again.");
         return true;
       }
       bal = Number(me.balance) || 0;
       window._walletBalance = bal;
     } catch (e) {
-      abShowResult(false, "<b>অর্ডার হয়নি</b><br>" + abEsc(netErrMsg(e)));
+      abShowResult(false, "<b>Order not placed</b><br>" + abEsc(netErrMsg(e)));
       return true;
     }
     lowBalSet(total, bal);   // ফ্রেশ ব্যালেন্সে যথেষ্ট হলে আগের (পুরনো) সতর্কবার্তা লুকায়
@@ -985,7 +985,7 @@
       });
       if (!d || !d.ok) {
         if (d && d.error === "auth") {
-          abShowResult(false, "<b>লগইন সেশন শেষ</b><br>আবার <a href=\"login.html\" style=\"color:inherit;text-decoration:underline;\">লগইন করুন</a>।");
+          abShowResult(false, "<b>Session expired</b><br>Please <a href=\"login.html\" style=\"color:inherit;text-decoration:underline;\">log in</a> again.");
           return true;
         }
         if (d && d.balance != null) window._walletBalance = Number(d.balance);
@@ -993,7 +993,7 @@
           lowBalSet(total, Number(d.balance) || 0);
           return true;
         }
-        abShowResult(false, "<b>অর্ডার হয়নি</b><br>" + abEsc((d && (d.message || d.error)) || "অর্ডার ব্যর্থ। আবার চেষ্টা করুন।"));
+        abShowResult(false, "<b>Order not placed</b><br>" + abEsc((d && (d.message || d.error)) || "Order failed. Please try again."));
         return true;
       }
       if (d.balance != null) window._walletBalance = Number(d.balance);
@@ -1013,7 +1013,7 @@
       try { refreshUserDash(); } catch (e) {}
       return true;
     } catch (e) {
-      abShowResult(false, "<b>অর্ডার হয়নি</b><br>" + abEsc(netErrMsg(e)) + "<br><small>টাকা কাটা হয়েছে কি না নিশ্চিত হতে Wallet ব্যালেন্স দেখুন বা Track Order চেক করুন।</small>");
+      abShowResult(false, "<b>Order not placed</b><br>" + abEsc(netErrMsg(e)) + "<br><small>To confirm whether money was deducted, check your Wallet balance or Track Order.</small>");
       return true;
     }
   }

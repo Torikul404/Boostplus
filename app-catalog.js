@@ -331,11 +331,11 @@ function renderSearchDropdown(q) {
   const loading = catalogLoadState !== 'full' && catalogLoadState !== 'error';
   let html = '';
   if (!searchDdItems.length) {
-    html = '<div class="sd-empty">' + (loading ? 'সার্ভিস লোড হচ্ছে…' : 'কিছু পাওয়া যায়নি') + '</div>';
+    html = '<div class="sd-empty">' + (loading ? 'Loading services…' : 'Nothing found') + '</div>';
   } else {
-    html = '<div class="sd-count">' + matches.length + ' টি সার্ভিস পাওয়া গেছে'
-         + (matches.length > SEARCH_DD_MAX ? ' (প্রথম ' + SEARCH_DD_MAX + ' টি)' : '')
-         + (loading ? ' · আরও লোড হচ্ছে…' : '') + '</div>'
+    html = '<div class="sd-count">' + matches.length + ' services found'
+         + (matches.length > SEARCH_DD_MAX ? ' (first ' + SEARCH_DD_MAX + ')' : '')
+         + (loading ? ' · loading more…' : '') + '</div>'
          + searchDdItems.map(p => {
       const price = packageSellPrice(p);
       return '<div class="sd-item" role="option" data-code="' + escapeHtml(String(p.code)) + '">'
@@ -625,8 +625,9 @@ function setupFilterUI() {
 function deliveryBadgeHTML(pkg) {
   const d = pkg && pkg.delivery;
   if (!d || !d.label) return "";
-  return `<div class="delivery-badge" title="সর্বশেষ ${d.n} টি সম্পন্ন অর্ডারের মিডিয়ান সময়">⏱ পূর্বে ${escapeHtml(String(d.label))} এর মধ্যে সম্পন্ন হয়েছে <span class="delivery-n">(${d.n} অর্ডার)</span></div>`;
+  return `<div class="delivery-badge" title="Median time of the last ${d.n} completed orders">⏱ Usually completed within ${escapeHtml(pbDeliveryText(d))} <span class="delivery-n">(${d.n} orders)</span></div>`;
 }
+
 
 /* ------------------------------------------------------------------
    Category → Service dropdown drill-down for "Popular" mode.
@@ -920,7 +921,7 @@ function populateCategoryDropdown() {
     selectedCategoryValue = cats[0] || "";
   }
   const trigger = document.getElementById("categoryTriggerText");
-  if (trigger) trigger.textContent = selectedCategoryValue ? (pbCatEmoji(selectedCategoryValue, pbCatPlatform(selectedCategoryValue)) + " " + selectedCategoryValue) : "বেছে নিন";
+  if (trigger) trigger.textContent = selectedCategoryValue ? (pbCatEmoji(selectedCategoryValue, pbCatPlatform(selectedCategoryValue)) + " " + selectedCategoryValue) : "Select";
   return cats;
 }
 
@@ -938,7 +939,7 @@ function populateServiceDropdown() {
   const selectedPkg = pool.find(p => String(p.code) === String(selectedServiceCode));
   const trigger = document.getElementById("serviceTriggerText");
   if (trigger) {
-    if (!selectedPkg) trigger.textContent = "বেছে নিন";
+    if (!selectedPkg) trigger.textContent = "Select";
     else {
       const price = packageSellPrice(selectedPkg);
       const sn = pbDropdownName(selectedPkg);
@@ -961,36 +962,82 @@ function pbRefillConflict(p) {
 }
 
 /** "অর্ডারের আগে জানুন" বক্সের ভেতরের HTML। যে তথ্য ডেটায় নেই সেই সারি বাদ — কিছু আন্দাজ করে বসানো হয় না। */
+/* R5: English duration from seconds (no server change; delivery.med_sec comes from public speed stats) */
+function pbDurationEn(sec) {
+  sec = Math.max(0, Math.floor(Number(sec) || 0));
+  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
+  if (d > 0) return d + "d" + (h ? " " + h + "h" : "");
+  if (h > 0) return h + "h" + (m ? " " + m + "m" : "");
+  if (m > 0) return m + " min";
+  return sec + " sec";
+}
+function pbDeliveryText(d) {
+  if (!d) return "";
+  return Number(d.med_sec) > 0 ? pbDurationEn(d.med_sec) : String(d.label || "");
+}
 function pbKnowBeforeHTML(p) {
   const rows = [];
   const clean = v => String(v == null ? "" : v).replace(/^[^A-Za-z0-9]+/, "").trim();
   const num = n => Number(n).toLocaleString("en-US");
   const mn = Number(p.min), mx = Number(p.max);
-  if (mn > 0 && mx >= mn) rows.push({ k: "qty", ico: "📦", lbl: "পরিমাণ", val: "সর্বনিম্ন " + num(mn) + " — সর্বোচ্চ " + num(mx) });
+  if (mn > 0 && mx >= mn) rows.push({ k: "qty", ico: "📦", lbl: "Quantity", val: "Min " + num(mn) + " — Max " + num(mx) });
   let f = [];
   try { f = pbServiceFacts(p); } catch (e) {}
   const g = k => f.find(r => r.k === k);
-  if (g("start")) rows.push({ k: "start", ico: "🕐", lbl: "শুরু হতে", val: clean(g("start").val) });
-  if (g("speed")) rows.push({ k: "speed", ico: "🚀", lbl: "গতি", val: clean(g("speed").val) });
+  if (g("start")) rows.push({ k: "start", ico: "🕐", lbl: "Start time", val: clean(g("start").val) });
+  if (g("speed")) rows.push({ k: "speed", ico: "🚀", lbl: "Speed", val: clean(g("speed").val) });
   if (g("refill") && !pbRefillConflict(p)) {
     const v = clean(g("refill").val);
     rows.push({ k: "refill", ico: "♻️", lbl: "Refill", val: v, yes: !/^no\b/i.test(v) });
   }
-  if (g("quality")) rows.push({ k: "quality", ico: "⭐", lbl: "মান", val: clean(g("quality").val) });
+  if (g("quality")) rows.push({ k: "quality", ico: "⭐", lbl: "Quality", val: clean(g("quality").val) });
   // কথায় প্রকাশ: সারি নয়, বাক্যে বিবরণ
   const r = k => rows.find(x => x.k === k);
   const sent = [];
-  if (r("qty")) sent.push("এই সার্ভিসে একবারে সর্বনিম্ন " + num(mn) + " থেকে সর্বোচ্চ " + num(mx) + " পর্যন্ত অর্ডার করা যায়।");
-  if (r("start")) sent.push("অর্ডারের পর শুরু হতে সময় লাগে: " + r("start").val + "।");
-  if (r("speed")) sent.push("ডেলিভারির গতি: " + r("speed").val + "।");
-  if (r("refill")) sent.push(r("refill").yes ? "Refill সুবিধা আছে (" + r("refill").val + ")।" : "এই সার্ভিসে Refill নেই।");
-  if (r("quality")) sent.push("সার্ভিসের মান: " + r("quality").val + "।");
+  if (r("qty")) sent.push("You can order from " + num(mn) + " up to " + num(mx) + " per order.");
+  if (r("start")) sent.push("Start time after ordering: " + r("start").val + ".");
+  if (r("speed")) sent.push("Delivery speed: " + r("speed").val + ".");
+  if (r("refill")) sent.push(r("refill").yes ? "Refill is available (" + r("refill").val + ")." : "This service has no refill.");
+  if (r("quality")) sent.push("Service quality: " + r("quality").val + ".");
   let html = sent.length ? `<div class="ab-desc-line ab-desc-main">${escapeHtml(sent.join(" "))}</div>` : "";
   const notes = [];
-  if (g("start") || g("speed")) notes.push("• শুরু ও গতির তথ্য সার্ভিসের বিবরণ অনুযায়ী; লোড/সময়ভেদে কম-বেশি হতে পারে।");
-  notes.push("• একই লিংকে আগের অর্ডার শেষ হওয়ার আগে নতুন অর্ডার দিবেন না।");
-  notes.push("• সঠিক পাবলিক লিংক দিন — প্রাইভেট/ইনভ্যালিড লিংকে ডেলিভারি নাও হতে পারে।");
+  if (g("start") || g("speed")) notes.push("• Start and speed follow the service description and can vary with load.");
+  notes.push("• Do not place a new order on the same link before the previous one finishes.");
+  notes.push("• Use a correct public link. Private or invalid links may not be delivered.");
   return html + notes.map(l => `<div class="ab-desc-line">${escapeHtml(l)}</div>`).join("");
+}
+
+/* R11: Description panel for the New order form: up to 4 rows (Start, Speed, Refill, Quality) + a note.
+   Same facts as pbKnowBeforeHTML (pbServiceFacts); a row whose value is unknown is not shown (D7). */
+function pbDescRowsHTML(p) {
+  const clean = v => String(v == null ? "" : v).replace(/^[^A-Za-z0-9]+/, "").trim();
+  let f = [];
+  try { f = pbServiceFacts(p); } catch (e) {}
+  const g = k => f.find(r => r.k === k);
+  const ic = {
+    start: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    speed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 18a9 9 0 1 1 15 0"/><path d="M12 14l4-5"/></svg>',
+    refill: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 11a8 8 0 0 0-14-4M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4M20 20v-4h-4"/></svg>',
+    quality: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.2 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/></svg>'
+  };
+  const defs = [["start", "Start", "blue"], ["speed", "Speed", "purple"], ["refill", "Refill", "green"], ["quality", "Quality", "amber"]];
+  let rows = "";
+  defs.forEach(d => {
+    const r = g(d[0]);
+    if (!r) return;
+    if (d[0] === "refill" && pbRefillConflict(p)) return;
+    const val = clean(r.val);
+    if (!val) return;
+    rows += '<div class="rf-row"><span class="rf-iconsq' + (d[2] === "blue" ? "" : " rf-iconsq--" + d[2]) + '" aria-hidden="true">' + ic[d[0]] + '</span>' +
+      '<div class="rf-row__body"><div class="rf-row__title">' + d[1] + '</div></div><div class="rf-desc-val">' + escapeHtml(val) + '</div></div>';
+  });
+  const notes = [];
+  if (g("start") || g("speed")) notes.push("Start time and speed follow the service description and can change with load.");
+  notes.push("Do not place a new order on the same link before the previous one is finished.");
+  notes.push("Use a correct public link. Private or invalid links may not be delivered.");
+  return (rows ? '<div class="rf-desc-card">' + rows + '</div>' : '') +
+    '<div class="rf-note rf-desc-note"><div class="rf-note__title">⚠ Please read before ordering</div><ul>' +
+    notes.map(n => '<li>' + escapeHtml(n) + '</li>').join("") + '</ul></div>';
 }
 
 function renderSelectedServiceCard() {
@@ -1003,10 +1050,10 @@ function renderSelectedServiceCard() {
   const pkg = allPackages.find(p => String(p.code) === String(selectedServiceCode));
   if (!pkg) {
     wrap.innerHTML = catalogLoadState === 'loading'
-      ? '<div role="status" style="text-align:center;color:var(--muted,#94a3b8);padding:20px 12px;">সার্ভিস লোড হচ্ছে…</div>'
+      ? '<div role="status" style="text-align:center;color:var(--muted,#94a3b8);padding:20px 12px;">Loading services…</div>'
       : catalogLoadState === 'error'
-        ? '<div class="pb-error" role="alert"><p>সার্ভিস লোড করা যায়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।</p><button type="button" class="pb-retry" data-pb-retry="catalog">আবার চেষ্টা করুন</button></div>'
-        : (catalogLoadState === 'loading' ? "" : `<div style="text-align:center;color:#94a3b8;padding:20px 12px;">এই ক্যাটাগরিতে কোনো সার্ভিস নেই। অন্য ক্যাটাগরি বেছে নিন।</div>`);
+        ? '<div class="pb-error" role="alert"><p>Could not load services. Check your internet and try again.</p><button type="button" class="pb-retry" data-pb-retry="catalog">Try again</button></div>'
+        : (catalogLoadState === 'loading' ? "" : `<div style="text-align:center;color:#94a3b8;padding:20px 12px;">No services in this category. Choose another category.</div>`);
     if (descBox) descBox.style.display = "none";
     if (orderFields) orderFields.style.display = "none";
     return;
@@ -1017,7 +1064,7 @@ function renderSelectedServiceCard() {
 
   // ধাপ ৯: "অর্ডারের আগে জানুন" বক্স — পরিমাণ, শুরু, গতি, Refill, মান + সাধারণ নোট
   if (descBox && descBody) {
-    descBody.innerHTML = pbKnowBeforeHTML(pkg);
+    descBody.innerHTML = pbDescRowsHTML(pkg);   // R11: rows + note (pbKnowBeforeHTML stays for the Services page)
     descBox.style.display = "block";
   }
 
@@ -1072,7 +1119,7 @@ function updateAbCharge() {
     if (isCC) {
       qtyEl.readOnly = true;
       qtyEl.dataset.auto = "1";
-      qtyEl.placeholder = "কমেন্ট সংখ্যা অনুযায়ী অটো";
+      qtyEl.placeholder = "Auto, based on the number of comments";
       const n = commentLines(ccEl?.value).length;
       qtyEl.value = n ? String(n) : "";
       if (ccCount) ccCount.textContent = `${n} comment${n === 1 ? "" : "s"} · Min ${pkg.min} – Max ${pkg.max}`;
@@ -1126,10 +1173,10 @@ function updateAbCharge() {
         if (typeof window.walletInstantOrder === "function") {
           await window.walletInstantOrder(pkg, linkVal, qtyVal, ccLines.join("\n"));
         } else {
-          alert("পেজ পুরোপুরি লোড হয়নি। রিফ্রেশ করে আবার চেষ্টা করুন।");
+          alert("The page did not load fully. Refresh and try again.");
         }
       } catch (eI) {
-        alert("অর্ডার করা যায়নি। আবার চেষ্টা করুন।");
+        alert("The order could not be placed. Please try again.");
       }
       btn.textContent = oldTxt;
       updateAbCharge();
@@ -1227,7 +1274,7 @@ function renderDropdownOptions(options) {
   const wrap = document.getElementById("ddOptions");
   if (!wrap) return;
   if (!options.length) {
-    wrap.innerHTML = '<div class="dd-empty">কিছু পাওয়া যায়নি</div>';
+    wrap.innerHTML = '<div class="dd-empty">Nothing found</div>';
     return;
   }
   wrap.innerHTML = options.map(o => {
@@ -1376,7 +1423,7 @@ const PB_CATALOG = (function () {
         .then(ix => Promise.all((ix.categories || []).map(c => shard(c.file))))
         .then(parts => [].concat.apply([], parts))
         .catch(err => {
-          console.warn('ক্যাটেগরি-ভাগ ডেটা পাওয়া যায়নি, packages-full.json থেকে নামছে:', err);
+          console.warn('Category split data not found, falling back to packages-full.json:', err);
           return getJSON('packages-full.json').then(f => f.filter(p => !p.legacy));
         })
         .then(list => list, err => { allP = null; throw err; });

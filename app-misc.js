@@ -13,7 +13,7 @@ function runProviderLookup() {
 
   const q = (input.value || "").trim().toLowerCase();
   if (!q) {
-    out.innerHTML = '<div class="lookup-empty">সার্ভিস কোড বা নাম লিখুন।</div>';
+    out.innerHTML = '<div class="lookup-empty">Enter a service code or name.</div>';
     return;
   }
 
@@ -44,7 +44,7 @@ function runProviderLookup() {
   scored.sort((a, b) => b.score - a.score);
 
   if (!scored.length) {
-    out.innerHTML = '<div class="lookup-empty">কোনো মিল পাওয়া যায়নি। অন্য কোড চেষ্টা করুন বা প্ল্যাটফর্ম All করুন।</div>';
+    out.innerHTML = '<div class="lookup-empty">No match found. Try another code or set the platform to All.</div>';
     return;
   }
 
@@ -159,9 +159,9 @@ document.querySelectorAll(".faq-question").forEach((btn) => {
         const service = o.service_name || "";   // নাম হুবহু, কাটাকাটি নেই
         toastEl.innerHTML =
           '<span class="rt-icon">🎉</span>' +
-          '<span class="rt-body"><b>' + escapeHtml(o.mobile_masked || "একজন কাস্টমার") + '</b> সবেমাত্র ' +
-          '<b>' + escapeHtml(o.quantity || "") + '</b> ' + escapeHtml(service) + ' অর্ডার সম্পন্ন করেছেন' +
-          '<span class="rt-time">✅ Completed' + (o.took ? ' · ⏱ ' + escapeHtml(o.took) + ' এ' : '') + '</span></span>';
+          '<span class="rt-body"><b>' + escapeHtml(o.mobile_masked || "A customer") + '</b> just completed ' +
+          '<b>' + escapeHtml(o.quantity || "") + '</b> ' + escapeHtml(service) + ' order' +
+          '<span class="rt-time">✅ Completed' + (o.took ? ' · ⏱ ' + escapeHtml((window.pbTookEn || String)(o.took)) : '') + '</span></span>';
         toastEl.classList.add("show");
         setTimeout(() => toastEl.classList.remove("show"), 4500);
         if (shownCount >= MAX_SHOWS) clearInterval(intervalId);

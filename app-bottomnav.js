@@ -15,15 +15,15 @@
     support: '<path d="M4 12a8 8 0 0 1 16 0v4.5a2 2 0 0 1-2 2h-1.5v-6H20M4 12.5h3.5v6H6a2 2 0 0 1-2-2z"/><path d="M15 20.5h-2.5"/>'
   };
   var ITEMS = [
-    ["order", "নতুন অর্ডার", "new"], ["services", "সার্ভিস", "services"], ["orders", "অর্ডার", "orders"],
-    ["funds", "ওয়ালেট", "funds"], ["support", "সহায়তা", "support"]
+    ["order", "New order", "new"], ["services", "Services", "services"], ["orders", "Orders", "orders"],
+    ["funds", "Add funds", "funds"], ["support", "Tickets", "support"]
   ];
   var bar = null;
 
   function build() {
     if ($("pbBottomNav")) return;
     bar = document.createElement("nav");
-    bar.id = "pbBottomNav"; bar.className = "pb-bnav"; bar.setAttribute("aria-label", "নিচের মেনু");
+    bar.id = "pbBottomNav"; bar.className = "pb-bnav"; bar.setAttribute("aria-label", "Bottom menu");
     bar.innerHTML = ITEMS.map(function (it) {
       return '<button type="button" class="pb-bnav-btn" data-bn="' + it[2] + '"><svg viewBox="0 0 24 24" aria-hidden="true">' + ICON[it[0]] + '</svg><span>' + it[1] + '</span></button>';
     }).join("");
