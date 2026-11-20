@@ -4,16 +4,18 @@
    app.js থেকে route() এ window.StudioTQ.mount(ctx) ডাকা হয়। */
 (function () {
   'use strict';
-  var KQ = 'pb_tq_v1', KL = 'pb_tq_links_v1', KM = 'pb_tq_meta_v1', KS = 'pb_tq_set_v1';
+  var KQ = 'pb_tq_v1', KL = 'pb_tq_links_v1', KM = 'pb_tq_meta_v1', KS = 'pb_tq_set_v1', KG = 'pb_tq_stage_v1', KN = 'pb_tq_slnk_v1';
   var C = null, box = null, tok = 0, runId = 0, stopFlag = false, stopMsg = '', armed = false;
   function ld(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
   function sv(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
-  var Q = ld(KQ, { items: [] }), LK = ld(KL, {}), MT = ld(KM, {}), ST = ld(KS, { budget: 100, cap: 30 });
+  var Q = ld(KQ, { items: [] }), LK = ld(KL, {}), MT = ld(KM, {}), ST = ld(KS, { budget: 100, cap: 30 }), SG = ld(KG, []), SN = ld(KN, {});
+  if (!Array.isArray(SG)) SG = [];
   if (!Q || !Array.isArray(Q.items)) Q = { items: [] };
   Q.run = false;
   Q.items.forEach(function (x) { if (x.state === 'run') { x.state = 'unknown'; x.msg = 'পেজ বন্ধ হওয়ায় নিশ্চিত নয় — স্পিড পাতায় দেখুন'; } });
-  var S = { tab: 'q', label: '', type: '', q: '', un: true, rows: [], fx: 131, types: [], plats: [], picks: {}, load: 0, rep: null, repBusy: false };
+  var S = { tab: 'q', label: '', type: '', q: '', un: true, rows: [], fx: 131, types: [], plats: [], picks: {}, known: {}, pool: [], full: false, cache: {}, qty: {}, lnk: SN, load: 0, rep: null, repBusy: false };
   var r2 = function (v) { return Math.round(v * 100) / 100; };
+  var saveG = function () { sv(KG, SG.slice(-100)); }, saveN = function () { sv(KN, S.lnk); };
   var saveQ = function () { sv(KQ, { items: Q.items.slice(-200) }); }, saveS = function () { sv(KS, ST); };
   var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
   var esc = function (s) { return C.esc(s); }, bn = function (n) { return C.bn(n); };
@@ -77,13 +79,23 @@
   var linkFor = function (label, kind) { var L = LK[label] || {}; return kind === 'profile' ? L.profile : kind === 'post' ? L.post : (L.profile || L.post); };
 
   /* ---------- কিউ আইটেম ---------- */
+  var fxOf = function (r) { return +r._fx > 0 ? +r._fx : S.fx; };
+  function lblOf(r) {
+    if (!r._stage) return S.label;
+    var p = plat(r.name), m = p ? S.plats.filter(function (z) { return plat(z.label) === p; })[0] : null;
+    return m ? m.label : (r.platform_label || r.name || S.label);
+  }
+  function qtyDef(r) { var mn = +r.min > 0 ? +r.min : 10, mx = +r.max > 0 ? +r.max : 0; return mx && mn > mx ? mx : mn; }
+  function qtyOf(r) { var v = Math.floor(+S.qty[r.provider + '|' + r.service_id]); return v > 0 ? v : qtyDef(r); }
   function mkItem(r) {
-    var kind = kindOf(r.name), link = linkFor(S.label, kind) || '', mn = +r.min > 0 ? +r.min : 10, mx = +r.max > 0 ? +r.max : 0;
-    var qty = mx && mn > mx ? mx : mn, cost = r2((+r.rate || 0) * S.fx * qty / 1000);
-    var it = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), provider: r.provider, sid: String(r.service_id), name: String(r.name || ''), label: S.label, type: S.type,
+    var kind = kindOf(r.name), lb = lblOf(r), k0 = r.provider + '|' + r.service_id, link = (Object.prototype.hasOwnProperty.call(S.lnk, k0) ? S.lnk[k0] : linkFor(lb, kind)) || '', mn = +r.min > 0 ? +r.min : 10, mx = +r.max > 0 ? +r.max : 0;
+    var qty = qtyOf(r), cost = r2((+r.rate || 0) * fxOf(r) * qty / 1000);
+    var it = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), provider: r.provider, sid: String(r.service_id), name: String(r.name || ''), label: lb, type: r._stage ? (r._type || '') : S.type,
       refill: +r.refill ? 1 : 0, kind: kind, link: link, qty: qty, cost: cost, state: 'wait', msg: '', po: '', req: 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) };
-    if (!link) { it.state = 'skip'; it.msg = 'এই ধরনের (' + (kind === 'post' ? 'পোস্ট' : kind === 'profile' ? 'প্রোফাইল' : 'যেকোনো') + ') লিংক দেওয়া নেই'; }
-    else { var c = linkCheck(S.label, kind, link); if (c.lv === 'e') { it.state = 'skip'; it.msg = c.msg; } }
+    if (!(qty >= mn)) { it.state = 'skip'; it.msg = 'পরিমাণ ন্যূনতম ' + bn(mn) + ' হতে হবে'; }
+    else if (mx && qty > mx) { it.state = 'skip'; it.msg = 'পরিমাণ সর্বোচ্চ ' + bn(mx) + ' হতে পারে'; }
+    else if (!link) { it.state = 'skip'; it.msg = 'এই ধরনের (' + (kind === 'post' ? 'পোস্ট' : kind === 'profile' ? 'প্রোফাইল' : 'যেকোনো') + ') লিংক দেওয়া নেই'; }
+    else { var c = linkCheck(lb, kind, link); if (c.lv === 'e') { it.state = 'skip'; it.msg = c.msg; } }
     if (it.state === 'wait' && !(cost >= 0)) { it.state = 'skip'; it.msg = 'দাম জানা নেই'; }
     if (it.state === 'wait' && cost > ST.cap) { it.state = 'skip'; it.msg = 'একটার খরচ ' + money(cost) + ' — সীমা ' + money(ST.cap) + ' ছাড়িয়ে যায়'; }
     return it;
@@ -172,21 +184,21 @@
       '<div class="chips"><button type="button" class="chip" id="tqUn" aria-pressed="' + S.un + '">🔎 শুধু অপরীক্ষিত</button><button type="button" class="chip" id="tqTop">সস্তা ১০টি বাছুন</button><button type="button" class="chip" id="tqNone">বাছাই মুছুন</button></div>' +
       '<div id="tqLs"></div></div>' +
       '<div class="card tqc"><h3>৩. খরচের সীমা</h3><div class="tqg"><div><label for="tqBg">মোট বাজেট (৳)</label><input id="tqBg" type="number" inputmode="decimal" min="1" value="' + esc(ST.budget) + '"></div><div><label for="tqCap">একটার সর্বোচ্চ (৳)</label><input id="tqCap" type="number" inputmode="decimal" min="1" value="' + esc(ST.cap) + '"></div></div>' +
-      '<p class="sub">সার্ভারেও আলাদা সীমা আছে: একটা অর্ডারে সর্বোচ্চ ৳৩০০, দিনে ৳১০০০ (ডিফল্ট)। এখানে ছোট সীমা দিলে সেটাই মানা হবে।</p><p class="tqm" id="tqSum"></p>' +
+      '<p class="sub">সার্ভারেও আলাদা সীমা আছে: একটা অর্ডারে সর্বোচ্চ ৳৩০০, দিনে ৳১০০০ (ডিফল্ট)। এখানে ছোট সীমা দিলে সেটাই মানা হবে।</p><h4 class="tqh">প্রতিটা সার্ভিসের পরিমাণ</h4><div id="tqSel"></div><p class="tqm" id="tqSum"></p>' +
       '<div class="acts"><button type="button" class="btn" id="tqAdd">কিউতে যোগ করুন</button></div><p class="err" id="tqAddE" role="alert"></p></div>' +
       '<div class="card tqc"><h3>৪. কিউ</h3><div id="tqQl"></div></div>';
     var L = LK[S.label] || {}; el.querySelector('#tqLp').value = L.profile || ''; el.querySelector('#tqLo').value = L.post || '';
     linkPaint();
-    el.querySelector('#tqPl').onchange = function (e) { S.label = e.target.value; S.type = ''; S.picks = {}; var L2 = LK[S.label] || {}; el.querySelector('#tqLp').value = L2.profile || ''; el.querySelector('#tqLo').value = L2.post || ''; linkPaint(); loadRows(); };
+    el.querySelector('#tqPl').onchange = function (e) { S.label = e.target.value; S.type = ''; S.picks = {}; S.pool = []; S.rows = []; var L2 = LK[S.label] || {}; el.querySelector('#tqLp').value = L2.profile || ''; el.querySelector('#tqLo').value = L2.post || ''; linkPaint(); loadRows(); };
     ['tqLp', 'tqLo'].forEach(function (id) { el.querySelector('#' + id).oninput = function () { var L3 = LK[S.label] || (LK[S.label] = {}); L3[id === 'tqLp' ? 'profile' : 'post'] = this.value.trim(); sv(KL, LK); linkPaint(); sumPaint(); }; });
-    var qt = null; el.querySelector('#tqQ').oninput = function (e) { clearTimeout(qt); qt = setTimeout(function () { S.q = e.target.value.trim(); loadRows(); }, 350); };
-    el.querySelector('#tqUn').onclick = function (e) { S.un = !S.un; e.currentTarget.setAttribute('aria-pressed', S.un); loadRows(); };
+    var qt = null; el.querySelector('#tqQ').oninput = function (e) { S.q = e.target.value.trim(); localShow(); clearTimeout(qt); if (S.q && !S.full) qt = setTimeout(function () { loadRows(true); }, 220); };
+    el.querySelector('#tqUn').onclick = function (e) { S.un = !S.un; S.pool = []; e.currentTarget.setAttribute('aria-pressed', S.un); loadRows(); };
     el.querySelector('#tqTop').onclick = function () { var n = 0; S.rows.slice().sort(function (a, b) { return (+a.rate || 0) - (+b.rate || 0); }).forEach(function (r) { if (n < 10 && !inQueue(r) && +r.rate > 0) { S.picks[r.provider + '|' + r.service_id] = 1; n++; } }); rowsPaint(); };
     el.querySelector('#tqNone').onclick = function () { S.picks = {}; rowsPaint(); };
     el.querySelector('#tqBg').oninput = function () { var v = +this.value; if (v > 0) { ST.budget = v; saveS(); } sumPaint(); };
-    el.querySelector('#tqCap').oninput = function () { var v = +this.value; if (v > 0) { ST.cap = v; saveS(); } sumPaint(); };
+    el.querySelector('#tqCap').oninput = function () { var v = +this.value; if (v > 0) { ST.cap = v; saveS(); } selPaint(); sumPaint(); };
     el.querySelector('#tqAdd').onclick = addPicks;
-    qPaint(); loadRows();
+    qPaint(); selPaint(); sumPaint(); loadRows();
   }
   function linkPaint() {
     var L = LK[S.label] || {};
@@ -196,31 +208,85 @@
       var c = linkCheck(S.label, z[2], z[1]); e.innerHTML = '<div class="ck ' + (c.lv === 'g' ? 'g' : c.lv) + '">' + (c.lv === 'g' ? '✔ ' : c.lv === 'w' ? '⚠ ' : '✖ ') + esc(c.msg) + '</div>';
     });
   }
-  async function loadRows() {
+  /* খোঁজা: একবার ~৩০০টি সার্ভিস এনে ফোনেই ছেঁকে নেওয়া হয় — অক্ষর লিখলেই সাথে সাথে ফল (সার্ভার ডাকা লাগে না) */
+  function localShow() {
+    var tk = S.q.toLowerCase().split(/\s+/).filter(Boolean), out = [];
+    for (var i = 0; i < S.pool.length && out.length < 60; i++) {
+      var r = S.pool[i], h = (r.name + ' ' + r.service_id + ' ' + r.provider + ' ' + (r.category || '')).toLowerCase(), ok = true;
+      for (var j = 0; j < tk.length; j++) if (h.indexOf(tk[j]) < 0) { ok = false; break; }
+      if (ok) out.push(r);
+    }
+    S.rows = out; rowsPaint();
+  }
+  function remember(rows) { rows.forEach(function (r) { S.known[r.provider + '|' + r.service_id] = r; }); }
+  async function loadRows(srv) {
     var el = box.querySelector('#tqLs'), my = ++S.load; if (!el) return;
-    el.innerHTML = '<div class="sk"></div>';
+    var ck = S.label + '|' + S.type + '|' + S.un, c = !srv && S.cache[ck];
+    if (c && Date.now() - c.at < 60000) { applyPool(c.d); return; }
+    if (!srv && !S.pool.length) el.innerHTML = '<div class="sk"></div>';
+    var q0 = S.q;
     try {
-      var d = await C.api('svc_best', { label: S.label, type: S.type, q: S.q, refill: false, untested: S.un, limit: 30 });
+      var d = await C.api('svc_best', { label: S.label, type: S.type, q: srv ? q0 : '', refill: false, untested: S.un, limit: srv ? 30 : 300 });
       if (my !== S.load || !box.querySelector('#tqLs')) return;
-      S.type = d.type; S.fx = d.fx || 131; S.rows = d.rows || []; S.types = d.types || [];
-      var ty = box.querySelector('#tqTy'); if (ty) ty.innerHTML = S.types.map(function (t) { return '<button type="button" class="chip" data-t="' + esc(t[0]) + '" aria-pressed="' + (t[0] === d.type) + '">' + esc(t[0]) + '<small>' + bn(t[1]) + '</small></button>'; }).join('');
-      if (ty) ty.onclick = function (e) { var k = e.target.closest('[data-t]'); if (!k) return; S.type = k.dataset.t; S.picks = {}; loadRows(); };
-      rowsPaint();
+      if (srv) { if (q0 !== S.q) return; S.fx = d.fx || S.fx; S.rows = d.rows || []; remember(S.rows); rowsPaint(); return; }
+      S.cache[ck] = { at: Date.now(), d: d }; if (d.type) S.cache[S.label + '|' + d.type + '|' + S.un] = S.cache[ck];
+      applyPool(d);
+      if (S.q && !S.full) loadRows(true);
     } catch (e) { if (my === S.load && !C.authFail(e)) el.innerHTML = '<p class="err">' + esc(e.message) + '</p>'; }
+  }
+  function applyPool(d) {
+    S.type = d.type; S.fx = d.fx || 131; S.pool = d.rows || []; S.types = d.types || []; S.full = S.pool.length >= (d.shown_n != null ? d.shown_n : S.pool.length);
+    remember(S.pool);
+    var ty = box.querySelector('#tqTy'); if (ty) ty.innerHTML = S.types.map(function (t) { return '<button type="button" class="chip" data-t="' + esc(t[0]) + '" aria-pressed="' + (t[0] === d.type) + '"> ' + esc(t[0]) + '<small>' + bn(t[1]) + '</small></button>'; }).join('');
+    if (ty) ty.onclick = function (e) { var k = e.target.closest('[data-t]'); if (!k) return; S.type = k.dataset.t; S.picks = {}; loadRows(); };
+    localShow();
   }
   function rowsPaint() {
     var el = box.querySelector('#tqLs'); if (!el) return;
-    if (!S.rows.length) { el.innerHTML = '<div class="empty">' + (S.un ? 'এই ধরনের সব সার্ভিসই টেস্ট করা, বা কিছু পাওয়া যায়নি। "শুধু অপরীক্ষিত" বন্ধ করে দেখুন।' : 'কোনো সার্ভিস পাওয়া যায়নি।') + '</div>'; sumPaint(); return; }
+    if (!S.rows.length) { el.innerHTML = '<div class="empty">' + (S.un ? 'এই ধরনের সব সার্ভিসই টেস্ট করা, বা কিছু পাওয়া যায়নি। "শুধু অপরীক্ষিত" বন্ধ করে দেখুন।' : 'কোনো সার্ভিস পাওয়া যায়নি।') + '</div>'; selPaint(); sumPaint(); return; }
     el.innerHTML = S.rows.map(function (r, i) {
       var k = r.provider + '|' + r.service_id, mn = +r.min > 0 ? +r.min : 10, cost = r2((+r.rate || 0) * S.fx * mn / 1000), dis = inQueue(r) || !(+r.rate > 0);
       return '<label class="tqr' + (dis ? ' off' : '') + '"><input type="checkbox" class="tqk" data-i="' + i + '"' + (S.picks[k] && !dis ? ' checked' : '') + (dis ? ' disabled' : '') + '>' +
         '<span class="tqb"><b class="bnm">' + esc(r.name) + '</b><span class="sub">' + esc(r.provider) + ' · আইডি ' + esc(r.service_id) + ' · ন্যূনতম ' + bn(mn) + '</span>' +
         '<span class="tqm"><span class="tag">' + money(cost) + ' একটায়</span> <span class="tag">স্কোর ' + bn(r.score) + '</span>' + (r.tested ? ' <span class="tag">টেস্টেড ✓</span>' : r.try_it ? ' <span class="tag tst mid">টেস্ট করার মতো</span>' : '') + (+r.refill ? ' <span class="tag">♻ রিফিল</span>' : '') + (r.state === 'on' ? ' <span class="tag">সাইটে চালু</span>' : '') + (inQueue(r) ? ' <span class="tag">কিউতে আছে</span>' : '') + '</span></span></label>';
     }).join('');
-    el.onchange = function (e) { var c = e.target.closest('.tqk'); if (!c) return; var r = S.rows[+c.dataset.i]; if (!r) return; var k = r.provider + '|' + r.service_id; if (c.checked) S.picks[k] = 1; else delete S.picks[k]; sumPaint(); };
-    sumPaint();
+    el.onchange = function (e) { var c = e.target.closest('.tqk'); if (!c) return; var r = S.rows[+c.dataset.i]; if (!r) return; var k = r.provider + '|' + r.service_id; if (c.checked) S.picks[k] = 1; else delete S.picks[k]; selPaint(); sumPaint(); };
+    selPaint(); sumPaint();
   }
-  function picked() { return S.rows.filter(function (r) { return S.picks[r.provider + '|' + r.service_id] && !inQueue(r) && +r.rate > 0; }); }
+  /* বাছা প্রতিটা সার্ভিসের পরিমাণ (ধাপ ৩) — কিবোর্ডে লিখলে বক্স নতুন করে আঁকা হয় না, শুধু খরচ বদলায় */
+  function selCost(r) { return r2((+r.rate || 0) * fxOf(r) * qtyOf(r) / 1000); }
+  function selErr(r) { var q = qtyOf(r), mn = +r.min > 0 ? +r.min : 10, mx = +r.max > 0 ? +r.max : 0; return q < mn ? 'ন্যূনতম ' + bn(mn) : (mx && q > mx ? 'সর্বোচ্চ ' + bn(mx) : (selCost(r) > ST.cap ? 'খরচ সীমা ' + money(ST.cap) + ' ছাড়িয়ে যায়' : '')); }
+  function lnkOf(r) { var k = r.provider + '|' + r.service_id, kind = kindOf(r.name); return Object.prototype.hasOwnProperty.call(S.lnk, k) ? S.lnk[k] : (linkFor(lblOf(r), kind) || ''); }
+  function lnkChk(r) {
+    var kind = kindOf(r.name), u = lnkOf(r); if (!u) return '<div class="ck e">✖ লিংক দেওয়া নেই</div>';
+    var c = linkCheck(lblOf(r), kind, u); return '<div class="ck ' + c.lv + '">' + (c.lv === 'g' ? '✔ ' : c.lv === 'w' ? '⚠ ' : '✖ ') + esc(c.msg) + '</div>';
+  }
+  /* ধাপ ৩ — বাছা প্রতিটা সার্ভিসের পরিমাণ ও নিজস্ব লিংক; কিবোর্ডে লিখলে বক্স নতুন করে আঁকা হয় না */
+  function selPaint() {
+    var el = box.querySelector('#tqSel'); if (!el) return;
+    var P = picked();
+    if (!P.length) { el.innerHTML = '<p class="sub">২ নম্বর থেকে (বা প্রভাইডার পাতায় টিক দিয়ে "🧪 টেস্ট কিউতে") সার্ভিস বাছলে এখানে প্রতিটার জন্য আলাদা লিংক ও পরিমাণ বসাতে পারবেন।</p>'; return; }
+    el.innerHTML = P.map(function (r) {
+      var k = r.provider + '|' + r.service_id, mn = +r.min > 0 ? +r.min : 10, mx = +r.max > 0 ? +r.max : 0, v = S.qty[k] > 0 ? S.qty[k] : qtyDef(r), er = selErr(r), kind = kindOf(r.name);
+      return '<div class="tqs3" data-k="' + esc(k) + '"><div class="tqs3h"><b class="bnm">' + esc(r.name) + '</b>' + (r._stage ? '<button type="button" class="ib" data-x="' + esc(k) + '" aria-label="বাদ দিন">✕</button>' : '') + '</div><span class="sub">' + esc(r.provider) + ' · আইডি ' + esc(r.service_id) + ' · ন্যূনতম ' + bn(mn) + (mx ? ' · সর্বোচ্চ ' + bn(mx) : '') + '</span>' +
+        '<label>' + (kind === 'post' ? 'পোস্ট / ভিডিও লিংক' : kind === 'profile' ? 'প্রোফাইল / চ্যানেল লিংক' : 'লিংক') + '<input type="text" inputmode="url" autocomplete="off" placeholder="https://…" value="' + esc(lnkOf(r)) + '" data-l="' + esc(k) + '" aria-label="লিংক"></label><div data-lc>' + lnkChk(r) + '</div>' +
+        '<div class="tqq"><label>পরিমাণ<input type="number" inputmode="numeric" min="' + mn + '"' + (mx ? ' max="' + mx + '"' : '') + ' step="1" value="' + esc(v) + '" data-q="' + esc(k) + '" aria-label="পরিমাণ"></label><span class="tag" data-c>' + money(selCost(r)) + '</span></div><span class="er" data-e>' + esc(er) + '</span></div>';
+    }).join('');
+    el.oninput = function (e) {
+      var inp = e.target.closest('[data-q],[data-l]'); if (!inp) return; var k = inp.dataset.q || inp.dataset.l, r = picked().filter(function (z) { return z.provider + '|' + z.service_id === k; })[0]; if (!r) return;
+      var w = inp.closest('.tqs3');
+      if (inp.dataset.l) { S.lnk[k] = inp.value.trim(); saveN(); var lc = w && w.querySelector('[data-lc]'); if (lc) lc.innerHTML = lnkChk(r); }
+      else { var v = Math.floor(+inp.value); if (v > 0) S.qty[k] = v; else delete S.qty[k]; var c = w && w.querySelector('[data-c]'), x = w && w.querySelector('[data-e]'); if (c) c.textContent = money(selCost(r)); if (x) x.textContent = selErr(r); }
+      sumPaint();
+    };
+    el.onclick = function (e) { var b = e.target.closest('[data-x]'); if (!b) return; SG = SG.filter(function (z) { return z.provider + '|' + z.service_id !== b.dataset.x; }); saveG(); selPaint(); sumPaint(); };
+  }
+  function picked() {
+    var seen = {}, out = [];
+    Object.keys(S.picks).forEach(function (k) { var r = S.known[k]; if (r && !inQueue(r) && +r.rate > 0 && !seen[k]) { seen[k] = 1; out.push(r); } });
+    SG.forEach(function (r) { var k = r.provider + '|' + r.service_id; if (!seen[k] && !inQueue(r) && +r.rate > 0) { seen[k] = 1; out.push(r); } });
+    return out;
+  }
   function sumPaint() {
     var e = box.querySelector('#tqSum'); if (!e) return;
     var P = picked(), items = P.map(mkItem), ok = items.filter(function (x) { return x.state === 'wait'; }), bad = items.length - ok.length, tot = ok.reduce(function (a, x) { return a + x.cost; }, 0);
@@ -232,7 +298,9 @@
     if (!P.length) { E.textContent = 'আগে কমপক্ষে একটা সার্ভিস বাছুন'; return; }
     var items = P.map(mkItem), ok = items.filter(function (x) { return x.state === 'wait'; });
     items.forEach(function (x) { Q.items.push(x); });
-    S.picks = {}; saveQ(); rowsPaint(); qPaint();
+    P.forEach(function (r) { var k = r.provider + '|' + r.service_id; delete S.qty[k]; delete S.lnk[k]; });
+    SG = SG.filter(function (z) { return !P.some(function (r) { return r.provider === z.provider && String(r.service_id) === String(z.service_id); }); }); saveG(); saveN();
+    S.picks = {}; S.cache = {}; saveQ(); rowsPaint(); qPaint();
     if (!ok.length) E.textContent = 'কোনোটাই টেস্টের উপযোগী নয় — কারণ কিউ-তে লেখা আছে (লিংক দিন বা সীমা বাড়ান)';
     else if (C.toast) C.toast(bn(ok.length) + 'টি কিউতে যোগ হয়েছে ✔');
   }
@@ -345,5 +413,16 @@
       '<div class="card tqc"><h3>প্রভাইডার অনুযায়ী</h3>' + Object.keys(pr).sort(function (a, b) { return pr[b].c - pr[a].c; }).map(function (p) { var x = pr[p]; return '<div class="tqpr"><b>' + esc(p) + '</b><span>' + money(x.c) + '</span><span class="sub">' + bn(x.n) + 'টি অর্ডার · পাস ' + bn(x.g) + ' · আংশিক ' + bn(x.w) + ' · ফেইল ' + bn(x.f) + (x.c > 0 && x.g ? ' · প্রতি পাসে ≈ ' + money(x.c / x.g) : '') + '</span></div>'; }).join('') + '</div>' +
       '<div class="card tqc"><h3>শেষ ৭ দিন</h3>' + days.map(function (d) { return '<div class="tqbar"><span class="sub">' + d.slice(5) + '</span><i style="width:' + Math.max(3, Math.round(dd[d] / mx * 100)) + '%"></i><b>' + money(dd[d]) + '</b></div>'; }).join('') + '</div>';
   }
-  window.StudioTQ = { mount: mount, _t: { linkCheck: linkCheck, kindOf: kindOf, verdict: verdict } };
+  /* প্রভাইডার পাতা থেকে বাছা সার্ভিস কিউ-পাতায় পাঠানো */
+  function stage(list) {
+    var n = 0;
+    (list || []).forEach(function (r) {
+      if (!r || !r.provider || r.service_id == null || !(+r.rate > 0)) return;
+      var k = r.provider + '|' + r.service_id;
+      if (SG.some(function (z) { return z.provider + '|' + z.service_id === k; })) return;
+      SG.push({ provider: String(r.provider), service_id: String(r.service_id), name: String(r.name || ''), rate: +r.rate, min: +r.min || 0, max: +r.max || 0, refill: +r.refill ? 1 : 0, _fx: +r._fx || 0, _stage: 1 }); n++;
+    });
+    saveG(); return n;
+  }
+  window.StudioTQ = { stage: stage, mount: mount, _t: { linkCheck: linkCheck, kindOf: kindOf, verdict: verdict } };
 })();

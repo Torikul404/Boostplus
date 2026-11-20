@@ -449,7 +449,7 @@ async function dl(p){
 
 /* ---------- বাল্ক ---------- */
 function bulkBar(){let b=$('#bulk');if(!b){b=document.createElement('div');b.id='bulk';b.className='bulk';document.body.appendChild(b)}
-  b.hidden=!sel.size;b.innerHTML=`<b>${bn(sel.size)}টি বাছাই</b><button class="sm" data-b="on">চালু</button><button class="sm" data-b="off">বন্ধ</button><button class="sm" data-b="x" aria-label="বাতিল">✕</button>`;
+  b.hidden=!sel.size;b.innerHTML=`<b>${bn(sel.size)}টি বাছাই</b><button class="sm" data-b="on">চালু</button><button class="sm" data-b="off">বন্ধ</button><button class="sm" data-b="tq">🧪 টেস্ট কিউতে</button><button class="sm" data-b="x" aria-label="বাতিল">✕</button>`;
   b.querySelectorAll('[data-b]').forEach(x=>x.onclick=()=>bulk(x.dataset.b))}
 /* সাইটে থাকা ক্যাটেগরি: শুধু লাইভ (state=on) সার্ভিস আছে এমন ক্যাটেগরি, প্ল্যাটফর্ম ধরে; বন্ধ/খালি ক্যাটেগরি দেখায় না */
 const autoH=e=>{if(!e)return;e.style.height='auto';e.style.height=(e.scrollHeight+2)+'px'};
@@ -535,6 +535,10 @@ function addList(list){
   cnt();d.showModal();box.scrollTop=0;items.forEach(x=>{autoH(x.n);autoH(x.cc);x.chk()})}
 function addQueue(list){addList(list)}
 async function bulk(k){
+  if(k==='tq'){const L=[...sel].filter(x=>+x.rate>0).map(x=>({provider:x.provider||cur,service_id:x.service_id,name:x.name,rate:x.rate,min:x.min,max:x.max,refill:x.refill,_fx:fxNow()}));
+    if(!L.length){toast('টেস্টের মতো (দামসহ) সার্ভিস বাছা হয়নি');return}
+    if(!window.StudioTQ||!window.StudioTQ.stage){toast('টেস্ট কিউ লোড হয়নি');return}
+    const n=window.StudioTQ.stage(L);toast(bn(n)+'টি টেস্ট কিউতে নেওয়া হয়েছে — প্রতিটার লিংক ও পরিমাণ ৩ নম্বরে দিন');sel.clear();location.hash='tq';return}
   if(k==='x'){sel.clear();document.querySelectorAll('.sel').forEach(x=>x.checked=false);return bulkBar()}
   if(busy)return;const on=k==='on';
   /* চালু: অটো সাজানো নেই — বাছাই করা সব সার্ভিস একটা পাতায় একটার নিচে একটা আসে; নাম/প্ল্যাটফর্ম/ক্যাটেগরি নিজে ঠিক করে একসাথে চালু */

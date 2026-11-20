@@ -44,3 +44,16 @@
 .tqbar b{font-size:13px}
 @media(min-width:1024px){.tq{max-width:880px}}
 .tqm{display:block;margin:6px 0;width:auto;height:auto;background:none;color:inherit;box-shadow:none}
+
+/* ধাপ ৩ — প্রতিটা সার্ভিসের পরিমাণ */
+.tqh{margin:14px 0 6px;font-size:15px}
+.tqs3{display:grid;gap:4px;padding:10px 0;border-top:1px solid var(--bd)}
+.tqs3 .bnm{overflow-wrap:anywhere}
+.tqq{display:flex;gap:10px;align-items:center}
+.tqq label{display:flex;align-items:center;gap:8px;margin:0;flex:1;font-size:14px}
+.tqq input{flex:1;min-width:0}
+
+.tqs3h{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
+.tqs3h .ib{flex:none;width:40px;height:40px;cursor:pointer}
+.tqs3 input[type=text]{width:100%;min-height:46px;box-sizing:border-box}
+.tqs3 label{margin:6px 0 4px}
