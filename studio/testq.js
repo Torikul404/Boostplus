@@ -4,18 +4,18 @@
    app.js থেকে route() এ window.StudioTQ.mount(ctx) ডাকা হয়। */
 (function () {
   'use strict';
-  var KQ = 'pb_tq_v1', KL = 'pb_tq_links_v1', KM = 'pb_tq_meta_v1', KS = 'pb_tq_set_v1', KG = 'pb_tq_stage_v1', KN = 'pb_tq_slnk_v1';
+  var KQ = 'pb_tq_v1', KL = 'pb_tq_links_v1', KM = 'pb_tq_meta_v1', KS = 'pb_tq_set_v1', KG = 'pb_tq_stage_v1', KN = 'pb_tq_slnk_v1', KC = 'pb_tq_scm_v1';
   var C = null, box = null, tok = 0, runId = 0, stopFlag = false, stopMsg = '', armed = false;
   function ld(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
   function sv(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
-  var Q = ld(KQ, { items: [] }), LK = ld(KL, {}), MT = ld(KM, {}), ST = ld(KS, { budget: 100, cap: 30 }), SG = ld(KG, []), SN = ld(KN, {});
+  var Q = ld(KQ, { items: [] }), LK = ld(KL, {}), MT = ld(KM, {}), ST = ld(KS, { budget: 100, cap: 30 }), SG = ld(KG, []), SN = ld(KN, {}), SC = ld(KC, {});
   if (!Array.isArray(SG)) SG = [];
   if (!Q || !Array.isArray(Q.items)) Q = { items: [] };
   Q.run = false;
   Q.items.forEach(function (x) { if (x.state === 'run') { x.state = 'unknown'; x.msg = 'পেজ বন্ধ হওয়ায় নিশ্চিত নয় — স্পিড পাতায় দেখুন'; } });
-  var S = { tab: 'q', label: '', type: '', q: '', un: true, rows: [], fx: 131, types: [], plats: [], picks: {}, known: {}, pool: [], full: false, cache: {}, qty: {}, lnk: SN, load: 0, rep: null, repBusy: false };
+  var S = { tab: 'q', label: '', type: '', q: '', un: true, rows: [], fx: 131, types: [], plats: [], picks: {}, known: {}, pool: [], full: false, cache: {}, qty: {}, lnk: SN, cm: SC, load: 0, rep: null, repBusy: false };
   var r2 = function (v) { return Math.round(v * 100) / 100; };
-  var saveG = function () { sv(KG, SG.slice(-100)); }, saveN = function () { sv(KN, S.lnk); };
+  var saveG = function () { sv(KG, SG.slice(-100)); }, saveN = function () { sv(KN, S.lnk); }, saveC = function () { sv(KC, S.cm); };
   var saveQ = function () { sv(KQ, { items: Q.items.slice(-200) }); }, saveS = function () { sv(KS, ST); };
   var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
   var esc = function (s) { return C.esc(s); }, bn = function (n) { return C.bn(n); };
@@ -86,13 +86,17 @@
     return m ? m.label : (r.platform_label || r.name || S.label);
   }
   function qtyDef(r) { var mn = +r.min > 0 ? +r.min : 10, mx = +r.max > 0 ? +r.max : 0; return mx && mn > mx ? mx : mn; }
-  function qtyOf(r) { var v = Math.floor(+S.qty[r.provider + '|' + r.service_id]); return v > 0 ? v : qtyDef(r); }
+  function isCm(r) { return (/custom/i.test(r.type || '') && /comment/i.test(r.type || '')) || (/custom/i.test(r.name || '') && /comment/i.test(r.name || '')); }
+  function cmLines(t) { return String(t || '').replace(/\r/g, '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); }
+  function qtyOf(r) { var k = r.provider + '|' + r.service_id; if (isCm(r)) return cmLines(S.cm[k]).length; var v = Math.floor(+S.qty[k]); return v > 0 ? v : qtyDef(r); }
   function mkItem(r) {
     var kind = kindOf(r.name), lb = lblOf(r), k0 = r.provider + '|' + r.service_id, link = (Object.prototype.hasOwnProperty.call(S.lnk, k0) ? S.lnk[k0] : linkFor(lb, kind)) || '', mn = +r.min > 0 ? +r.min : 10, mx = +r.max > 0 ? +r.max : 0;
     var qty = qtyOf(r), cost = r2((+r.rate || 0) * fxOf(r) * qty / 1000);
     var it = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), provider: r.provider, sid: String(r.service_id), name: String(r.name || ''), label: lb, type: r._stage ? (r._type || '') : S.type,
       refill: +r.refill ? 1 : 0, kind: kind, link: link, qty: qty, cost: cost, state: 'wait', msg: '', po: '', req: 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) };
-    if (!(qty >= mn)) { it.state = 'skip'; it.msg = 'পরিমাণ ন্যূনতম ' + bn(mn) + ' হতে হবে'; }
+    if (isCm(r)) { it.comments = cmLines(S.cm[k0]).join('\n'); }
+    if (isCm(r) && !qty) { it.state = 'skip'; it.msg = 'কমেন্ট লেখা হয়নি (প্রতি লাইনে একটা)'; }
+    else if (!(qty >= mn)) { it.state = 'skip'; it.msg = (isCm(r) ? 'কমেন্ট ন্যূনতম ' : 'পরিমাণ ন্যূনতম ') + bn(mn) + ' হতে হবে'; }
     else if (mx && qty > mx) { it.state = 'skip'; it.msg = 'পরিমাণ সর্বোচ্চ ' + bn(mx) + ' হতে পারে'; }
     else if (!link) { it.state = 'skip'; it.msg = 'এই ধরনের (' + (kind === 'post' ? 'পোস্ট' : kind === 'profile' ? 'প্রোফাইল' : 'যেকোনো') + ') লিংক দেওয়া নেই'; }
     else { var c = linkCheck(lb, kind, link); if (c.lv === 'e') { it.state = 'skip'; it.msg = c.msg; } }
@@ -120,7 +124,7 @@
         if (lc.lv === 'e') { it.state = 'skip'; it.msg = lc.msg; saveQ(); paintQ(); continue; }
         it.state = 'run'; it.msg = ''; saveQ(); paintQ();
         try {
-          var o = await C.api('svc_order', { provider: it.provider, service: it.sid, link: it.link, quantity: it.qty, confirm: true, req_id: it.req });
+          var o = await C.api('svc_order', { provider: it.provider, service: it.sid, link: it.link, quantity: it.qty, comments: it.comments || undefined, confirm: true, req_id: it.req });
           it.state = 'sent'; it.po = String(o.provider_order || ''); it.cost = +o.cost_bdt || it.cost; it.at = Date.now(); it.msg = ''; lf[it.label] = 0;
           MT[it.provider + '|' + it.sid] = { label: it.label, type: it.type, refill: it.refill, kind: it.kind, at: it.at }; sv(KM, MT);
         } catch (e) {
@@ -255,7 +259,7 @@
   }
   /* বাছা প্রতিটা সার্ভিসের পরিমাণ (ধাপ ৩) — কিবোর্ডে লিখলে বক্স নতুন করে আঁকা হয় না, শুধু খরচ বদলায় */
   function selCost(r) { return r2((+r.rate || 0) * fxOf(r) * qtyOf(r) / 1000); }
-  function selErr(r) { var q = qtyOf(r), mn = +r.min > 0 ? +r.min : 10, mx = +r.max > 0 ? +r.max : 0; return q < mn ? 'ন্যূনতম ' + bn(mn) : (mx && q > mx ? 'সর্বোচ্চ ' + bn(mx) : (selCost(r) > ST.cap ? 'খরচ সীমা ' + money(ST.cap) + ' ছাড়িয়ে যায়' : '')); }
+  function selErr(r) { var q = qtyOf(r), mn = +r.min > 0 ? +r.min : 10, mx = +r.max > 0 ? +r.max : 0; return isCm(r) && !q ? 'কমেন্ট লিখুন — প্রতি লাইনে একটা' : q < mn ? 'ন্যূনতম ' + bn(mn) + (isCm(r) ? 'টি কমেন্ট' : '') : (mx && q > mx ? 'সর্বোচ্চ ' + bn(mx) : (selCost(r) > ST.cap ? 'খরচ সীমা ' + money(ST.cap) + ' ছাড়িয়ে যায়' : '')); }
   function lnkOf(r) { var k = r.provider + '|' + r.service_id, kind = kindOf(r.name); return Object.prototype.hasOwnProperty.call(S.lnk, k) ? S.lnk[k] : (linkFor(lblOf(r), kind) || ''); }
   function lnkChk(r) {
     var kind = kindOf(r.name), u = lnkOf(r); if (!u) return '<div class="ck e">✖ লিংক দেওয়া নেই</div>';
@@ -270,12 +274,13 @@
       var k = r.provider + '|' + r.service_id, mn = +r.min > 0 ? +r.min : 10, mx = +r.max > 0 ? +r.max : 0, v = S.qty[k] > 0 ? S.qty[k] : qtyDef(r), er = selErr(r), kind = kindOf(r.name);
       return '<div class="tqs3" data-k="' + esc(k) + '"><div class="tqs3h"><b class="bnm">' + esc(r.name) + '</b>' + (r._stage ? '<button type="button" class="ib" data-x="' + esc(k) + '" aria-label="বাদ দিন">✕</button>' : '') + '</div><span class="sub">' + esc(r.provider) + ' · আইডি ' + esc(r.service_id) + ' · ন্যূনতম ' + bn(mn) + (mx ? ' · সর্বোচ্চ ' + bn(mx) : '') + '</span>' +
         '<label>' + (kind === 'post' ? 'পোস্ট / ভিডিও লিংক' : kind === 'profile' ? 'প্রোফাইল / চ্যানেল লিংক' : 'লিংক') + '<input type="text" inputmode="url" autocomplete="off" placeholder="https://…" value="' + esc(lnkOf(r)) + '" data-l="' + esc(k) + '" aria-label="লিংক"></label><div data-lc>' + lnkChk(r) + '</div>' +
-        '<div class="tqq"><label>পরিমাণ<input type="number" inputmode="numeric" min="' + mn + '"' + (mx ? ' max="' + mx + '"' : '') + ' step="1" value="' + esc(v) + '" data-q="' + esc(k) + '" aria-label="পরিমাণ"></label><span class="tag" data-c>' + money(selCost(r)) + '</span></div><span class="er" data-e>' + esc(er) + '</span></div>';
+        (isCm(r) ? '<label>কমেন্ট লিখুন — প্রতি লাইনে একটা<textarea rows="5" data-cm="' + esc(k) + '" placeholder="Nice post!&#10;Great work 👏" style="min-height:120px;resize:vertical;overflow:auto" aria-label="কমেন্ট">' + esc(S.cm[k] || '') + '</textarea></label><div class="tqq"><span class="sub" data-cn>কমেন্ট সংখ্যা: ' + bn(qtyOf(r)) + '</span><span class="tag" data-c>' + money(selCost(r)) + '</span></div>' : '<div class="tqq"><label>পরিমাণ<input type="number" inputmode="numeric" min="' + mn + '"' + (mx ? ' max="' + mx + '"' : '') + ' step="1" value="' + esc(v) + '" data-q="' + esc(k) + '" aria-label="পরিমাণ"></label><span class="tag" data-c>' + money(selCost(r)) + '</span></div>') + '<span class="er" data-e>' + esc(er) + '</span></div>';
     }).join('');
     el.oninput = function (e) {
-      var inp = e.target.closest('[data-q],[data-l]'); if (!inp) return; var k = inp.dataset.q || inp.dataset.l, r = picked().filter(function (z) { return z.provider + '|' + z.service_id === k; })[0]; if (!r) return;
+      var inp = e.target.closest('[data-q],[data-l],[data-cm]'); if (!inp) return; var k = inp.dataset.q || inp.dataset.l || inp.dataset.cm, r = picked().filter(function (z) { return z.provider + '|' + z.service_id === k; })[0]; if (!r) return;
       var w = inp.closest('.tqs3');
       if (inp.dataset.l) { S.lnk[k] = inp.value.trim(); saveN(); var lc = w && w.querySelector('[data-lc]'); if (lc) lc.innerHTML = lnkChk(r); }
+      else if (inp.dataset.cm) { S.cm[k] = inp.value; saveC(); var cn = w && w.querySelector('[data-cn]'), c2 = w && w.querySelector('[data-c]'), x2 = w && w.querySelector('[data-e]'); if (cn) cn.textContent = 'কমেন্ট সংখ্যা: ' + bn(qtyOf(r)); if (c2) c2.textContent = money(selCost(r)); if (x2) x2.textContent = selErr(r); }
       else { var v = Math.floor(+inp.value); if (v > 0) S.qty[k] = v; else delete S.qty[k]; var c = w && w.querySelector('[data-c]'), x = w && w.querySelector('[data-e]'); if (c) c.textContent = money(selCost(r)); if (x) x.textContent = selErr(r); }
       sumPaint();
     };
@@ -298,8 +303,8 @@
     if (!P.length) { E.textContent = 'আগে কমপক্ষে একটা সার্ভিস বাছুন'; return; }
     var items = P.map(mkItem), ok = items.filter(function (x) { return x.state === 'wait'; });
     items.forEach(function (x) { Q.items.push(x); });
-    P.forEach(function (r) { var k = r.provider + '|' + r.service_id; delete S.qty[k]; delete S.lnk[k]; });
-    SG = SG.filter(function (z) { return !P.some(function (r) { return r.provider === z.provider && String(r.service_id) === String(z.service_id); }); }); saveG(); saveN();
+    P.forEach(function (r) { var k = r.provider + '|' + r.service_id; delete S.qty[k]; delete S.lnk[k]; delete S.cm[k]; });
+    SG = SG.filter(function (z) { return !P.some(function (r) { return r.provider === z.provider && String(r.service_id) === String(z.service_id); }); }); saveG(); saveN(); saveC();
     S.picks = {}; S.cache = {}; saveQ(); rowsPaint(); qPaint();
     if (!ok.length) E.textContent = 'কোনোটাই টেস্টের উপযোগী নয় — কারণ কিউ-তে লেখা আছে (লিংক দিন বা সীমা বাড়ান)';
     else if (C.toast) C.toast(bn(ok.length) + 'টি কিউতে যোগ হয়েছে ✔');

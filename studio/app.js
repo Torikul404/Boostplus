@@ -1416,23 +1416,27 @@ async function best(){
   $('#bun').onclick=e=>{BS.untested=!BS.untested;e.currentTarget.setAttribute('aria-pressed',BS.untested);load()};
   load()}
 /* সরাসরি টেস্ট অর্ডার: দুইবার ট্যাপ (নিশ্চিত করা) + একই req_id তাই নেট কাটলেও ডবল অর্ডার হয় না */
+const isCmt=r=>(/custom/i.test(r.type||'')&&/comment/i.test(r.type||''))||(/custom/i.test(r.name||'')&&/comment/i.test(r.name||''));
 function ordDlg(r){
   let d=$('#ordD');if(!d){d=document.createElement('dialog');d.id='ordD';d.setAttribute('aria-labelledby','ordT');document.body.appendChild(d)}
-  const mn=Math.max(1,+r.min||1),mx=+r.max||0,rate=+r.rate||0,fx=+r._fx>0?+r._fx:(BS.fx||131),req='o'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);let armed=false,done=false;
-  d.innerHTML=`<form method="dialog" id="ordF"><h3 id="ordT" style="margin:0 0 8px">🧪 টেস্ট অর্ডার</h3><p class="sub" id="ordN"></p><label for="ordL">লিংক / ইউজারনেম</label><input id="ordL" autocomplete="off" inputmode="url" placeholder="https://…"><label for="ordQ">পরিমাণ (${bn(mn)}–${mx?bn(mx):'∞'})</label><input id="ordQ" type="number" inputmode="numeric" min="${mn}"${mx?` max="${mx}"`:''} value="${mn}"><p class="bm" id="ordC"></p><p class="sub">খরচ প্রভাইডারের ব্যালেন্স থেকে কাটবে (আনুমানিক)। অর্ডারটি স্পিড-টেস্টে নিজে থেকে ধরা পড়বে।</p><p id="ordE" class="err" role="alert"></p><div class="acts"><button type="button" class="sm" id="ordX">বন্ধ</button><button type="button" class="btn" id="ordGo">অর্ডার দিন</button></div></form>`;
+  const mn=Math.max(1,+r.min||1),mx=+r.max||0,rate=+r.rate||0,fx=+r._fx>0?+r._fx:(BS.fx||131),req='o'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);let armed=false,done=false;const cm=isCmt(r);
+  d.innerHTML=`<form method="dialog" id="ordF"><h3 id="ordT" style="margin:0 0 8px">🧪 টেস্ট অর্ডার</h3><p class="sub" id="ordN"></p><label for="ordL">লিংক / ইউজারনেম</label><input id="ordL" autocomplete="off" inputmode="url" placeholder="https://…">${cm?`<label for="ordCm">কমেন্ট লিখুন — প্রতি লাইনে একটা (${bn(mn)}–${mx?bn(mx):'∞'}টি)</label><textarea id="ordCm" rows="6" placeholder="Nice post!&#10;Great work 👏&#10;Love this" style="min-height:150px;resize:vertical;overflow:auto"></textarea><p class="sub" id="ordCn"></p><input id="ordQ" type="hidden" value="0">`:`<label for="ordQ">পরিমাণ (${bn(mn)}–${mx?bn(mx):'∞'})</label><input id="ordQ" type="number" inputmode="numeric" min="${mn}"${mx?` max="${mx}"`:''} value="${mn}">`}<p class="bm" id="ordC"></p><p class="sub">খরচ প্রভাইডারের ব্যালেন্স থেকে কাটবে (আনুমানিক)। অর্ডারটি স্পিড-টেস্টে নিজে থেকে ধরা পড়বে।</p><p id="ordE" class="err" role="alert"></p><div class="acts"><button type="button" class="sm" id="ordX">বন্ধ</button><button type="button" class="btn" id="ordGo">অর্ডার দিন</button></div></form>`;
   $('#ordN').textContent=r.provider+' · #'+r.service_id+' · '+r.name;
   const go=$('#ordGo'),E=$('#ordE'),cost=()=>Math.round(rate*fx*(Math.floor(+$('#ordQ').value)||0)/1000*100)/100,
     upd=()=>{$('#ordC').textContent='আনুমানিক খরচ: ৳'+bn(cost());armed=false;go.textContent='অর্ডার দিন'};
-  $('#ordQ').oninput=upd;$('#ordL').oninput=()=>{armed=false;go.textContent='অর্ডার দিন'};upd();
+  $('#ordQ').oninput=upd;
+  if(cm){const cl=()=>$('#ordCm').value.replace(/\r/g,'').split('\n').map(x=>x.trim()).filter(Boolean);$('#ordCm').oninput=()=>{const n=cl().length;$('#ordQ').value=n;$('#ordCn').textContent='কমেন্ট সংখ্যা: '+bn(n)+' (এটাই পরিমাণ)';upd()};$('#ordCm').oninput()}
+  $('#ordL').oninput=()=>{armed=false;go.textContent='অর্ডার দিন'};upd();
   $('#ordX').onclick=()=>d.close();$('#ordF').onsubmit=e=>{e.preventDefault();go.click()};
   go.onclick=async()=>{
     if(done){d.close();location.hash='spd';return}
     E.textContent='';const link=$('#ordL').value.trim(),q=Math.floor(+$('#ordQ').value)||0;
     if(link.length<3||/\s/.test(link)){E.textContent='লিংক/ইউজারনেম দিন (ফাঁকা ছাড়া)';return}
-    if(q<mn||(mx&&q>mx)){E.textContent='পরিমাণ '+bn(mn)+(mx?'–'+bn(mx):'+')+' এর মধ্যে দিন';return}
+    if(q<mn||(mx&&q>mx)){E.textContent=cm?'কমেন্ট '+bn(mn)+(mx?'–'+bn(mx):'+')+'টির মধ্যে দিন (প্রতি লাইনে একটা)':'পরিমাণ '+bn(mn)+(mx?'–'+bn(mx):'+')+' এর মধ্যে দিন';return}
+    if(cm&&$('#ordCm').value.length>8000){E.textContent='কমেন্ট মোট ৮০০০ অক্ষরের বেশি — কমান';return}
     if(!armed){armed=true;go.textContent='নিশ্চিত — ৳'+bn(cost())+' কাটবে, আবার ট্যাপ করুন';return}
     go.disabled=true;go.textContent='পাঠানো হচ্ছে…';
-    try{const o=await api('svc_order',{provider:r.provider,service:r.service_id,link,quantity:q,confirm:true,req_id:req});
+    try{const o=await api('svc_order',{provider:r.provider,service:r.service_id,link,quantity:q,comments:cm?$('#ordCm').value:undefined,confirm:true,req_id:req});
       done=true;$('#ordC').textContent='';$('#ordT').textContent='✅ অর্ডার গেছে';try{const L=spLoad(SPK_L)||[];L.unshift({src:'studio',provider:r.provider,service_id:r.service_id,provider_order:o.provider_order,name:r.name,quantity:o.quantity,cost_bdt:o.cost_bdt,link,status:'Pending',ordered_at:Date.now(),last_checked:Date.now()});spSave(SPK_L,L.slice(0,30))}catch(_){}
       $('#ordN').textContent='প্রভাইডার অর্ডার #'+o.provider_order+' · পরিমাণ '+bn(o.quantity)+' · খরচ ≈ ৳'+bn(o.cost_bdt);
       go.textContent='স্পিড দেখুন';go.disabled=false;toast('টেস্ট অর্ডার গেছে ✔');try{TST=TST||{};const kk=r.provider+'|'+r.service_id;if(!TST[kk])TST[kk]={n:1,ok:0,open:1,bad:0,total_med:0,start_med:0,last_at:Date.now(),per_hr:0,tests:[]};tstPaint();setTimeout(tstRefresh,4000)}catch(_){}}
