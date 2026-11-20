@@ -276,13 +276,13 @@ async function provider(p,more){
   const hq=!more&&document.activeElement&&document.activeElement.id==='q',my=more?provTok:++provTok;
   if(!more){st.off=0;if(selProv!==p){sel.clear();selProv=p}bulkBar();if(!hq)el.innerHTML='<div class="sk"></div>'}
   try{
-    const d=await pageRows('svc_list',{provider:p,q:st.q,state:st.state,category:st.cat,platform:st.plat||'',sort:st.sort||'',tst:st.tst||''},st.off,50,st.cat?'':(st.type||''));
+    const d=await pageRows('svc_list',{provider:p,q:st.q,state:st.state,category:st.cat,platform:st.plat||'',sort:st.sort||'',tst:st.tst||''},st.off,50,(st.cat||st.q)?'':(st.type||''));
     if(my!==provTok)return;
     if(!more){lastList=d;
       el.innerHTML=tiles(d.platforms||[],st.plat||'')+`<div class="bar"><input id="q" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি খুঁজুন" value="${esc(st.q)}" aria-label="খুঁজুন"></div><div id="cats">${catUI(catsFor(d.categories,st.plat),st)}</div>
       <div class="chips" role="group" aria-label="অবস্থা">${[['all','সব'],['on','চালু'],['off','বন্ধ'],['conflict','জট']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${st.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="sa">সব বাছুন</button><button class="chip" id="csv">⤓ CSV</button></div><div class="chips" role="group" aria-label="দাম সাজান"><button class="chip" data-so="asc" aria-pressed="${st.sort==='asc'}">দাম: কম → বেশি</button><button class="chip" data-so="desc" aria-pressed="${st.sort==='desc'}">দাম: বেশি → কম</button><button class="chip" data-so="fast" aria-pressed="${st.sort==='fast'}">⚡ দ্রুততম আগে</button><span class="cdv" aria-hidden="true"></span>${[['','সব'],['yes','🧪 টেস্টেড'],['no','অপরীক্ষিত']].map(s=>`<button class="chip" data-tt="${s[0]}" aria-pressed="${(st.tst||'')===s[0]}">${s[1]}</button>`).join('')}</div>
       <p class="sub"><span id="cnt"></span><span id="tcn"></span></p><div class="list" id="rows"></div><div id="moreWrap"></div>`;
-      $('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{st.q=e.target.value;provider(p)},350)};
+      $('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{st.q=e.target.value;if(st.q.trim()){st.type='';st.cat=''}provider(p)},200)};
       if(hq){const qi=$('#q');qi.focus();try{qi.setSelectionRange(qi.value.length,qi.value.length)}catch(_){}}
       bindCat($('#cats'),st,()=>provider(p));
       el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{st.state=b.dataset.s;provider(p)});el.querySelectorAll('[data-tt]').forEach(b=>b.onclick=()=>{st.tst=b.dataset.tt;provider(p)});el.querySelectorAll('[data-so]').forEach(b=>b.onclick=()=>{st.sort=st.sort===b.dataset.so?'':b.dataset.so;provider(p)});
@@ -292,7 +292,7 @@ async function provider(p,more){
     const box=$('#rows');if(!more)box.innerHTML='';
     if(!d.rows.length&&!more)box.innerHTML='<div class="card empty">কিছু পাওয়া যায়নি</div>';
     d.rows.forEach(r=>box.appendChild(row(r,d)));
-    st.off=d.next;if(st.type&&!st.cat)$('#cnt').textContent=TLBL[st.type]+' ধরন · '+bn(box.children.length)+'টি দেখানো হচ্ছে'+(d.fx?'':' · USD→৳ রেট সেট নেই (দাম USD-তে দিন)');$('#moreWrap').innerHTML=st.off<d.total?'<button class="sm" id="more" style="width:100%;margin-top:8px">আরও দেখান</button>':'';
+    st.off=d.next;if(st.type&&!st.cat&&!st.q)$('#cnt').textContent=TLBL[st.type]+' ধরন · '+bn(box.children.length)+'টি দেখানো হচ্ছে'+(d.fx?'':' · USD→৳ রেট সেট নেই (দাম USD-তে দিন)');$('#moreWrap').innerHTML=st.off<d.total?'<button class="sm" id="more" style="width:100%;margin-top:8px">আরও দেখান</button>':'';
     const m=$('#more');if(m)m.onclick=()=>provider(p,true);
     window._fx=d.fx;window._sc=d.site_categories;tstCnt();if(!more)tstRefresh();
   }catch(e){if(!authFail(e)){el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p><div class="ordb"><button class="btn" id="rt" style="max-width:260px">আবার চেষ্টা করুন</button></div><div class="ordb"><button class="btn" id="rc" style="max-width:260px">⬇ এখনই সংগ্রহ করুন</button></div><div class="ordb"><button class="sm" id="rd">🔧 কারণ খুঁজুন</button></div><div id="dg" role="status"></div></div>`;$('#rt').onclick=()=>provider(p);$('#rc').onclick=()=>provCollect(p);$('#rd').onclick=()=>provDiag(p)}}
@@ -635,14 +635,14 @@ function catUI(cats,S){
   const tc={};cats.forEach(x=>{const k=typeOf(x.c);tc[k]=(tc[k]||0)+(x.n||1)});
   const list=cats.filter(x=>!S.type||typeOf(x.c)===S.type).sort((a,b)=>a.c.localeCompare(b.c));
   return `<div class="tchips" role="group" aria-label="ধরন"><button class="chip" data-ty="" aria-pressed="${!S.type}">সব ধরন</button>${TORD.filter(k=>tc[k]).map(k=>`<button class="chip" data-ty="${k}" aria-pressed="${S.type===k}">${TLBL[k]} <small>${bn(tc[k])}</small></button>`).join('')}</div>`+
-  (S.type||S.cat?`<div class="cchips" role="group" aria-label="ক্যাটেগরি"><button class="chip cc" data-cc="" aria-pressed="${!S.cat}">সব ${esc(TLBL[S.type]||'')}</button>${list.map(x=>`<button class="chip cc" data-cc="${esc(x.c)}" aria-pressed="${S.cat===x.c}">${esc(x.c)}${x.n?` <small>${bn(x.n)}</small>`:''}</button>`).join('')}</div>`:'<p class="sub">উপরে একটা ধরন বাছুন — ওই ধরনের সব ক্যাটেগরি পাশাপাশি আসবে।</p>')}
+  (list.length||S.type||S.cat?`<div class="cchips" role="group" aria-label="ক্যাটেগরি"><button class="chip cc" data-cc="" aria-pressed="${!S.cat}">সব ${esc(TLBL[S.type]||'ক্যাটেগরি')} <small>${bn(list.length)}</small></button>${list.map(x=>`<button class="chip cc" data-cc="${esc(x.c)}" aria-pressed="${S.cat===x.c}">${esc(x.c)}${x.n?` <small>${bn(x.n)}</small>`:''}</button>`).join('')}</div>`:'<p class="sub">উপরে একটা ধরন বাছুন — ওই ধরনের সব ক্যাটেগরি পাশাপাশি আসবে।</p>')}
 function bindCat(root,S,fn){
   root.querySelectorAll('[data-ty]').forEach(b=>b.onclick=()=>{S.type=b.dataset.ty;S.cat='';fn()});
   root.querySelectorAll('[data-cc]').forEach(b=>b.onclick=()=>{S.cat=b.dataset.cc;if(S.cat)S.type=typeOf(S.cat);fn()})}
 const catsFor=(o,pl)=>Object.keys(o||{}).filter(c=>!pl||platMatch(pl,c)).map(c=>({c,n:o[c]}));
 /* ধরন বাছা থাকলে সার্ভার থেকে পাতা পাতা করে এনে ক্লায়েন্টে ছেঁকে নেয় */
-async function pageRows(act,base,off,lim,type){let rows=[],raw=off,d;const L=type?100:lim;
-  for(let i=0;i<8;i++){d=await api(act,Object.assign({},base,{offset:raw,limit:L}));raw+=d.rows.length;rows=rows.concat(type?d.rows.filter(r=>typeOf(r.category)===type):d.rows);if(!type||rows.length>=lim||raw>=d.total||!d.rows.length)break}
+async function pageRows(act,base,off,lim,type){let rows=[],raw=off,d;const L=type?200:lim;
+  for(let i=0;i<60;i++){d=await api(act,Object.assign({},base,{offset:raw,limit:L}));raw+=d.rows.length;rows=rows.concat(type?d.rows.filter(r=>typeOf(r.category)===type):d.rows);if(!type||rows.length>=lim||raw>=d.total||!d.rows.length)break}
   d.rows=rows;d.next=raw;return d}
 
 /* ---------- সাইটের নিজস্ব নামের ছাঁচ ----------
