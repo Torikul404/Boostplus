@@ -232,3 +232,11 @@ dialog .acts{margin-top:14px}dialog input{margin-bottom:10px}
 .tsth{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.tsth .tag.tst{margin:0;cursor:default}
 .dchk .sm{min-height:38px;padding:0 14px;white-space:nowrap;width:auto;flex:none}.dchk{margin-top:4px}.dfm input{margin:0}
 #tstD .acts .sm,#tstD .acts .btn{white-space:nowrap}
+
+/* চলমান ট্যাব: ক্যাটাগরি-ভাগ + সম্পন্ন সারিতে লিংক */
+.rcg{margin-bottom:14px}.rch{width:100%;background:var(--card,transparent);border:1px solid var(--bd,rgba(127,127,127,.3));border-radius:14px;padding:10px 12px;margin:0 0 8px;color:inherit;font:inherit;text-align:left;cursor:pointer}.rch:active{opacity:.7}.rch .rcc{margin-left:auto}.dflk{word-break:break-all}.dflk a{color:var(--ac,#38bdf8);text-decoration:underline}
+
+/* v140: দেরির ব্যাজ, কম্প্যাক্ট চলমান সারি, ছোট লাইভ-পরিসংখ্যান */
+.tag.lt,.chip.lt{color:var(--er);border-color:var(--er);font-weight:700}.rch .hi{color:var(--er);font-weight:700}
+.rcr{cursor:pointer;padding:10px 12px;margin:0 0 8px;border:1px solid var(--bd);border-radius:12px}.rcr:first-child{border-top:1px solid var(--bd)}.rcr:active{opacity:.7}.rcr.late{border-color:var(--er)}.rcr .spv{text-align:right;flex:none}.rcr .spv b{font-variant-numeric:tabular-nums;font-size:14px}.rcr .spv b.w{color:var(--wa)}.rcr .spv b.hi{color:var(--er)}
+.lvb{padding:12px}@media(max-width:420px){.lvg{grid-template-columns:repeat(5,1fr);gap:4px}.lvg b{font-size:17px}.lvg .sub{font-size:10px;line-height:1.25}}
