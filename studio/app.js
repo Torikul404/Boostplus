@@ -1403,7 +1403,7 @@ async function poster(){cur=null;$('#title').textContent='পোস্টার'
 const mnT=s=>!(s>0)?'—':s<60?'১ মিনিটের কম':s<5400?bn(Math.round(s/60))+' মিনিট':s<172800?bn(Math.round(s/360)/10)+' ঘণ্টা':bn(Math.round(s/8640)/10)+' দিন';
 const dT=ms=>ms?new Date(ms).toLocaleString('bn-BD',{timeZone:'Asia/Dhaka',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'—';
 const kTk=r=>'৳'+bn(Math.round((+r.cost_bdt_k||0)*100)/100)+' / ১০০০';
-let BS={label:'',type:'',q:'',refill:false,untested:false,fx:131},bcn=0,SP={st:'all',prov:'',cat:'',tb:0,so:'fast',q:''},spTm=null,spTk=null;
+let BS={label:'',type:'',q:'',refill:false,untested:false,fx:131},bcn=0,SP={st:'all',prov:'',cat:'',tb:0,so:'new',q:''},spTm=null,spTk=null;
 const bcard=(r,i)=>{const s=r.stats,
   sp=s?`<div class="bm g">⏱ শুরু ~${mnT(s.start_med)} · মোট ~${mnT(s.total_med)} · ড্রপ ${bn(s.bad)}% · টেস্ট ${bn(s.n)}টি${s.open?' ('+bn(s.open)+'টি চলছে)':''}</div>`:'<div class="bm sub">অপরীক্ষিত — 🧪 টেস্ট অর্ডার দিয়ে স্পিড মাপুন</div>',
   stt=r.state==='on'?'<span class="tag">সাইটে চালু</span>':r.state==='conflict'?'<span class="tag">সাইটে অন্য প্রভাইডারে</span>':'';
@@ -1602,8 +1602,9 @@ function dfCalc(rows){const f=spFastLearn([]),q=String(SP.q||'').toLowerCase().t
   const byT=base.filter(x=>dfIn(x.t,SP.tb)),cats={};byT.forEach(x=>{cats[x.c]=(cats[x.c]||0)+1});
   const byC=base.filter(x=>!SP.cat||x.c===SP.cat),tbN={};DF_TB.forEach(b=>{tbN[b[0]]=byC.filter(x=>dfIn(x.t,b[0])).length});
   const list=byT.filter(x=>!SP.cat||x.c===SP.cat),g={};list.forEach(x=>{(g[x.c]||(g[x.c]=[])).push(x)});
-  const so=SP.so,tv=x=>x.t>0?x.t:(so==='slow'?-1:1e12),cmp=so==='new'?(a,b)=>(b.r.completed_at||0)-(a.r.completed_at||0):so==='slow'?(a,b)=>tv(b)-tv(a):(a,b)=>tv(a)-tv(b);
-  const groups=Object.keys(g).map(c=>{const l=g[c].sort(cmp),ts=l.map(x=>x.t).filter(t=>t>0);return{c,l,min:ts.length?Math.min(...ts):1e12,max:ts.length?Math.max(...ts):0,med:medOf(ts),last:Math.max(...l.map(x=>x.r.completed_at||0))}});
+  const so=SP.so,tv=x=>x.t>0?x.t:(so==='slow'?-1:1e12),cmp=so==='new'?(a,b)=>(b.r.completed_at||b.r.ordered_at||0)-(a.r.completed_at||a.r.ordered_at||0):so==='slow'?(a,b)=>tv(b)-tv(a):(a,b)=>tv(a)-tv(b);
+  if(so==='new'&&list.length){const fl=list.slice().sort(cmp);Object.keys(g).forEach(k=>delete g[k]);g['🕒 সাম্প্রতিক সম্পন্ন']=fl}
+  const groups=Object.keys(g).map(c=>{const l=g[c].sort(cmp),ts=l.map(x=>x.t).filter(t=>t>0);return{c,l,min:ts.length?Math.min(...ts):1e12,max:ts.length?Math.max(...ts):0,med:medOf(ts),last:Math.max(...l.map(x=>x.r.completed_at||x.r.ordered_at||0))}});
   groups.sort(so==='new'?(a,b)=>b.last-a.last:so==='slow'?(a,b)=>b.max-a.max:(a,b)=>a.min-b.min);
   return{cats,tbN,list,groups,total:base.length}}
 const DFSEL=new Set(),dfSk=r=>r.provider+'|'+r.service_id,dfOn=r=>!!(CAT&&CAT.rows&&CAT.rows.some(c=>String(c.code)===String(r.service_id)&&c.state==='on'));
