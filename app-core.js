@@ -25,7 +25,7 @@ window.BOOSTPLUS_SHEET_API = "https://script.google.com/macros/s/AKfycbxacUqhDDc
 window.PB_SUPPORT = {
   phone: "01921018882",
   whatsappChat: "https://wa.me/8801921018882?text=Assalamu%20Alaikum%2C%20boostplus%20order%20help%20lagbe",
-  whatsappGroup: "https://chat.whatsapp.com/HPnt32R6qFp3IO2IBNIlyp",
+  whatsappGroup: "https://chat.whatsapp.com/GRch1e9KUPw2OIobPGAHpH",
   telegram: ""   // e.g. "https://t.me/yourusername"
 };
 

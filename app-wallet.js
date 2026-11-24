@@ -154,7 +154,7 @@
   function clearSession() {
     localStorage.removeItem(LS_TOKEN);
     localStorage.removeItem(LS_MOBILE);
-    try { localStorage.removeItem("pb_wallet_name"); localStorage.removeItem("pb_wallet_gender"); } catch (e) {}
+    try { localStorage.removeItem("pb_wallet_name"); localStorage.removeItem("pb_wallet_gender"); localStorage.removeItem("pb_dash_cache"); } catch (e) {}
     const box = document.getElementById("userDash");
     if (box) box.style.display = "none";
     const g = document.getElementById("userDashGuest");
@@ -172,6 +172,7 @@
     }
     if (guest) guest.style.display = "none";
     if (box) box.style.display = "block";
+    try { localStorage.setItem("pb_dash_cache", JSON.stringify({ t: getToken(), d: d })); } catch (e) {}
     const name = document.getElementById("userDashName");
     let savedName = "";
     try { if (d.gender !== undefined) localStorage.setItem("pb_wallet_gender", d.gender === "m" || d.gender === "f" ? d.gender : ""); if (d.name) localStorage.setItem("pb_wallet_name", d.name); savedName = localStorage.getItem("pb_wallet_name") || ""; } catch (e) {}
@@ -210,6 +211,16 @@
     })();
     setNavBalance(d.balance);
   }
+
+  // শেষবারের ড্যাশবোর্ড ডেটা ক্যাশ থেকে সাথে সাথে দেখাই (ওয়েলকাম ব্যানার দেরিতে আসত); সার্ভারের উত্তর এলে আপডেট হয়
+  function paintDashFromCache() {
+    try {
+      const tk = getToken(); if (!tk) return;
+      const c = JSON.parse(localStorage.getItem("pb_dash_cache") || "null");
+      if (c && c.t === tk && c.d && c.d.ok) updateUserDash(c.d);
+    } catch (e) {}
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", paintDashFromCache); else paintDashFromCache();
 
   async function refreshUserDash() {
     const token = getToken();
