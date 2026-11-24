@@ -1,8 +1,6 @@
-:root{--bg:#f5f6fb;--card:#fff;--bd:#d5daea;--tx:#121a33;--mu:#4f5a78;--pri:#4f46e5;--ok:#0f7b57;--warn:#8a5200;--bad:#b42318;--chip:#eef0fa;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1020;--card:#121a33;--bd:#2b3658;--tx:#e8ecf8;--mu:#a3aecd;--pri:#6366f1;--ok:#34d399;--warn:#fbbf24;--bad:#f87171;--chip:#0b1020}}
-:root[data-theme="dark"]{--bg:#0b1020;--card:#121a33;--bd:#2b3658;--tx:#e8ecf8;--mu:#a3aecd;--pri:#6366f1;--ok:#34d399;--warn:#fbbf24;--bad:#f87171;--chip:#0b1020}
+:root{--card:var(--surface);--bd:var(--border);--tx:var(--text);--mu:var(--muted);--pri:var(--primary);--ok:var(--success);--bad:var(--danger);--chip:var(--surface-2);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}html,body{margin:0;background:var(--bg)}
-body{font-family:"Hind Siliguri","Inter",system-ui,sans-serif;color:var(--tx);font-size:16px;line-height:1.45}
+body{font-family:var(--rf-font,"Hind Siliguri","Inter",system-ui,sans-serif);color:var(--tx);font-size:16px;line-height:1.45}
 button,input{font:inherit;color:inherit}
 .w{max-width:480px;margin:0 auto;padding:16px 16px 32px;display:flex;flex-direction:column;gap:14px;min-height:100vh}
 .top{display:flex;align-items:center;justify-content:space-between}
@@ -116,3 +114,13 @@ h1{font-size:30px;line-height:1.2;margin:0}.lb{font-size:17px;font-weight:700;co
   .ndc .cells input{width:27px;height:44px;font-size:18px}
   .nbt{margin-top:18px}
 }
+
+/* ---- Payment history (amount page) ---- */
+.hs{padding:12px;margin-top:10px}
+.hs-top{display:flex;align-items:center;gap:10px}
+.hs-t{flex:1;min-width:0;font-size:14px;font-weight:800}
+.hs-pill{flex:none;padding:6px 12px;border-radius:99px;background:rgb(16 185 129 / .12);color:var(--ok);font-weight:800;font-size:13px}
+.hs-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.hs-chip{padding:4px 10px;border-radius:99px;background:var(--chip);border:1px solid var(--bd);color:var(--mu);font-size:12px;overflow-wrap:anywhere}
+.hs-more{margin-top:12px;width:100%;min-height:44px;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:inherit;font-weight:700;cursor:pointer}
+.hs-pad{padding:4px 0 10px}

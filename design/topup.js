@@ -17,6 +17,7 @@
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function fmt(n) { return "৳" + bn(Number(n).toFixed(2)); }
   function token() { try { return localStorage.getItem(TOK) || ""; } catch (e) { return ""; } }
+  function bg(v) { document.documentElement.style.background = v || ""; document.body.style.background = v || ""; }
   function stop() { if (T) { clearInterval(T); T = null; } }
   function go(p) { save(); location.href = p + ".html"; }
   function back(p) { save(); location.replace(p + ".html"); }
@@ -148,11 +149,23 @@
       var ws = ["bkash", "nagad", "rocket"].map(function (k) { return '<button type="button" class="m rt-w" data-w="' + k + '" aria-pressed="' + (S.w === k) + '">' + logoSm(k) + '<span class="rt-mn">' + M[k].n + "</span></button>"; }).join("");
       return page("topup-amount.html", 0, '<section class="rf-card rf-card--form">' + stepHead(3, "NPSB transfer", "Choose which wallet the money goes to") + '<div class="grid3">' + ws + "</div>" + sumPanel() + '<div class="grid2 rt-mt"><a class="rf-button rf-button--outline rf-button--lg" href="topup-amount.html">Back</a><button type="button" class="rf-button rf-button--primary rf-button--lg" id="ok">Continue</button></div></section>');
     },
-    wallet: function () {
-      var m = S.m, n = M[m] ? M[m].n : "", okv = /^01\d{9}$/.test(S.sender);
-      return page("topup-amount.html", 0, '<section class="rf-card rf-card--form"><div class="rf-step"><span class="rt-mlw">' + logoSm(m) + '</span><div><div class="rf-step__title">Your ' + n + ' number</div><div class="rf-step__sub">The number you will send money from</div></div></div>' +
-        '<label class="rf-label" for="sn">' + n + ' account number</label><input class="rf-field rf-field--lg" id="sn" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="01XXXXXXXXX" value="' + esc(S.sender) + '"><div class="rt-err" id="er" role="alert" hidden></div>' + sumPanel() +
-        '<p class="rf-hint rt-terms">By continuing you agree to our <a href="terms.html">Terms and Conditions</a>.</p><div class="grid2 rt-mt"><a class="rf-button rf-button--outline rf-button--lg" href="topup-amount.html">Back</a><button type="button" class="rf-button rf-button--primary rf-button--lg" id="ok"' + (okv ? "" : " disabled") + ">Continue</button></div></section>");
+    nagad: function () {
+      bg("#fff");
+      var en = S.lang === "en", dg = (S.sender || "").split("");
+      var cells = Array.apply(null, Array(11)).map(function (_, i) { return (i == 3 || i == 7 ? "<b>-</b>" : "") + '<input aria-label="' + (en ? "Digit " : "অঙ্ক ") + bn(i + 1) + '" maxlength="1" inputmode="numeric" data-i="' + i + '" value="' + (dg[i] || "") + '">'; }).join("");
+      var N = en ? { tot: "Total Amount:", am: "BDT " + tot().toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), chg: "Charge:", z: "BDT " + feeOf(S.amt, S.m).toFixed(2), lb: "Your Nagad Account Number", tc: 'By clicking/tapping "Proceed" you are agreeing to boostplus <a href="terms.html" style="color:inherit"><b>Terms and Conditions</b></a>', pr: "Proceed", cl: "Close" }
+        : { tot: "মোট অ্যামাউন্ট:", am: fmt(tot()), chg: "চার্জ:", z: fmt(feeOf(S.amt, S.m)), lb: "আপনার Nagad অ্যাকাউন্ট নম্বর", tc: '"এগিয়ে যান" ক্লিক/ট্যাপ করার মাধ্যমে আপনি boostplus-এর <a href="terms.html" style="color:inherit"><b>শর্তাবলীতে</b></a> সম্মতি দিচ্ছেন।', pr: "Proceed", cl: "Close" };
+      return '<div class="nd"><div class="ndc"><div class="lang" role="group" aria-label="Language"><button data-lang="bn" aria-pressed="' + !en + '">বাং</button><button data-lang="en" aria-pressed="' + en + '">Eng</button></div><div class="nbr"><img src="' + IMG + 'logo.svg" alt="" width="60" height="60"><div class="nnm">boostplus</div></div><div class="nl"><div><b>' + N.tot + "</b> " + N.am + "</div><div><b>" + N.chg + "</b> " + N.z + '</div></div><div class="nlb">' + N.lb + '</div><div class="cells" id="cells">' + cells + '</div><div class="err" id="er" hidden></div><div class="ntc">' + N.tc + '</div><div class="nbt"><button class="sm" id="ok">' + N.pr + '</button><a class="sm" href="topup-amount.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">' + N.cl + '</a></div><div class="ngl"><img src="' + IMG + 'ngd.svg" alt="Nagad"></div></div></div>';
+    },
+    wallet: function (m) {
+      var c = { bkash: "#e2136e", rocket: "#8c2b8f" }[m], en = S.lang === "en", okv = /^01\d{9}$/.test(S.sender);
+      bg("#9b9b9b");
+      var T2 = en ? { lb: "Your " + M[m].n + " Account Number", ph: "e.g 01XXXXXXXXX", tc: "Confirm and proceed, ", tl: "terms & conditions", cn: "Cancel", cf: "Confirm", am: "৳" + tot().toFixed(2) }
+        : { lb: "আপনার " + M[m].n + " অ্যাকাউন্ট নম্বর", ph: "যেমন 01XXXXXXXXX", tc: "নিশ্চিত করে এগিয়ে যান, ", tl: "শর্তাবলি", cn: "বাতিল", cf: "নিশ্চিত করুন", am: fmt(tot()) };
+      var cart = '<span class="cart" style="background:none;width:34px;height:34px"><img src="' + IMG + 'logo.svg" alt="" width="34" height="34" style="border-radius:50%;display:block"></span>';
+      var mark = m === "bkash" ? (en ? '<img src="' + IMG + 'bken.svg" alt="bKash" style="height:42px">' : '<span class="bkw" role="img" aria-label="বিকাশ"><i>বি</i>কাশ</span><img src="' + IMG + 'bkash-l.png" alt="" style="height:42px">') : '<img src="' + IMG + 'rocket-l.png" alt="' + M[m].n + '">';
+      var lg = '<div class="lg" role="group" aria-label="Language"><button data-lang="bn" aria-pressed="' + !en + '">বাং</button><button data-lang="en" aria-pressed="' + en + '">EN</button></div>';
+      return '<div class="bk"><div class="bkc" style="--bc:' + c + '">' + lg + '<div class="bkh">' + mark + '</div><div class="bki">' + cart + '<div><div class="nm">boostplus</div><div class="inv">' + (en ? "Balance top-up" : "ব্যালেন্স টপ-আপ") + '</div></div><b class="am">' + T2.am + '</b></div><div class="bkp" style="background:' + c + '"><label class="bl" for="sn">' + T2.lb + '</label><input class="t" id="sn" type="tel" inputmode="numeric" maxlength="11" placeholder="' + T2.ph + '" value="' + esc(S.sender) + '"><div class="bkt">' + T2.tc + '<a href="terms.html" style="color:inherit"><u>' + T2.tl + '</u></a></div><div class="err" id="er" hidden></div></div><div class="bkb"><a class="gb" href="topup-amount.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">' + T2.cn + '</a><button class="gb cf" id="ok"' + (okv ? "" : " disabled") + '>' + T2.cf + '</button></div><div class="bkf"><span>© boostplus · Secure top-up</span></div></div></div>';
     },
     pay: function () {
       var m = S.m, k = m === "npsb" ? S.w : m;
@@ -186,7 +199,7 @@
       return page("index.html", 2, '<section class="rf-card rf-card--form"><div class="res rt-res--' + o[0] + '"><svg width="72" height="72" viewBox="0 0 72 72" role="img" aria-label="' + o[2] + '"><circle cx="36" cy="36" r="34" fill="currentColor" fill-opacity=".14" stroke="currentColor" stroke-width="2"/><path d="' + o[1] + '" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><h1>' + o[2] + '</h1><div class="mu">' + o[3] + "</div></div>" + det + '<div class="rt-btns">' + b2 + "</div></section>");
     }
   };
-  function view() { return R[PAGE](); }
+  function view() { return PAGE === "wallet" ? R.wallet(S.m) : R[PAGE](); }
   function guard() {
     if (PAGE === "amount") return "";
     var okAmt = S.amt >= CFG.min && S.m;
@@ -288,7 +301,7 @@
   function onKey(e) { var t = e.target; if (t.dataset && t.dataset.i !== undefined && e.key === "Backspace" && !t.value && +t.dataset.i > 0) t.parentNode.querySelectorAll("input")[+t.dataset.i - 1].focus(); }
   window.PBT = {
     page: function (name) {
-      FILE = name; PAGE = (name === "bkash" || name === "rocket" || name === "nagad") ? "wallet" : name; app = document.getElementById("app");
+      FILE = name; PAGE = (name === "bkash" || name === "rocket") ? "wallet" : name; app = document.getElementById("app");
       if (PAGE === "amount") {
         var q = /[?&]amt=(\d+)/.exec(location.search); S.res = ""; S.id = ""; S.order = ""; S.end = 0;
         if (q && Number(q[1]) >= CFG.min) S.amt = Number(q[1]);
