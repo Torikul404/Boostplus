@@ -349,15 +349,15 @@ function tstDropBind(d,k){const x=TST&&TST[k];if(!x)return;const prov=k.split('|
       t.dr={pct:r.pct,days:r.days,cur:r.cur,at:Date.now()};toast('ড্রপ '+bn(Math.max(0,r.pct))+'%');tstDlg(k,d.dataset.nm||'');tstRefresh()}
     catch(e){if(authFail(e)){d.close();return}b.disabled=false;b.textContent='হিসাব করুন';E.textContent=e.message||'ব্যর্থ'}})}
 /* v143: টেস্ট ফলাফলে অর্ডারের লিংক (সম্পন্ন/চলমান সব টেস্টেই) */
-function tstLk(t){const u=String(t.lk||'').trim();if(!u)return'';
+function tstLk(t){const u=String(t.lk||'').trim();if(!u)return'<div class="sub dflk">🔗 '+(t.lk===undefined?'লিংক খোঁজা হচ্ছে…':'লিংক পাওয়া যায়নি')+'</div>';
   return'<div class="sub dflk">🔗 '+(/^https?:\/\//i.test(u)?'<a class="dfk" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(u.length>46?u.slice(0,44)+'…':u)+'</a>':esc(u.slice(0,46)))+'</div>'}
 /* v143b: সার্ভার নতুন না হলেও লিংক আসে — স্পিড পাতার ডেটা (svc_spd) থেকে মিলিয়ে নেয় */
 let TSTLK=null;
 async function tstFillLk(k,name){const x=TST&&TST[k];if(!x)return;const miss=(x.tests||[]).filter(t=>t.lk===undefined);if(!miss.length)return;
   const prov=k.split('|')[0];
-  try{if(!TSTLK||Date.now()-TSTLK.at>6e4){const d=await api('svc_spd',{limit:300}),m={};((d&&d.rows)||[]).forEach(r=>{if(r.link)m[r.provider+'|'+r.provider_order]=r.link});TSTLK={at:Date.now(),m}}}catch(_){return}
+  try{if(!TSTLK||Date.now()-TSTLK.at>6e4){const d=await api('svc_spd',{all:true}),m={};((d&&d.rows)||[]).forEach(r=>{if(r.link)m[r.provider+'|'+r.provider_order]=r.link});TSTLK={at:Date.now(),m}}}catch(_){miss.forEach(t=>{t.lk=''});const d0=$('#tstD');if(d0&&d0.open&&TST&&TST[k]===x)tstDlg(k,name);return}
   miss.forEach(t=>{t.lk=TSTLK.m[prov+'|'+t.po]||''});
-  const d=$('#tstD');if(d&&d.open&&TST&&TST[k]===x&&miss.some(t=>t.lk))tstDlg(k,name)}
+  const d=$('#tstD');if(d&&d.open&&TST&&TST[k]===x&&true)tstDlg(k,name)}
 function tstDlg(k,name){const x=TST&&TST[k];if(!x)return;
   let d=$('#tstD');if(!d){d=document.createElement('dialog');d.id='tstD';d.setAttribute('aria-labelledby','tstT');document.body.appendChild(d)}
   const l=tstLabel(x),tests=(x.tests||[]).map((t,i)=>{const s=tstSt(t.st);return`<div class="tstr"><div class="tsth"><b>${dT(t.at)}</b> <span class="tag tst ${s[1]}">${s[0]}</span></div><div class="sub">পরিমাণ ${bn(t.q)} · শুরু ${t.ss>0?mnT(t.ss):'—'} · মোট ${t.ts>0?mnT(t.ts):'—'}${t.dl!=null?' · ডেলিভারি '+bn(t.dl)+'/'+bn(t.q):''}${t.c!=null?' · ৳'+bn(Math.round(t.c*100)/100):''}</div>${tstLk(t)}${tstDrop(t,k,i)}</div>`}).join('');
