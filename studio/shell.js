@@ -24,7 +24,7 @@ more:'<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle c
 /* [হ্যাশ, নাম, আইকন] */
 var G=[['কাজ',[['dash','ড্যাশবোর্ড','dash'],['exc','ব্যতিক্রম','exc'],['','প্রভাইডার','prov'],['plat','প্ল্যাটফর্ম','plat']]],
 ['ম্যানেজ',[['mng','ম্যানেজ','mng'],['cats','ক্যাটেগরি','cats'],['tidy','সাজান','tidy'],['bk','ব্যাকআপ','bk']]],
-['বিশ্লেষণ',[['best','সেরা','best'],['tq','টেস্ট কিউ','tq'],['rt','অটো রি-টেস্ট','rt'],['bal','ব্যালেন্স','bal'],['rate','রেট সতর্কতা','rate'],['guard','অটো-বন্ধ','guard'],['spd','স্পিড','spd'],['cmp','তুলনা','cmp'],['chg','পরিবর্তন','chg']]],
+['বিশ্লেষণ',[['best','সেরা','best'],['tq','টেস্ট কিউ','tq'],['rt','অটো রি-টেস্ট','rt'],['bal','ব্যালেন্স','bal'],['rate','রেট সতর্কতা','rate'],['guard','অটো-বন্ধ','guard'],['spd','টেস্ট ল্যাব','spd'],['cmp','তুলনা','cmp'],['chg','পরিবর্তন','chg']]],
 ['টুলস',[['poster','পোস্টার','poster']]]];
 var BOT=['exc','','plat','mng'];
 function ic(k){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+I[k]+'</svg>'}

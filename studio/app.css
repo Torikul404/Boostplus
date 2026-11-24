@@ -240,3 +240,41 @@ dialog .acts{margin-top:14px}dialog input{margin-bottom:10px}
 .tag.lt,.chip.lt{color:var(--er);border-color:var(--er);font-weight:700}.rch .hi{color:var(--er);font-weight:700}
 .rcr{cursor:pointer;padding:10px 12px;margin:0 0 8px;border:1px solid var(--bd);border-radius:12px}.rcr:first-child{border-top:1px solid var(--bd)}.rcr:active{opacity:.7}.rcr.late{border-color:var(--er)}.rcr .spv{text-align:right;flex:none}.rcr .spv b{font-variant-numeric:tabular-nums;font-size:14px}.rcr .spv b.w{color:var(--wa)}.rcr .spv b.hi{color:var(--er)}
 .lvb{padding:12px}@media(max-width:420px){.lvg{grid-template-columns:repeat(5,1fr);gap:4px}.lvg b{font-size:17px}.lvg .sub{font-size:10px;line-height:1.25}}
+
+/* ===== v141: ১) 'টেস্টিং' ব্যাজ (সব পাতার সার্ভিস কার্ডে) ===== */
+.tag.tst.run{display:inline-flex;align-items:center;gap:6px;font-weight:700}
+.tag.tst.run::before,.tst2.run::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;flex:none;animation:tstp 1.3s ease-in-out infinite}
+.tstbox .tst2.run{display:flex;align-items:center;gap:6px}
+.tstbox .tst2.run.wait{color:var(--wa)}.tstbox .tst2.run.slow{color:var(--er)}
+.tstbox.run{background:color-mix(in srgb,var(--wa) 10%,transparent)}.tstbox.run.slow{background:color-mix(in srgb,var(--er) 10%,transparent)}
+@keyframes tstp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+@media(prefers-reduced-motion:reduce){.tag.tst.run::before,.tst2.run::before{animation:none}}
+/* ===== v141: ২) টেস্ট ল্যাব — নতুন বিন্যাস ===== */
+.lab-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 12px}
+.lab-ti{display:flex;align-items:center;gap:12px;min-width:0}.lab-ti>div{display:flex;flex-direction:column;min-width:0}.lab-ti b{font-size:17px;line-height:1.3}
+.lab-ic{width:46px;height:46px;flex:none;border-radius:15px;display:grid;place-items:center;font-size:23px;background:linear-gradient(135deg,color-mix(in srgb,var(--pr) 28%,var(--cd)),color-mix(in srgb,var(--hi) 28%,var(--cd)))}
+.lab-rf{min-height:42px;max-width:none;width:auto;padding:0 16px;border-radius:14px;flex:none}
+.lab-hero{padding:14px;background:linear-gradient(145deg,color-mix(in srgb,var(--pr) 12%,var(--cd)),var(--cd) 70%);border-radius:18px}
+.lab-hero .lvg{gap:8px}.lab-hero .kp{align-items:center;padding:10px 2px;border-radius:14px;background:color-mix(in srgb,var(--tx) 5%,transparent)}
+.kp i{font-style:normal;font-size:16px;line-height:1}.kp-run{background:color-mix(in srgb,var(--wa) 13%,transparent)!important}.kp-wait{background:color-mix(in srgb,var(--hi) 13%,transparent)!important}.kp-ok{background:color-mix(in srgb,var(--ok) 13%,transparent)!important}.kp-bad{background:color-mix(in srgb,var(--er) 13%,transparent)!important}
+.lab-hero .kp b{font-size:19px}.lab-hero .kp .sub{font-size:10.5px}
+.lab-rate{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:8px;margin-top:12px}.lab-rate .pbar{margin:0}
+.lab-late{display:block;width:100%;margin-top:12px;min-height:42px;padding:0 12px;border:1px solid var(--er);border-radius:12px;background:color-mix(in srgb,var(--er) 10%,transparent);color:var(--er);font:inherit;font-weight:700;text-align:left;cursor:pointer}
+.labtabs{display:flex;gap:4px;overflow:auto;padding:4px;margin:0 0 10px;background:color-mix(in srgb,var(--tx) 6%,transparent);border-radius:16px;scrollbar-width:none}.labtabs::-webkit-scrollbar{display:none}
+.labtabs .chip{flex:1 0 auto;display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 12px;border:0!important;border-radius:12px;background:transparent!important;color:inherit;font-weight:600}
+.labtabs .chip[aria-pressed="true"]{background:var(--cd)!important;color:var(--pr)!important;box-shadow:0 1px 5px rgba(0,0,0,.2)}
+.cn{font-style:normal;font-size:11px;min-width:20px;padding:1px 6px;border-radius:10px;text-align:center;background:color-mix(in srgb,var(--tx) 10%,transparent)}
+.labtabs .chip[aria-pressed="true"] .cn{background:var(--pr);color:#fff}
+.labtools{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}.labtools .chip{min-height:36px;padding:0 12px;font-size:13px}
+.labctl{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}.labctl .plmore{margin:0;flex:1 1 140px;min-width:0}.labctl .lab-q{margin:0;flex:2 1 190px;min-width:0}
+/* অর্ডার কার্ড */
+.spc{border-radius:16px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08)}.spc .bnm{font-size:15.5px;line-height:1.4}
+.spc .tl{padding:10px;border-radius:12px;background:color-mix(in srgb,var(--tx) 4%,transparent)}
+.spc .pbar{height:10px;border-radius:6px}.spc .pbar i{background:linear-gradient(90deg,var(--ok),var(--hi))}
+.spc .acts .sm{border-radius:12px}
+.lab-st{display:flex;align-items:center;gap:8px;margin:10px 0 2px;padding:8px 12px;border-radius:12px;font-weight:700;font-size:14px}
+.lab-st b{font-variant-numeric:tabular-nums}.lab-st.run{color:var(--wa);background:color-mix(in srgb,var(--wa) 12%,transparent)}.lab-st.run b{margin-left:auto}.lab-st.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.lab-st .dot{background:currentColor}
+
+/* v142: দ্বিতীয় অর্ডারের সতর্কতা */
+.ordw{margin:8px 0;padding:10px 12px;border:1px solid var(--wa);border-radius:12px;background:color-mix(in srgb,var(--wa) 10%,transparent)}.ordw[hidden]{display:none}.ordw ul{margin:6px 0 6px 18px;padding:0;font-size:13px}.ordw .sub{margin-top:4px}

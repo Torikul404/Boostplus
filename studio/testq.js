@@ -12,7 +12,7 @@
   if (!Array.isArray(SG)) SG = [];
   if (!Q || !Array.isArray(Q.items)) Q = { items: [] };
   Q.run = false;
-  Q.items.forEach(function (x) { if (x.state === 'run') { x.state = 'unknown'; x.msg = 'পেজ বন্ধ হওয়ায় নিশ্চিত নয় — স্পিড পাতায় দেখুন'; } });
+  Q.items.forEach(function (x) { if (x.state === 'run') { x.state = 'unknown'; x.msg = 'পেজ বন্ধ হওয়ায় নিশ্চিত নয় — ল্যাব পাতায় দেখুন'; } });
   var S = { tab: 'q', label: '', type: '', q: '', un: true, rows: [], fx: 131, types: [], plats: [], picks: {}, known: {}, pool: [], full: false, cache: {}, qty: {}, lnk: SN, cm: SC, load: 0, rep: null, repBusy: false };
   var r2 = function (v) { return Math.round(v * 100) / 100; };
   var saveG = function () { sv(KG, SG.slice(-100)); }, saveN = function () { sv(KN, S.lnk); }, saveC = function () { sv(KC, S.cm); };
@@ -86,6 +86,8 @@
     return m ? m.label : (r.platform_label || r.name || S.label);
   }
   function qtyDef(r) { var mn = +r.min > 0 ? +r.min : 10, mx = +r.max > 0 ? +r.max : 0; return mx && mn > mx ? mx : mn; }
+  function onSite(r) { try { if (C && C.onSite && C.onSite({ service_id: r.service_id })) return true; } catch (e) {} return r.state === 'on'; }
+  var ONT = ' <span class="tag" style="color:#34d399;border-color:#34d399">✔ সাইটে চালু</span>';
   function isCm(r) { return (/custom/i.test(r.type || '') && /comment/i.test(r.type || '')) || (/custom/i.test(r.name || '') && /comment/i.test(r.name || '')); }
   function cmLines(t) { return String(t || '').replace(/\r/g, '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); }
   function qtyOf(r) { var k = r.provider + '|' + r.service_id; if (isCm(r)) return cmLines(S.cm[k]).length; var v = Math.floor(+S.qty[k]); return v > 0 ? v : qtyDef(r); }
@@ -108,6 +110,23 @@
   function inQueue(r) { return Q.items.some(function (x) { return x.provider === r.provider && x.sid === String(r.service_id) && live(x); }); }
   var sentCost = function () { return Q.items.reduce(function (a, x) { return a + (x.state === 'sent' ? +x.cost || 0 : 0); }, 0); };
   var waitCost = function () { return Q.items.reduce(function (a, x) { return a + (x.state === 'wait' ? +x.cost || 0 : 0); }, 0); };
+
+  /* ---------- ⚠ দ্বিতীয় অর্ডারের সতর্কতা: কিউ শুরুর আগে দেখে — একই লিংকে একই সার্ভিসের টেস্ট এখনও চলছে কিনা ---------- */
+  function nzLink(u) { return String(u || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^(www|m|vm|mobile)\./, '').replace(/[?#].*$/, '').replace(/\/+$/, '').replace(/^@/, ''); }
+  function sameLink(a, b) { a = nzLink(a); b = nzLink(b); if (!a || !b) return false; if (a === b) return true; var s = a.length < b.length ? a : b, l = a.length < b.length ? b : a; return s.length >= 5 && l.indexOf(s) >= 0; }
+  function rowFin(r) { return r.completed_at > 0 || /completed|partial|cancel|refund|fail|error/.test(String(r.status || '').toLowerCase()); }
+  async function dupWarn() {
+    var rows = []; try { var d = await C.api('svc_spd', { limit: 300 }); rows = (d && d.rows) || []; } catch (e) { return ''; }
+    var busy = rows.filter(function (r) { return !rowFin(r) && r.link; }), n = 0, names = [];
+    Q.items.forEach(function (it) {
+      if (it.state !== 'wait') return;
+      var hit = busy.some(function (r) { return r.provider === it.provider && String(r.service_id) === String(it.sid) && sameLink(r.link, it.link); });
+      if (hit) { n++; it.dup = 1; it.msg = '⚠ এই লিংকে এই সার্ভিসের টেস্ট এখনও চলছে'; if (names.length < 3) names.push(it.provider + ' #' + it.sid); }
+      else if (it.dup) { it.dup = 0; if (/^⚠ এই লিংকে/.test(it.msg || '')) it.msg = ''; }
+    });
+    saveQ();
+    return n ? '⚠ ' + bn(n) + 'টি আইটেমে একই লিংকে একই সার্ভিসের টেস্ট এখনও চলছে (' + names.join(', ') + (n > names.length ? '…' : '') + ') — চালালে দ্বিতীয় অর্ডার যাবে। তবুও চালাতে আবার ট্যাপ করুন; না চাইলে ওগুলো ✕ দিয়ে সরান।' : '';
+  }
 
   /* ---------- রান লুপ: একটা একটা করে, বাজেটে থামে, লিংক বারবার ভুল হলে থামে ---------- */
   async function run() {
@@ -252,7 +271,7 @@
       var k = r.provider + '|' + r.service_id, mn = +r.min > 0 ? +r.min : 10, cost = r2((+r.rate || 0) * S.fx * mn / 1000), dis = inQueue(r) || !(+r.rate > 0);
       return '<label class="tqr' + (dis ? ' off' : '') + '"><input type="checkbox" class="tqk" data-i="' + i + '"' + (S.picks[k] && !dis ? ' checked' : '') + (dis ? ' disabled' : '') + '>' +
         '<span class="tqb"><b class="bnm">' + esc(r.name) + '</b><span class="sub">' + esc(r.provider) + ' · আইডি ' + esc(r.service_id) + ' · ন্যূনতম ' + bn(mn) + '</span>' +
-        '<span class="tqm"><span class="tag">' + money(cost) + ' একটায়</span> <span class="tag">স্কোর ' + bn(r.score) + '</span>' + (r.tested ? ' <span class="tag">টেস্টেড ✓</span>' : r.try_it ? ' <span class="tag tst mid">টেস্ট করার মতো</span>' : '') + (+r.refill ? ' <span class="tag">♻ রিফিল</span>' : '') + (r.state === 'on' ? ' <span class="tag">সাইটে চালু</span>' : '') + (inQueue(r) ? ' <span class="tag">কিউতে আছে</span>' : '') + '</span></span></label>';
+        '<span class="tqm"><span class="tag">' + money(cost) + ' একটায়</span> <span class="tag">স্কোর ' + bn(r.score) + '</span>' + (r.tested ? ' <span class="tag">টেস্টেড ✓</span>' : r.try_it ? ' <span class="tag tst mid">টেস্ট করার মতো</span>' : '') + (+r.refill ? ' <span class="tag">♻ রিফিল</span>' : '') + (onSite(r) ? ONT : '') + (inQueue(r) ? ' <span class="tag">কিউতে আছে</span>' : '') + '</span></span></label>';
     }).join('');
     el.onchange = function (e) { var c = e.target.closest('.tqk'); if (!c) return; var r = S.rows[+c.dataset.i]; if (!r) return; var k = r.provider + '|' + r.service_id; if (c.checked) S.picks[k] = 1; else delete S.picks[k]; selPaint(); sumPaint(); };
     selPaint(); sumPaint();
@@ -272,7 +291,7 @@
     if (!P.length) { el.innerHTML = '<p class="sub">২ নম্বর থেকে (বা প্রভাইডার পাতায় টিক দিয়ে "🧪 টেস্ট কিউতে") সার্ভিস বাছলে এখানে প্রতিটার জন্য আলাদা লিংক ও পরিমাণ বসাতে পারবেন।</p>'; return; }
     el.innerHTML = P.map(function (r) {
       var k = r.provider + '|' + r.service_id, mn = +r.min > 0 ? +r.min : 10, mx = +r.max > 0 ? +r.max : 0, v = S.qty[k] > 0 ? S.qty[k] : qtyDef(r), er = selErr(r), kind = kindOf(r.name);
-      return '<div class="tqs3" data-k="' + esc(k) + '"><div class="tqs3h"><b class="bnm">' + esc(r.name) + '</b>' + (r._stage ? '<button type="button" class="ib" data-x="' + esc(k) + '" aria-label="বাদ দিন">✕</button>' : '') + '</div><span class="sub">' + esc(r.provider) + ' · আইডি ' + esc(r.service_id) + ' · ন্যূনতম ' + bn(mn) + (mx ? ' · সর্বোচ্চ ' + bn(mx) : '') + '</span>' +
+      return '<div class="tqs3" data-k="' + esc(k) + '"><div class="tqs3h"><b class="bnm">' + esc(r.name) + '</b>' + (r._stage ? '<button type="button" class="ib" data-x="' + esc(k) + '" aria-label="বাদ দিন">✕</button>' : '') + '</div><span class="sub">' + esc(r.provider) + ' · আইডি ' + esc(r.service_id) + ' · ন্যূনতম ' + bn(mn) + (mx ? ' · সর্বোচ্চ ' + bn(mx) : '') + '</span>' + (onSite(r) ? '<span class="sub">' + ONT + ' — আবার টেস্ট করলেও সাইটে আগের সার্ভিসই থাকবে</span>' : '') +
         '<label>' + (kind === 'post' ? 'পোস্ট / ভিডিও লিংক' : kind === 'profile' ? 'প্রোফাইল / চ্যানেল লিংক' : 'লিংক') + '<input type="text" inputmode="url" autocomplete="off" placeholder="https://…" value="' + esc(lnkOf(r)) + '" data-l="' + esc(k) + '" aria-label="লিংক"></label><div data-lc>' + lnkChk(r) + '</div>' +
         (isCm(r) ? '<label>কমেন্ট লিখুন — প্রতি লাইনে একটা<textarea rows="5" data-cm="' + esc(k) + '" placeholder="Nice post!&#10;Great work 👏" style="min-height:120px;resize:vertical;overflow:auto" aria-label="কমেন্ট">' + esc(S.cm[k] || '') + '</textarea></label><div class="tqq"><span class="sub" data-cn>কমেন্ট সংখ্যা: ' + bn(qtyOf(r)) + '</span><span class="tag" data-c>' + money(selCost(r)) + '</span></div>' : '<div class="tqq"><label>পরিমাণ<input type="number" inputmode="numeric" min="' + mn + '"' + (mx ? ' max="' + mx + '"' : '') + ' step="1" value="' + esc(v) + '" data-q="' + esc(k) + '" aria-label="পরিমাণ"></label><span class="tag" data-c>' + money(selCost(r)) + '</span></div>') + '<span class="er" data-e>' + esc(er) + '</span></div>';
     }).join('');
@@ -326,7 +345,7 @@
           (x.state === 'unknown' && !Q.run ? '<button type="button" class="sm" data-rt="' + esc(x.id) + '">আবার চেষ্টা</button>' : '') + (x.state === 'wait' && !Q.run || x.state === 'skip' || x.state === 'fail' ? '<button type="button" class="ib" data-rm="' + esc(x.id) + '" aria-label="কিউ থেকে সরান">✕</button>' : '') + '</div>';
       }).join('') + '</div>';
     var go = el.querySelector('#tqGo'), sp = el.querySelector('#tqStop'), cl = el.querySelector('#tqClr');
-    if (go) go.onclick = function () { if (!armed) { armed = true; qPaint(); return; } run(); };
+    if (go) go.onclick = async function () { if (!armed) { var t0 = tok; go.disabled = true; var w = ''; try { w = await dupWarn(); } catch (e) { } if (t0 !== tok) return; stopMsg = w; armed = true; qPaint(); return; } run(); };
     if (sp) sp.onclick = function () { stopFlag = true; stopMsg = 'থামানো হয়েছে — চলমান অর্ডার শেষ হলে কিউ থামবে'; var nn = el.querySelector('#tqNote'); if (nn) nn.textContent = stopMsg; };
     if (cl) cl.onclick = function () { Q.items = Q.items.filter(function (x) { return live(x); }); armed = false; saveQ(); qPaint(); rowsPaint(); };
     el.onclick = function (e) {
@@ -386,7 +405,7 @@
       return '<div class="card tqrp v-' + v.k + '"><div class="bsh"><span class="tag tv">' + v.t + '</span>' + (sc ? '<span class="tag">স্কোর ' + bn(sc.score) + '</span>' : '') + (R.by[k].n > 1 ? '<span class="tag">' + bn(R.by[k].n) + 'বার টেস্ট</span>' : '') + '</div>' +
         '<b class="bnm">' + esc(r.name || ('#' + r.service_id)) + '</b><div class="sub">' + esc(r.provider) + ' · আইডি ' + esc(r.service_id) + ' · ' + esc(v.why) + '</div>' +
         '<dl class="tqd"><div><dt>শুরু হতে</dt><dd>' + start + '</dd></div><div><dt>শেষ</dt><dd>' + end + '</dd></div><div><dt>ডেলিভারি</dt><dd>' + (r.delivered != null ? bn(r.delivered) + '/' + bn(r.quantity) : '—') + '</dd></div><div><dt>ড্রপ</dt><dd>' + drop + '</dd></div><div><dt>রিফিল</dt><dd>' + rf + '</dd></div><div><dt>খরচ</dt><dd>' + (r.cost_bdt != null ? money(r.cost_bdt) : '—') + '</dd></div></dl>' +
-        '<div class="acts"><a class="sm" href="#spd">স্পিড পাতা</a>' + (v.k === 'g' && sc && sc.row && sc.row.state !== 'on' ? '<button type="button" class="sm" data-add="' + esc(k) + '">সাইটে চালু করুন</button>' : '') + '</div></div>';
+        '<div class="acts"><a class="sm" href="#spd">ল্যাব পাতা</a>' + (v.k === 'g' && sc && sc.row && sc.row.state !== 'on' ? '<button type="button" class="sm" data-add="' + esc(k) + '">সাইটে চালু করুন</button>' : '') + '</div></div>';
     }).join('');
     el.onclick = function (e) { var b = e.target.closest('[data-add]'); if (!b) return; var s = R.scores[b.dataset.add]; if (s && s.row && C.addList) C.addList([s.row]); };
   }
