@@ -78,7 +78,7 @@ let mutTs=0,RCm={},RK=new Set();const RD=/^svc_(providers|by_platform|compare|ch
 async function readCached(a,x){const k='rc_'+a+JSON.stringify(x||{});let c=RCm[k]||(RCm[k]=await idb.get(k));
   if(c&&(!navigator.onLine||(c.at>mutTs&&Date.now()-c.at<300000)))return c.d;
   try{const d=await apiNet(a,x);c={d,at:Date.now()};RCm[k]=c;idb.set(k,c);if(!RK.has(k)){RK.add(k);idb.set('rc_keys',Array.from(RK))}return d}
-  catch(e){if(c&&(e.code==='net'||e.code==='not_json')){toast('ইন্টারনেট/সার্ভার পাওয়া যায়নি, ফোনের আগের কপি দেখানো হচ্ছে');return c.d}throw e}}
+  catch(e){if(c&&(e.code==='net'||e.code==='not_json')){toast('পুরনো তথ্য দেখানো হচ্ছে');return c.d}throw e}}
 /* ---------- প্রভাইডার ডেটা = ডাউনলোড করা CSV: ফোনে রাখা CSV থেকেই প্রভাইডার পাতা চলে (অনলাইনে-অফলাইনে একই, তাৎক্ষণিক); সাইটে চালু/বন্ধ আসে ফোনের সাইট-ক্যাটালগ থেকে ---------- */
 let PC={},PB={};const PFRESH=30*60000;
 function csvParse(t){const o=[];let r=[],f='',q=false;t=String(t||'').replace(/^\ufeff/,'');
@@ -187,16 +187,16 @@ function lpRows(){const o=[];SNAP_P.forEach(p=>{const c=PC[p];if(c&&c.rows)c.row
 function lpPlatforms(){const tot={},site={},ks={};lpRows().forEach(r=>{const l=lpLabel(r);tot[l]=(tot[l]||0)+1});CAT.rows.forEach(r=>{if(r.state==='on')site[r.platform_label]=(site[r.platform_label]||0)+1});
   Object.keys(tot).concat(Object.keys(site)).forEach(k=>{ks[k]=1});
   return{ok:true,platforms:Object.keys(ks).map(k=>({label:k,total:tot[k]||0,site:site[k]||0})).sort((a,b)=>(b.total+b.site*3)-(a.total+a.site*3))}}
-function lpByPlat(d){const label=String(d.label||''),q=String(d.q||'').toLowerCase().trim(),type=String(d.type||''),fl=String(d.state||'all'),provs=Array.isArray(d.provs)?d.provs:[],pv={},cm={},types={},all=[];let tn=0;
+function lpByPlat(d){const label=String(d.label||''),q=String(d.q||'').toLowerCase().trim(),type=String(d.type||''),fl=String(d.state||'all'),provs=Array.isArray(d.provs)?d.provs:[],pv={},cm={},types={},all=[];
   CAT.rows.forEach(r=>{cm[r.code]=r.state});
   lpRows().forEach(r=>{if(lpLabel(r)!==label)return;if(q&&!qOK(q,String(r.name)+' '+r.service_id+' '+r.category))return;
     pv[r.provider]=(pv[r.provider]||0)+1;if(provs.length&&provs.indexOf(r.provider)<0)return;
     const tl=lpType(r);types[tl]=(types[tl]||0)+1;if(type&&tl!==type)return;
-    const st=cm[r.service_id]||'off';if(fl!=='all'&&st!==fl)return;const tx=TST&&TST[r.provider+'|'+r.service_id];if(tx)tn++;if(d.tst&&(d.tst==='run'?!(tx&&tx.open>0):d.tst==='yes'?!tx:!!tx))return;const o=Object.assign({},r);o.state=st;all.push(o)});
-  if(d.sort==='fast'){const sc=r=>{const x=TST&&TST[r.provider+'|'+r.service_id];return x&&x.ok>0&&x.total_med>0?x.total_med:Infinity};all.sort((a,b)=>{const A=sc(a),B=sc(b);return A===B?0:A<B?-1:1})}else all.sort(rateCmp(d.sort==='desc'?'desc':'asc'));
+    const st=cm[r.service_id]||'off';if(fl!=='all'&&st!==fl)return;const o=Object.assign({},r);o.state=st;all.push(o)});
+  all.sort(rateCmp(d.sort==='desc'?'desc':'asc'));
   const off=Math.max(0,+d.offset||0),lim=Math.min(80,+d.limit||40),sc={};CAT.rows.forEach(r=>{if(r.category)sc[r.category]=1});
   let fx;for(const p of SNAP_P){if(PC[p]&&PC[p].ex&&PC[p].ex.fx){fx=PC[p].ex.fx;break}}
-  return{ok:true,tn,total:all.length,provs:Object.keys(pv).map(k=>[k,pv[k]]).sort((a,b)=>b[1]-a[1]),rows:all.slice(off,off+lim),types:Object.keys(types).map(k=>[k,types[k]]).sort((a,b)=>b[1]-a[1]),fx,site_categories:Object.keys(sc).sort()}}
+  return{ok:true,total:all.length,provs:Object.keys(pv).map(k=>[k,pv[k]]).sort((a,b)=>b[1]-a[1]),rows:all.slice(off,off+lim),types:Object.keys(types).map(k=>[k,types[k]]).sort((a,b)=>b[1]-a[1]),fx,site_categories:Object.keys(sc).sort()}}
 async function api(action,x){
   if(action==='svc_site_list'&&CAT)return catList(x||{});
   if((action==='svc_platforms'||action==='svc_by_platform')&&CAT){try{if(await allReady())return action==='svc_platforms'?lpPlatforms():lpByPlat(x||{})}catch(_){}bgSync(true)}
@@ -226,7 +226,7 @@ const authFail=e=>{if(e&&(e.code==='unauthorized'||e.code==='locked_out')){logou
 async function swr(act,x,draw){const my=rid,key='pbc_'+act+JSON.stringify(x||{});let c=mem[key],sh=null;
   if(!c){try{c=JSON.parse(ls.get(key))}catch(e){c=null}}
   if(c){sh=JSON.stringify(c);draw(c)}
-  let d;try{d=await api(act,x)}catch(e){if(c&&!authFail(e)){toast('সার্ভার থেকে নতুন তথ্য আনা যায়নি, ফোনের আগের কপি দেখানো হচ্ছে'+(e.message?' ('+e.message+')':''));return}throw e}
+  let d;try{d=await api(act,x)}catch(e){if(c&&!authFail(e)){toast('পুরনো তথ্য দেখানো হচ্ছে — '+e.message);return}throw e}
   const j=JSON.stringify(d);mem[key]=d;ls.set(key,j);if(my===rid&&j!==sh)draw(d)}
 const sel=new Set();let cq={q:'',refill:false},cn=0;
 const fmtT=s=>s<90?bn(Math.round(s))+' সে.':s<5400?bn(Math.round(s/60))+' মি.':bn(Math.round(s/360)/10)+' ঘণ্টা';
@@ -348,26 +348,11 @@ function tstDropBind(d,k){const x=TST&&TST[k];if(!x)return;const prov=k.split('|
     try{const r=await api('svc_drop',{provider:prov,order:t.po,count:+cu.value,base:ba?+ba.value:undefined});
       t.dr={pct:r.pct,days:r.days,cur:r.cur,at:Date.now()};toast('ড্রপ '+bn(Math.max(0,r.pct))+'%');tstDlg(k,d.dataset.nm||'');tstRefresh()}
     catch(e){if(authFail(e)){d.close();return}b.disabled=false;b.textContent='হিসাব করুন';E.textContent=e.message||'ব্যর্থ'}})}
-/* v143: টেস্ট ফলাফলে অর্ডারের লিংক (সম্পন্ন/চলমান সব টেস্টেই) */
-function tstLk(t){const u=String(t.lk||'').trim();if(!u)return'<div class="sub dflk">🔗 '+(t.lk===undefined?'লিংক খোঁজা হচ্ছে…':'লিংক পাওয়া যায়নি')+'</div>';
-  return'<div class="sub dflk">🔗 '+(/^https?:\/\//i.test(u)?'<a class="dfk" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(u.length>46?u.slice(0,44)+'…':u)+'</a>':esc(u.slice(0,46)))+'</div>'}
-/* v143b: সার্ভার নতুন না হলেও লিংক আসে — স্পিড পাতার ডেটা (svc_spd) থেকে মিলিয়ে নেয় */
-const LKK='tst_lk_v1';
-function tstLkMap(){try{return JSON.parse(ls.get(LKK))||{}}catch(_){return{}}}
-function tstSaveLk(prov,po,link){if(!prov||!po||!link)return;const m=tstLkMap();m[prov+'|'+po]=String(link).slice(0,300);const ks=Object.keys(m);if(ks.length>600)ks.slice(0,ks.length-600).forEach(x=>delete m[x]);ls.set(LKK,JSON.stringify(m))}
-let TSTLK=null;
-async function tstFillLk(k,name){const x=TST&&TST[k];if(!x)return;const miss=(x.tests||[]).filter(t=>t.lk===undefined);if(!miss.length)return;
-  const prov=k.split('|')[0],lm=tstLkMap();let any=false;miss.forEach(t=>{const v=lm[prov+'|'+t.po];if(v){t.lk=v;any=true}});
-  if(any&&!miss.some(t=>t.lk===undefined)){const d1=$('#tstD');if(d1&&d1.open&&TST&&TST[k]===x)tstDlg(k,name);return}
-  const rest=miss.filter(t=>t.lk===undefined);
-  try{if(!TSTLK||Date.now()-TSTLK.at>6e4){const d=await api('svc_spd',{all:true}),m={};((d&&d.rows)||[]).forEach(r=>{if(r.link)m[r.provider+'|'+r.provider_order]=r.link});TSTLK={at:Date.now(),m}}}catch(_){rest.forEach(t=>{t.lk=''});const d0=$('#tstD');if(d0&&d0.open&&TST&&TST[k]===x)tstDlg(k,name);return}
-  rest.forEach(t=>{t.lk=TSTLK.m[prov+'|'+t.po]||''});
-  const d=$('#tstD');if(d&&d.open&&TST&&TST[k]===x&&true)tstDlg(k,name)}
 function tstDlg(k,name){const x=TST&&TST[k];if(!x)return;
   let d=$('#tstD');if(!d){d=document.createElement('dialog');d.id='tstD';d.setAttribute('aria-labelledby','tstT');document.body.appendChild(d)}
-  const l=tstLabel(x),lmap=tstLkMap(),tests=(x.tests||[]).map((t,i)=>{if(t.lk===undefined&&lmap[k.split('|')[0]+'|'+t.po])t.lk=lmap[k.split('|')[0]+'|'+t.po];const s=tstSt(t.st);return`<div class="tstr"><div class="tsth"><b>${dT(t.at)}</b> <span class="tag tst ${s[1]}">${s[0]}</span></div><div class="sub">পরিমাণ ${bn(t.q)} · শুরু ${t.ss>0?mnT(t.ss):'—'} · মোট ${t.ts>0?mnT(t.ts):'—'}${t.dl!=null?' · ডেলিভারি '+bn(t.dl)+'/'+bn(t.q):''}${t.c!=null?' · ৳'+bn(Math.round(t.c*100)/100):''}</div>${tstLk(t)}${tstDrop(t,k,i)}</div>`}).join('');
+  const l=tstLabel(x),tests=(x.tests||[]).map((t,i)=>{const s=tstSt(t.st);return`<div class="tstr"><div class="tsth"><b>${dT(t.at)}</b> <span class="tag tst ${s[1]}">${s[0]}</span></div><div class="sub">পরিমাণ ${bn(t.q)} · শুরু ${t.ss>0?mnT(t.ss):'—'} · মোট ${t.ts>0?mnT(t.ts):'—'}${t.dl!=null?' · ডেলিভারি '+bn(t.dl)+'/'+bn(t.q):''}${t.c!=null?' · ৳'+bn(Math.round(t.c*100)/100):''}</div>${tstDrop(t,k,i)}</div>`}).join('');
   d.innerHTML=`<h3 id="tstT" style="margin:0 0 8px">🧪 টেস্ট ফলাফল</h3><p class="sub" id="tstN"></p>${l?`<p><span class="tag tst ${l.c}">${esc(l.t)}</span></p><p class="sub">${esc(l.d.replace(' — বিস্তারিত ›',''))}</p>`:''}<div class="tstl">${tests||'<p class="sub">বিস্তারিত নেই</p>'}</div>${(x.n>5)?`<p class="sub">সর্বশেষ ${bn(5)}টি দেখানো হলো (মোট ${bn(x.n)}টি)</p>`:''}<div class="acts"><button type="button" class="sm" id="tstX">বন্ধ</button><button type="button" class="btn" id="tstS">⏱ স্পিড পাতা</button></div>`;
-  d.dataset.nm=name||'';$('#tstN').textContent=k.replace('|',' · #')+(name?' · '+name:'');tstDropBind(d,k);$('#tstX').onclick=()=>d.close();$('#tstS').onclick=()=>{d.close();location.hash='spd'};if(!d.open)d.showModal();tstFillLk(k,name)}
+  d.dataset.nm=name||'';$('#tstN').textContent=k.replace('|',' · #')+(name?' · '+name:'');tstDropBind(d,k);$('#tstX').onclick=()=>d.close();$('#tstS').onclick=()=>{d.close();location.hash='spd'};d.showModal()}
 document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('.tst[data-tk],.tst2[data-tk]');if(t&&TST&&TST[t.dataset.tk]){e.preventDefault();tstDlg(t.dataset.tk,t.dataset.nm||'')}});
 function row(r,d){
   const c=document.createElement('div');c.className='card svc';
@@ -836,19 +821,17 @@ async function plat(){
     const pr=$('#plr');if(pr)pr.onchange=()=>{if(pr.value)location.hash='pl='+encodeURIComponent(pr.value)};
   });}catch(e){if(!authFail(e))el.innerHTML=`<div class="card"><p class="err">${esc(e.message)}</p></div>`}}
 function platPage(label){
-  cur=null;$('#title').textContent=label;$('#back').hidden=false;const el=$('#main');ps={q:'',type:'',state:'all',off:0,prov:[],sort:'asc',tst:''};
-  el.innerHTML=`<div class="phd">${logo(label,48)}<div><b>${esc(label)}</b><div class="sub" id="pcnt"></div></div></div><div class="bar"><input id="pq" type="search" placeholder="নাম বা আইডি খুঁজুন" aria-label="খুঁজুন"></div><div class="chips" id="ppv"></div><div class="chips" id="pty"></div><div class="chips">${[['all','সব'],['on','চালু'],['off','বন্ধ']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${s[0]==='all'}">${s[1]}</button>`).join('')}<button class="chip" id="psa">সব বাছুন</button></div><div class="chips" id="pso" role="group" aria-label="দাম সাজান"><button class="chip" data-so="asc" aria-pressed="true">দাম: কম → বেশি</button><button class="chip" data-so="desc" aria-pressed="false">দাম: বেশি → কম</button><button class="chip" data-so="fast" aria-pressed="false">⚡ দ্রুততম আগে</button></div><div class="chips" id="ptt" role="group" aria-label="টেস্ট"></div><div class="list" id="pl"></div><div id="pmore"></div>`;
+  cur=null;$('#title').textContent=label;$('#back').hidden=false;const el=$('#main');ps={q:'',type:'',state:'all',off:0,prov:[],sort:'asc'};
+  el.innerHTML=`<div class="phd">${logo(label,48)}<div><b>${esc(label)}</b><div class="sub" id="pcnt"></div></div></div><div class="bar"><input id="pq" type="search" placeholder="নাম বা আইডি খুঁজুন" aria-label="খুঁজুন"></div><div class="chips" id="ppv"></div><div class="chips" id="pty"></div><div class="chips">${[['all','সব'],['on','চালু'],['off','বন্ধ']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${s[0]==='all'}">${s[1]}</button>`).join('')}<button class="chip" id="psa">সব বাছুন</button></div><div class="chips" id="pso" role="group" aria-label="দাম সাজান"><button class="chip" data-so="asc" aria-pressed="true">দাম: কম → বেশি</button><button class="chip" data-so="desc" aria-pressed="false">দাম: বেশি → কম</button></div><div class="list" id="pl"></div><div id="pmore"></div>`;
   $('#pso').querySelectorAll('[data-so]').forEach(b=>b.onclick=()=>{ps.sort=b.dataset.so;$('#pso').querySelectorAll('[data-so]').forEach(x=>x.setAttribute('aria-pressed',x===b));pload(label)});
   $('#psa').onclick=()=>el.querySelectorAll('#pl .sel').forEach(x=>{if(!x.checked){x.checked=true;x.onchange({target:x})}});
   $('#pq').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{ps.q=e.target.value;pload(label)},350)};
   el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ps.state=b.dataset.s;el.querySelectorAll('[data-s]').forEach(x=>x.setAttribute('aria-pressed',x===b));pload(label)});
-  if(TST)pload(label);else tstRefresh().finally(()=>pload(label))}
+  pload(label)}
 async function pload(label,more){
   if(!more)ps.off=0;const box=$('#pl');if(!more)box.innerHTML='<div class="sk"></div>';
-  try{const d=await api('svc_by_platform',{label,q:ps.q,type:ps.type,state:ps.state,provs:ps.prov,sort:ps.sort,tst:ps.tst,offset:ps.off,limit:ps.tst?80:40});d.cmp=1;window._fx=d.fx;window._sc=d.site_categories;
+  try{const d=await api('svc_by_platform',{label,q:ps.q,type:ps.type,state:ps.state,provs:ps.prov,sort:ps.sort,offset:ps.off,limit:40});d.cmp=1;window._fx=d.fx;window._sc=d.site_categories;
     $('#pcnt').textContent=`মোট ${bn(d.total)}টি · ${ps.sort==='desc'?'দামি আগে':'সস্তা আগে'}`;
-    $('#ptt').innerHTML=[['','সব'],['yes','🧪 টেস্টেড সার্ভিস'+(d.tn!=null?' '+bn(d.tn):'')],['run','⏳ টেস্টিং'],['no','অপরীক্ষিত']].map(s=>`<button class="chip" data-tt="${s[0]}" aria-pressed="${(ps.tst||'')===s[0]}">${s[1]}</button>`).join('');
-    $('#ptt').querySelectorAll('[data-tt]').forEach(b=>b.onclick=()=>{ps.tst=b.dataset.tt;pload(label)});
     $('#ppv').innerHTML=d.provs&&d.provs.length>1?`<button class="chip" data-pv="" aria-pressed="${!ps.prov.length}">সব প্রভাইডার</button>`+d.provs.map(v=>`<button class="chip" data-pv="${esc(v[0])}" aria-pressed="${ps.prov.includes(v[0])}">${esc(v[0])} ${bn(v[1])}</button>`).join(''):'';
     $('#ppv').querySelectorAll('[data-pv]').forEach(b=>b.onclick=()=>{const v=b.dataset.pv;ps.prov=!v?[]:ps.prov.includes(v)?ps.prov.filter(x=>x!==v):ps.prov.concat(v);ps.type='';pload(label)});
     $('#pty').innerHTML=`<button class="chip" data-t=" aria-pressed="${!ps.type}">সব ধরন</button>`+d.types.map(t=>`<button class="chip" data-t="${esc(t[0])}" aria-pressed="${ps.type===t[0]}">${esc(t[0])} ${bn(t[1])}</button>`).join('');
@@ -1508,7 +1491,7 @@ function ordDlg(r){
       const h=spDupHtml(x),W=$('#ordW');W.innerHTML=h;W.hidden=!h;armed=true;go.textContent=(h?'তবুও অর্ডার দিন':'নিশ্চিত')+' — ৳'+bn(cost())+' কাটবে, আবার ট্যাপ করুন';return}
     go.disabled=true;go.textContent='পাঠানো হচ্ছে…';
     try{const o=await api('svc_order',{provider:r.provider,service:r.service_id,link,quantity:q,comments:cm?$('#ordCm').value:undefined,confirm:true,req_id:req});
-      done=true;tstSaveLk(r.provider,o.provider_order,link);$('#ordC').textContent='';$('#ordT').textContent='✅ অর্ডার গেছে';try{const L=spLoad(SPK_L)||[];L.unshift({src:'studio',provider:r.provider,service_id:r.service_id,provider_order:o.provider_order,name:r.name,quantity:o.quantity,cost_bdt:o.cost_bdt,link,status:'Pending',ordered_at:Date.now(),last_checked:Date.now()});spSave(SPK_L,L.slice(0,30))}catch(_){}
+      done=true;$('#ordC').textContent='';$('#ordT').textContent='✅ অর্ডার গেছে';try{const L=spLoad(SPK_L)||[];L.unshift({src:'studio',provider:r.provider,service_id:r.service_id,provider_order:o.provider_order,name:r.name,quantity:o.quantity,cost_bdt:o.cost_bdt,link,status:'Pending',ordered_at:Date.now(),last_checked:Date.now()});spSave(SPK_L,L.slice(0,30))}catch(_){}
       $('#ordN').textContent='প্রভাইডার অর্ডার #'+o.provider_order+' · পরিমাণ '+bn(o.quantity)+' · খরচ ≈ ৳'+bn(o.cost_bdt);
       go.textContent='স্পিড দেখুন';go.disabled=false;toast('টেস্ট অর্ডার গেছে ✔');try{TST=TST||{};const kk=r.provider+'|'+r.service_id;if(!TST[kk])TST[kk]={n:1,ok:0,open:1,bad:0,total_med:0,start_med:0,last_at:Date.now(),per_hr:0,tests:[]};tstPaint();setTimeout(tstRefresh,4000)}catch(_){}}
     catch(e){if(authFail(e)){d.close();return}

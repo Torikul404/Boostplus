@@ -144,7 +144,7 @@
         it.state = 'run'; it.msg = ''; saveQ(); paintQ();
         try {
           var o = await C.api('svc_order', { provider: it.provider, service: it.sid, link: it.link, quantity: it.qty, comments: it.comments || undefined, confirm: true, req_id: it.req });
-          it.state = 'sent'; it.po = String(o.provider_order || ''); try { if (window.tstSaveLk) window.tstSaveLk(it.provider, it.po, it.link); } catch (_) {} it.cost = +o.cost_bdt || it.cost; it.at = Date.now(); it.msg = ''; lf[it.label] = 0;
+          it.state = 'sent'; it.po = String(o.provider_order || ''); it.cost = +o.cost_bdt || it.cost; it.at = Date.now(); it.msg = ''; lf[it.label] = 0;
           MT[it.provider + '|' + it.sid] = { label: it.label, type: it.type, refill: it.refill, kind: it.kind, at: it.at }; sv(KM, MT);
         } catch (e) {
           if (C.authFail(e)) { it.state = 'wait'; stopFlag = true; break; }
