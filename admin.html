@@ -1084,10 +1084,7 @@
         topups.slice(0, 8).map(function (a) {
           return "<div style='padding:8px 0;border-top:1px solid rgba(245,158,11,0.25);font-size:13px;'>" +
             "<b>" + esc(a.provider || "?") + "</b> — " + esc(a.error || "") + "<br>" +
-            "Order: <code>" + esc(a.order_id || "") + "</code> · ৳" + esc(a.amount_bdt || "") +
-            (a.user_mobile ? "<div style='margin-top:4px;'>👤 <b>" + esc(a.user_name || "") + "</b> " + esc(a.user_mobile) + (a.user_balance != null ? " · 💰 ব্যালেন্স ৳" + esc(a.user_balance) + (a.user_balance_before != null ? " <span style='opacity:.75'>(আগে ৳" + esc(a.user_balance_before) + ")</span>" : "") : "") + "</div>" : "") +
-            "<div style='margin-top:4px;'>📦 " + esc(a.service_name || "—") + " <span style='opacity:.75'>(ID " + esc(a.service_code || "") + ")</span>" + (a.platform ? " · " + esc(a.platform) : "") + "</div>" +
-            "<div style='opacity:.9;'>🔢 পরিমাণ: <b>" + esc(a.qty || "") + "</b>" + (a.link ? " · 🔗 <span style='word-break:break-all;'>" + esc(a.link) + "</span>" : "") + "</div>" +
+            "Order: <code>" + esc(a.order_id || "") + "</code> · " + esc(a.service_code || "") + (a.qty ? " × " + esc(a.qty) : "") + " · ৳" + esc(a.amount_bdt || "") +
             (a.rate_usd > 0 ? "<div style='margin-top:4px;opacity:.9;'>রেট $" + esc(a.rate_usd) + "/1K → এই অর্ডার <b>$" + Number(a.need_usd || 0).toFixed(4) + "</b> (৳" + esc(a.need_bdt) + ")</div>" : "") +
             (a.held_count > 1 ? "<div style='opacity:.9;'>আটকে আছে " + esc(a.held_count) + "টি অর্ডার · মোট $" + Number(a.held_need_usd || 0).toFixed(4) + "</div>" : "") +
             (a.balance_usd != null ? "<div style='opacity:.9;'>প্যানেলে আছে $" + Number(a.balance_usd).toFixed(4) + "</div>" : "") +
@@ -1980,6 +1977,28 @@
     return providerMapCache || {};
   }
 
+  // টপ-আপ হিসাব (প্রতি ১০০০ টাকায় ফি) — Code.gs TOPUP_FEE_PER_1000 ও design/topup.js FEE-র সাথে এক রাখুন
+  const TOPUP_FEE = { bkash: 18.5, nagad: 15, rocket: 17, npsb: 10 };
+  function topupCalcOf(o) {
+    if (String(o.service_code || "").toUpperCase() !== "TOPUP") return null;
+    const m = String(o.paid_from || "").trim().toLowerCase(), rate = TOPUP_FEE[m] || 0;
+    const r2 = function (x) { return Math.round(x * 100) / 100; };
+    const feeOf = function (a) { return r2(a * rate / 1000); };
+    const A = Number(o.amount) || 0, mk = String(o.comments || "").match(/^TOPUP_FEE=([\d.]+)$/);
+    let claim, fee, total;
+    if (mk) { fee = Number(mk[1]); total = A; claim = r2(A - fee); } else { claim = A; fee = feeOf(A); total = r2(A + fee); }
+    return { rate: rate, claim: claim, fee: fee, total: total, expect: feeOf(claim), ok: Math.abs(fee - feeOf(claim)) <= 0.05, old: !mk };
+  }
+  function topupRowHtml(o) {
+    const c = topupCalcOf(o); if (!c) return "";
+    return `<div class="row" style="background:#0b0f14;border:1px solid ${c.ok ? "#2a3a4a" : "#ef4444"};border-radius:8px;padding:8px 10px;">
+      <b>💰 টপ-আপ হিসাব</b> (প্রতি ১০০০-এ ৳${esc(c.rate)})<br>
+      ক্লেম (ওয়ালেটে যাবে): <b>৳${esc(c.claim)}</b> &nbsp; + ফি: <b>৳${esc(c.fee)}</b> &nbsp; = মোট পাঠানোর কথা: <b>৳${esc(c.total)}</b><br>
+      ${c.ok ? '<span style="color:#22c55e;">✔ ফি ঠিক আছে</span>' : '<span style="color:#ef4444;">✖ ফি ভুল — হওয়ার কথা ৳' + esc(c.expect) + ' (এপ্রুভ আটকে যাবে)</span>'}
+      ${c.old ? '<br><span style="color:#fbbf24;">পুরনো সারি: শিটের অ্যামাউন্টকেই ক্লেম ধরা হয়েছে</span>' : ""}
+      <br><small>SMS/ম্যাসেজে মোট ৳${esc(c.total)} এসেছে কি না মিলিয়ে নিন।</small></div>`;
+  }
+
   function renderCard(o) {
     const st = (o.status || "Pending");
     const stLower = st.toLowerCase();
@@ -2039,6 +2058,7 @@
         <div class="row"><b>Service Code:</b> ${esc(o.service_code)}${o.provider ? ` &nbsp; <b>Provider:</b> <span style="color:#fbbf24;font-weight:600;">${esc(o.provider)}</span>${balanceCache[o.provider] && balanceCache[o.provider].ok ? ` <span style="color:#4ade80;">($${Number(balanceCache[o.provider].balance).toFixed(2)})</span>` : ""}` : ""}</div>
         <div class="row"><b>Link:</b> ${linkHtml(o.link)}</div>
         <div class="row"><b>Quantity:</b> ${esc(o.quantity)} &nbsp; <b>Amount:</b> ৳${esc(o.amount)}</div>
+        ${topupRowHtml(o)}
         ${(o.live_start_count !== undefined || o.live_remains !== undefined) ? `<div class="row" style="color:#6ee7b7;"><b>🔴 Live Start Count:</b> ${esc(o.live_start_count)} &nbsp; <b>Remains:</b> ${esc(o.live_remains)} ${o.live_provider_status ? `&nbsp; <b>Provider Status:</b> ${esc(o.live_provider_status)}` : ""}</div>` : ""}
         ${o.comments ? `<div class="row"><b>Comments:</b><pre style="white-space:pre-wrap;word-break:break-word;margin:6px 0 0;padding:8px 10px;background:#0b0f14;border:1px solid #2a3a4a;border-radius:8px;max-height:220px;overflow:auto;font:inherit;">${esc(o.comments)}</pre></div>` : ""}
         <div class="row"><b>Method:</b> ${esc(o.paid_from)} &nbsp; <b>TrxID:</b> ${esc(o.txn_id)}</div>
@@ -2532,7 +2552,8 @@
       } else if (data && data.error === "locked_out") {
         alert("বারবার ভুল token দেওয়ার কারণে admin panel সাময়িকভাবে লক করা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।");
       } else {
-        alert("সমস্যা হয়েছে: " + (data && (data.message || data.error)));
+        alert("সমস্যা হয়েছে: " + (data && (data.message || (data.topup && data.topup.reason) || data.error)));
+        if (data && data.error === "fee_mismatch") loadOrders();
       }
     } catch (err) {
       alert("নেটওয়ার্ক সমস্যা — আবার চেষ্টা করুন।");
