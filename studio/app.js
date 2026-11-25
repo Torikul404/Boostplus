@@ -280,7 +280,7 @@ async function provider(p,more){
     if(my!==provTok)return;
     if(!more){lastList=d;
       el.innerHTML=tiles(d.platforms||[],st.plat||'')+`<div class="bar"><input id="q" type="search" placeholder="নাম, আইডি বা ক্যাটেগরি খুঁজুন" value="${esc(st.q)}" aria-label="খুঁজুন"></div><div id="cats">${catUI(catsFor(d.categories,st.plat),st)}</div>
-      <div class="chips" role="group" aria-label="অবস্থা">${[['all','সব'],['on','চালু'],['off','বন্ধ'],['conflict','জট']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${st.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="sa">সব বাছুন</button><button class="chip" id="csv">⤓ CSV</button></div><div class="chips" role="group" aria-label="দাম সাজান"><button class="chip" data-so="asc" aria-pressed="${st.sort==='asc'}">দাম: কম → বেশি</button><button class="chip" data-so="desc" aria-pressed="${st.sort==='desc'}">দাম: বেশি → কম</button><button class="chip" data-so="fast" aria-pressed="${st.sort==='fast'}">⚡ দ্রুততম আগে</button><span class="cdv" aria-hidden="true"></span>${[['','সব'],['run','⏳ টেস্টিং'],['yes','🧪 টেস্টেড'],['no','অপরীক্ষিত']].map(s=>`<button class="chip" data-tt="${s[0]}" aria-pressed="${(st.tst||'')===s[0]}">${s[1]}</button>`).join('')}</div>
+      <div class="chips" role="group" aria-label="অবস্থা">${[['all','সব'],['on','চালু'],['off','বন্ধ'],['conflict','জট']].map(s=>`<button class="chip" data-s="${s[0]}" aria-pressed="${st.state===s[0]}">${s[1]}</button>`).join('')}<button class="chip" id="sa">সব বাছুন</button><button class="chip" id="csv">⤓ CSV</button></div><div class="chips" role="group" aria-label="দাম সাজান"><button class="chip" data-so="asc" aria-pressed="${st.sort==='asc'}">দাম: কম → বেশি</button><button class="chip" data-so="desc" aria-pressed="${st.sort==='desc'}">দাম: বেশি → কম</button><button class="chip" data-so="fast" aria-pressed="${st.sort==='fast'}">⚡ দ্রুততম আগে</button><span class="cdv" aria-hidden="true"></span>${[['','সব'],['run','⏳ টেস্টিং'],['yes','🧪 টেস্টিং + সম্পন্ন'],['no','অপরীক্ষিত']].map(s=>`<button class="chip" data-tt="${s[0]}" aria-pressed="${(st.tst||'')===s[0]}">${s[1]}</button>`).join('')}</div>
       <p class="sub"><span id="cnt"></span><span id="tcn"></span></p><div class="list" id="rows"></div><div id="moreWrap"></div>`;
       $('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{st.q=e.target.value;if(st.q.trim()){st.type='';st.cat=''}provider(p)},200)};
       if(hq){const qi=$('#q');qi.focus();try{qi.setSelectionRange(qi.value.length,qi.value.length)}catch(_){}}
@@ -300,7 +300,7 @@ async function provider(p,more){
 /* বাছাই মনে রাখা: ফিল্টার/'আরও দেখান'-এ কার্ড নতুন করে আঁকা হলেও টিক থাকে (প্রভাইডার+আইডি দিয়ে চেনে) */
 /* রেট টাকায় সাথে সাথে: প্রভাইডারের USD রেট × সেট করা ডলার-রেট (১ USDT = ৳?); রেট কোথাও সেট না থাকলে ১৩১ ধরে */
 const fxNow=()=>+window._fx>0?+window._fx:(+ls.get('pb_fx')>0?+ls.get('pb_fx'):131);
-const rateTk=(u,plain)=>{const x=+u,f=fxNow();if(!(x>=0)||!f)return esc(u)+' $';const t=x*f;return '৳'+bn(+t.toFixed(t<10?3:2))+(plain?'':' <span class="mut">($'+esc(u)+')</span>')};
+const rateTk=(u,plain)=>{const t=String(u==null?'':u).trim();if(!t||!(+t>=0))return esc(t)+' $';const f=fxNow(),b=+t*f,tk='৳'+bn(+b.toFixed(b<10?3:2));return plain?'$'+esc(t)+' ≈ '+tk:'$'+esc(t)+'<span class="mut">/1K</span> <span class="mut">≈ '+tk+'</span>'};
 const RW=new WeakMap(),selKey=r=>(r.provider||cur||'')+'|'+r.service_id;
 /* v106: আগে টেস্ট-করা সার্ভিস — নামের পাশে ব্যাজ, নিচে বিস্তারিত লাইন (গতি/ব্যর্থতা/কবে), ট্যাপে প্রতিটি টেস্টের তালিকা; রঙ = গতি */
 let TST=null,TSTp=null;try{TST=JSON.parse(ls.get('tst_v1')||'null')}catch(_){TST=null}
@@ -320,14 +320,21 @@ function tstLabel(x){if(!x)return null;const old=x.last_at>0&&Date.now()-x.last_
     return{t:'টেস্টেড ✓ · '+doneT(x.total_med)+' সম্পন্ন',d:'📊 '+dp.join(' · ')+' — বিস্তারিত ›',c,old}}
   if(x.open>0)return{t:'টেস্টেড · চলছে',d:'📊 টেস্ট চলছে'+(x.last_at>0?' · শুরু '+agoT(x.last_at):'')+' — বিস্তারিত ›',c:'wait',old};
   return{t:'টেস্টেড · সম্পন্ন হয়নি',d:'📊 টেস্ট '+bn(x.n)+'টি, কোনোটাই সম্পন্ন হয়নি'+(x.last_at>0?' · শেষ '+agoT(x.last_at):'')+' — বিস্তারিত ›',c:'slow',old}}
+/* সার্ভিসের নিচে প্রতিটা টেস্ট: চলমান হলে কত সময় ধরে চলছে (লাইভ), সম্পন্ন হলে কত সময়ে হলো — সাথে টেস্টের লিংক */
+function tstLines(k){const x=TST&&TST[k];if(!x||!x.tests||!x.tests.length)return '';
+  return x.tests.slice(0,3).map(t=>{const fin=tstFin(t.st),lk=String(t.lk||''),a=/^https?:\/\//i.test(lk)?`<a href="${esc(lk)}" target="_blank" rel="noopener noreferrer">${esc(lk.length>44?lk.slice(0,42)+'…':lk)}</a>`:esc(lk.length>44?lk.slice(0,42)+'…':lk);
+    const s=String(t.st||'').toLowerCase(),bad=s==='canceled'||s==='cancelled'||s==='refunded'||s==='partial';
+    const tt=t.ts>0?t.ts:(t.at>0&&t.cm>0?(t.cm-t.at)/1000:0);
+    const head=!fin?`<b class="w" data-tstt0="${t.at>0?t.at:0}" data-tpl="🧪 টেস্টিং চলছে · {T} ধরে">🧪 টেস্টিং চলছে</b>`:bad?`<b class="hi">${s==='partial'?'⚠ আংশিক':'🚫 ক্যান্সেল'}${tt>0?' · '+mnT(tt):''}</b>`:`<b class="g">✅ ${tt>0?doneT(tt)+' সম্পন্ন':'সম্পন্ন'}</b>`;
+    return `<div class="sub tlr">${head} · ${dT(t.at)}${t.q?' · '+bn(t.q)+'টি':''}${a?' · '+a:''}</div>`}).join('')}
 function tstFill(el){if(!el)return;const l=tstLabel(TST&&TST[el.dataset.tk]),bx=el.closest&&el.closest('.tstbox');if(!l){el.hidden=true;el.textContent='';delete el.dataset.tstt0;delete el.dataset.tpl;if(bx&&!bx.querySelector('[data-tk]:not([hidden])'))bx.hidden=true;return}el.hidden=false;if(bx){bx.hidden=false;bx.className='tstbox '+l.c+(l.live?' run':'')}
   const two=el.classList.contains('tst2');el.className=(two?'sub tst2 ':'tag tst ')+l.c+(l.old?' old':'')+(l.live?' run':'');
   if(two&&l.live&&l.t0>0){el.dataset.tstt0=l.t0;el.dataset.tpl=l.d}else{delete el.dataset.tstt0;delete el.dataset.tpl}
-  el.textContent=tstFmt(two?l.d:l.t,l.t0)}
+  el.textContent=tstFmt(two?l.d:l.t,l.t0);if(two&&bx){const lx=bx.querySelector('.tlx');if(lx){lx.innerHTML=tstLines(el.dataset.tk);tstTick()}}}
 function tstPaint(root){(root||document).querySelectorAll('.tst[data-tk],.tst2[data-tk]').forEach(tstFill);tstCnt();if(document.querySelector('.tst2[data-tstt0]'))tstLiveStart()}
 /* চলমান টেস্ট থাকলে: প্রতি সেকেন্ডে সময় চলে; প্রতি ৪৫ সেকেন্ডে প্রভাইডারে মিলিয়ে ব্যাজ নিজে 'সম্পন্ন' হয় */
 let tstTm=0,tstBusy=false;
-function tstTick(){document.querySelectorAll('.tst2[data-tstt0]').forEach(x=>{x.textContent=tstFmt(x.dataset.tpl,+x.dataset.tstt0)})}
+function tstTick(){document.querySelectorAll('.tst2[data-tstt0],.tlx [data-tstt0]').forEach(x=>{x.textContent=tstFmt(x.dataset.tpl,+x.dataset.tstt0)})}
 async function tstPoll(){if(tstBusy||document.hidden||!document.querySelector('.tst2[data-tstt0]'))return;tstBusy=true;try{await api('svc_spd',{refresh:true,limit:10});await tstRefresh()}catch(_){}finally{tstBusy=false}}
 function tstLiveStart(){if(tstTm)return;tstTm=setInterval(tstTick,1000);setInterval(tstPoll,45000)}
 function tstCnt(){const e=$('#tcn');if(!e)return;const pc=cur&&PC[cur];if(!pc||!TST){e.textContent='';return}let n=0;pc.rows.forEach(r=>{if(TST[cur+'|'+r.service_id])n++});e.textContent=' · 🧪 টেস্টেড '+bn(n)+'/'+bn(pc.rows.length)}
@@ -361,7 +368,7 @@ function row(r,d){
   c.innerHTML=`<div class="sv"><div class="sv-top">${r.state==='conflict'?'':'<input type="checkbox" class="sel" aria-label="নির্বাচন">'}<h4>${esc(r.name)}</h4></div>
   <div class="sv-meta">${d&&d.cmp?'<span class="pl pv2">'+esc(r.provider)+'</span>':''}<span class="pl rt">${rateTk(r.rate)}</span><span class="pl">ID <b>${esc(r.service_id)}</b></span><span class="pl">${bn(r.min)}–${bn(r.max)}</span>${rf}${cn}${sg}</div>
   <div class="sub sv-cat">${esc(r.category)}</div>
-  <div class="tstbox" hidden><button type="button" class="tag tst" data-tk="${esc((r.provider||cur)+'|'+r.service_id)}" data-nm="${esc(r.name)}" hidden></button><div class="sub tst2" role="button" data-tk="${esc((r.provider||cur)+'|'+r.service_id)}" data-nm="${esc(r.name)}" hidden></div></div>${spdTag(r)}
+  <div class="tstbox" hidden><button type="button" class="tag tst" data-tk="${esc((r.provider||cur)+'|'+r.service_id)}" data-nm="${esc(r.name)}" hidden></button><div class="sub tst2" role="button" data-tk="${esc((r.provider||cur)+'|'+r.service_id)}" data-nm="${esc(r.name)}" hidden></div><div class="tlx"></div></div>${spdTag(r)}
   ${r.tidy&&r.state!=='on'?`<div class="sub ok">সাইটে: ${esc(nice(r)||r.tidy.name)} · ${esc(r.tidy.cat)}</div>`:''}${r.state==='conflict'?`<div class="sub hi">জট: ${esc(r.conflict_with)}-এর সার্ভিস হিসেবে আছে</div>`:''}
   <div class="ordb"><button type="button" class="sm" data-ord>🧪 টেস্ট অর্ডার</button></div></div>
   <button class="sw" role="switch" aria-checked="${r.state==='on'}" aria-label="${esc(r.name)} সাইটে চালু/বন্ধ" ${r.state==='conflict'?'disabled':''}></button>`;
@@ -431,7 +438,7 @@ function openSheet(r,btn,force,q){NGR=r;setTimeout(ngDraw,0);
     cs.onchange=()=>{if(cs.value){ci.value=cs.value;ci.dispatchEvent(new Event('input'))}};
     pl.addEventListener('change',()=>{fill();loadSiteCats(pl.value).then(fill)});ci.addEventListener('input',fill)}
   $('#shPriceBdt').hidden=true;$('#shPriceUsd').hidden=true;$('#shUsd').value=r.rate;
-  $('#shInfo').textContent=`প্রভাইডারের রেট $${r.rate}/1K — এই দামই সাইটে যাবে, মার্কআপ শুধু সাইটে একবার বসবে`;$('#shErr').textContent='';
+  $('#shInfo').textContent=`প্রভাইডারের রেট $${r.rate}/1K ≈ ৳${bn(+(+r.rate*fxNow()).toFixed(3))} — এই দামই সাইটে যাবে, মার্কআপ শুধু সাইটে একবার বসবে`;$('#shErr').textContent='';
   shRun=()=>{const c=readyCheck(r,{name:$('#shName').value,plat:$('#shPlat').value,cat:$('#shCat').value});$('#shChk').innerHTML=chkHtml(c);return c};
   if(!shWired){shWired=true;['#shName','#shCat'].forEach(i=>$(i).addEventListener('input',()=>shRun&&shRun()));['#shPlat','#shCs'].forEach(i=>$(i).addEventListener('change',()=>shRun&&shRun()))}
   setTimeout(()=>shRun&&shRun(),0);
@@ -1631,7 +1638,7 @@ const spc=r=>{const fin=spFin(r),bad=spBad(r),cls=fin?(bad?'b':'g'):'',started=r
   return `<div class="card spc ${cls}"><div class="bsh"><span class="tag">🧪 টেস্ট</span><span class="tag">${esc(r._local?'পাঠানো হয়েছে':(r.status||'—'))}</span>${live}${spLateTag(r)}${r.provider&&r.service_id&&dfOn(r)?'<span class="tag" style="color:#34d399;border-color:#34d399">✔ সাইটে চালু</span>':''}</div>${spStBanner(r)}<b class="bnm">${esc(r.name||r.label||('অর্ডার '+r.provider_order))}</b><div class="sub">${esc(r.provider)} · সার্ভিস ${esc(r.service_id)} · প্রভাইডার অর্ডার #${esc(r.provider_order)}${r.platform?' · '+esc(r.platform):''}</div>
 <div class="tl"><div><span class="sub">অর্ডার</span><b>${dT(r.ordered_at)}</b></div><div><span class="sub">শুরু</span>${startCell}</div><div><span class="sub">শেষ</span>${endCell}</div></div>
 ${pct!=null?`<div class="pbar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div><div class="sub">ডেলিভারি ${bn(r.delivered)} / ${bn(r.quantity)} (${bn(pct)}%) · শুরুর কাউন্ট ${r.start_count!=null?bn(r.start_count):'—'} · বাকি ${bn(r.remains)}${rate?` · গতি ~${bn(rate)}/মিনিট${eta}`:''}</div>`:`<div class="sub">পরিমাণ ${r.quantity?bn(r.quantity):'—'}${r.start_count!=null?' · শুরুর কাউন্ট '+bn(r.start_count):''}${r._local?' · সার্ভারে মেলানো হচ্ছে…':''}</div>`}
-${r.link?`<div class="sub">লিংক: ${lk}</div>`:''}<div class="sub">${r.cost_bdt!=null?'খরচ ≈ ৳'+bn(r.cost_bdt)+' · ':''}শেষ মেলানো ${dT(r.last_checked)}</div><div class="acts">${fin?`<button type="button" class="sm" data-rep="${esc(spKey(r))}">📄 রিপোর্ট</button><button type="button" class="sm" data-tg="${esc(spKey(r))}">✈ টেলিগ্রাম</button>`:''}${r.provider&&r.service_id?(dfOn(r)?'<span class="sub ok">✔ সাইটে চালু আছে</span>':`<button type="button" class="sm" data-add="${esc(spKey(r))}">➕ সাইটে যোগ</button>`):''}</div></div>`};
+${r.link?`<div class="sub">লিংক: ${lk}</div>`:''}<div class="sub">${r.rate>0?'প্রভাইডার রেট '+rateTk(r.rate)+' · ':''}${r.cost_bdt!=null?'খরচ ≈ ৳'+bn(r.cost_bdt)+' · ':''}শেষ মেলানো ${dT(r.last_checked)}</div><div class="acts">${fin?`<button type="button" class="sm" data-rep="${esc(spKey(r))}">📄 রিপোর্ট</button><button type="button" class="sm" data-tg="${esc(spKey(r))}">✈ টেলিগ্রাম</button>`:''}${r.provider&&r.service_id?(dfOn(r)?'<span class="sub ok">✔ সাইটে চালু আছে</span>':`<button type="button" class="sm" data-add="${esc(spKey(r))}">➕ সাইটে যোগ</button>`):''}</div></div>`};
 /* ✅ শেষ ট্যাবের ফাইন্ডার: ক্যাটাগরি আলাদা + "কত সময়ের মধ্যে শেষ" + সর্ট + সার্চ */
 const DF_TB=[[0,'সব সময়'],[600,'≤ ১০ মিনিট'],[1800,'≤ ৩০ মিনিট'],[3600,'≤ ১ ঘণ্টা'],[21600,'≤ ৬ ঘণ্টা'],[86400,'≤ ২৪ ঘণ্টা'],[-1,'২৪ ঘণ্টার বেশি']];
 const dfIn=(t,b)=>b===0?true:b===-1?t>86400:(t>0&&t<=b);
@@ -1729,9 +1736,10 @@ async function spd(){
     spStm(rows);
     const qs=()=>String(SP.q||'').trim(),FF=spFastLearn([]),mt=r=>spQMatch(SP.q,r,spCatOf(r,FF));
     const listHtml=()=>{
-      if(isAll){if(!qs())return '<div class="card empty">অর্ডার দেখতে ⏳ চলমান ('+bn(cnt.run)+'), ✅ শেষ ('+bn(cnt.ok)+') বা 🚫 ক্যান্সেল ('+bn(cnt.bad)+') ট্যাব চাপুন — অথবা উপরের বক্সে লিংক/নাম লিখে সব অর্ডারে খুঁজুন।</div>';
+      if(isAll){if(!qs()){const A=rows.filter(r=>(!SP.prov||r.provider===SP.prov)&&(!spFin(r)||!spCan(r))),R=A.filter(r=>!spFin(r)),F=A.filter(r=>spFin(r));
+          return A.length?'<div class="sub" style="margin:4px 2px 8px">⏳ টেস্টিং চলছে '+bn(R.length)+'টি · ✅ সম্পন্ন '+bn(F.length)+'টি — সব দেখানো হলো</div>'+A.map(spc).join(''):'<div class="card empty">এখনো কোনো টেস্টিং বা সম্পন্ন অর্ডার নেই।</div>'}
         const L=rows.filter(r=>(!SP.prov||r.provider===SP.prov)&&mt(r));
-        return L.length?'<div class="sub" style="margin:4px 2px 8px">'+bn(L.length)+'টি অর্ডার পাওয়া গেছে'+(L.length>60?' · প্রথম ৬০টি দেখানো হলো':'')+'</div>'+L.slice(0,60).map(spc).join(''):'<div class="card empty">“'+esc(qs())+'” দিয়ে কোনো অর্ডার পাওয়া যায়নি।</div>'}
+        return L.length?'<div class="sub" style="margin:4px 2px 8px">'+bn(L.length)+'টি অর্ডার পাওয়া গেছে</div>'+L.map(spc).join(''):'<div class="card empty">“'+esc(qs())+'” দিয়ে কোনো অর্ডার পাওয়া যায়নি।</div>'}
       const L=show.filter(mt);
       if(!L.length)return '<div class="card empty">'+(qs()?'“'+esc(qs())+'” দিয়ে কোনো অর্ডার পাওয়া যায়নি।':rows.length?(SP.st==='run'?'এখন কোনো চলমান অর্ডার নেই।':SP.st==='can'?'কোনো ক্যান্সেল অর্ডার নেই।':'এখনো কোনো শেষ হওয়া অর্ডার নেই।'):'স্টুডিও থেকে দেওয়া কোনো অর্ডার নেই। \'সেরা\' পাতা থেকে টেস্ট অর্ডার দিন।')+'</div>';
       return (qs()?'<div class="sub" style="margin:4px 2px 8px">'+bn(L.length)+'টি অর্ডার পাওয়া গেছে</div>':'')+(SP.st==='run'?spRunHtml(L):L.map(spc).join(''))};

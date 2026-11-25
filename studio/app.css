@@ -278,3 +278,5 @@ dialog .acts{margin-top:14px}dialog input{margin-bottom:10px}
 
 /* v142: দ্বিতীয় অর্ডারের সতর্কতা */
 .ordw{margin:8px 0;padding:10px 12px;border:1px solid var(--wa);border-radius:12px;background:color-mix(in srgb,var(--wa) 10%,transparent)}.ordw[hidden]{display:none}.ordw ul{margin:6px 0 6px 18px;padding:0;font-size:13px}.ordw .sub{margin-top:4px}
+/* v145: সার্ভিসের নিচে টেস্ট লাইন */
+.tlx .tlr{margin-top:4px;overflow-wrap:anywhere}.tlx .tlr a{color:inherit;text-decoration:underline}
