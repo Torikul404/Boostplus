@@ -19,15 +19,14 @@ function toBdtPrice(rawPrice) {
 }
 
 // Selling price markup (per 1K)
-// 0-20 → +7 | 21-40 → +12 | 41-70 → +16 | 71-100 → +21 | 101-200 → +25 | 201+ → +30
+// 0-20 → +7 | 20-50 → +15 | 50-70 → +25 | 70-100 → +30 | 100+ → +35  (খরচ ৳/1K, 1$ = 131৳)
 function getSellingPrice(basePrice) {
   const p = toBdtPrice(basePrice);
   let markup = 7;
-  if (p > 200) markup = 30;
-  else if (p > 100) markup = 25;
-  else if (p > 70) markup = 21;
-  else if (p > 40) markup = 16;
-  else if (p > 20) markup = 12;
+  if (p > 100) markup = 35;
+  else if (p > 70) markup = 30;
+  else if (p > 50) markup = 25;
+  else if (p > 20) markup = 15;
   return p + markup;
 }
 
