@@ -284,6 +284,10 @@
     loadWalletHistory();
     try {
       const d = await walletPost({ action: "wallet_auth", sub: "me", token: token });
+      if (d && !d.ok && d.error === "busy") {
+        toast("info", "Server busy, try again in a moment.");
+        return;
+      }
       if (!d || !d.ok || d.error === "auth") {
         clearSession();
         if (guest) guest.style.display = "block";
@@ -966,6 +970,10 @@
     let bal;
     try {
       const me = await walletPost({ action: "wallet_auth", sub: "me", token: token });
+      if (me && !me.ok && me.error === "busy") {
+        abShowResult(false, "<b>Order not placed</b><br>Server busy, try again in a moment.");
+        return true;
+      }
       if (!me || !me.ok) {
         abShowResult(false, "<b>Session expired</b><br>Please <a href=\"login.html\" style=\"color:inherit;text-decoration:underline;\">log in</a> again.");
         return true;
