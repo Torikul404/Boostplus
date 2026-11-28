@@ -159,7 +159,8 @@ d.addEventListener('keydown',function(e){var t=e.target;if(e.key!=='Enter'||!t.i
   else if(t.id==='shCat'){e.preventDefault();tidyField(t);t.blur()}},true);
 
 /* ---------- ৩) অটো-সাজান (DOM) ---------- */
-var TF='#shName,#shCat,#bsl .bn,#bsl .bc,#tres .tn,#tres .tc';
+/* v143: সার্ভিসের নাম (#shName, .bn) প্রভাইডারের হুবহু থাকে — অটো-সাজান শুধু ক্যাটেগরিতে */
+var TF='#shCat,#bsl .bc,#tres .tn,#tres .tc';
 var notes=new WeakMap(),down=false,pend=[];
 function flush(){down=false;pend.splice(0).forEach(function(n){if(n.el.isConnected&&n.el.closest('dialog[open]'))n.el.hidden=false})}
 d.addEventListener('pointerdown',function(){down=true},true);d.addEventListener('pointerup',function(){setTimeout(flush,0)},true);d.addEventListener('pointercancel',flush,true);
